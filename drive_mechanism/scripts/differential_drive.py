@@ -12,9 +12,9 @@ class DifferentialDrive:
         self.wheel_sep = rospy.get_param('~wheel_sep')
         self.wheel_radius = rospy.get_param('~wheel_radius')
 
-        self.pub_wheel_rpm = rospy.Publisher('wheel_rpm_command', WheelRPM, queue_size=1)
+        self.pub_wheel_rpm = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
-        rospy.Subscriber('robot_velocity_commmand', Twist, self.publish_wheel_rpm, queue_size=1)
+        rospy.Subscriber('/robot_velocity_commmand', Twist, self.publish_wheel_rpm, queue_size=1)
 
     def publish_wheel_rpm(self, twist):
         linear_vel = twist.linear.x
