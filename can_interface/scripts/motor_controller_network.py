@@ -64,11 +64,11 @@ class MotorControllerNode:
         self.node.nmt.add_hearbeat_callback(self.heartbeat_cb)
 
         # Publishers
-        self.pub_state = rospy.Publisher('/motor_controller/{}/state'.format(self.topic_name), Int32, queue_size=10)
-        self.pub_heartbeat = rospy.Publisher('/motor_controller/{}/heartbeat'.format(self.topic_name), Int32, queue_size=10)
-        self.pub_motor_current = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
-        self.pub_wheel_rpm_actual = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
-        self.pub_error_word = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
+        self.state_publisher = rospy.Publisher('/motor_controller/{}/state'.format(self.topic_name), Int32, queue_size=10)
+        self.heartbeat_publisher = rospy.Publisher('/motor_controller/{}/heartbeat'.format(self.topic_name), Int32, queue_size=10)
+        self.motor_current_publisher = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
+        self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
+        self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
 
     def spin(self, wheel_rpm):
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm
@@ -81,23 +81,23 @@ class MotorControllerNode:
         # 2: actual velociy of motor input shaft
 
         # 0
-        self.pub_state.publish( tpdo1[0].raw )
+        self.state_publisher.publish( tpdo1[0].raw )
 
         # 1
-        self.pub_motor_current.publish(abs( tpdo1[1].raw / 1000 * self.rated_current) )
+        self.motor_current_publisher.publish(abs( tpdo1[1].raw / 1000 * self.rated_current) )
 
         # 2
-        self.pub_wheel_rpm_actual.publish( tpdo1[2].raw / self.gear_ratio )
+        self.wheel_rpm_actual_publisher.publish( tpdo1[2].raw / self.gear_ratio )
 
     def tpdo2_cb(self, tpdo2):
         # tpdo2 contains the following elements:
         # 0: error_word
 
         # 0
-        self.pub_error_word.publish(tpdo2[0].raw)
+        self.error_word_publisher.publish(tpdo2[0].raw)
 
     def heartbeat_cb(self, nmt_state_int):
-        self.pub_heartbeat.publish(nmt_state_int)
+        self.heartbeat_publisher.publish(nmt_state_int)
 
 class MotorControllerNetwork:
     def __init__(self):
@@ -138,7 +138,7 @@ class MotorControllerNetwork:
         self.mc_rf_node.spin(msg_wheel_rpm.right_front)
             
 if __name__ ==  '__main__':
-    node = rospy.init_node('can_interface', disable_signals=True)
+    node = rospy.init_node('can_interface')
 
     motor_controller_network = MotorControllerNetwork()
 
