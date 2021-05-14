@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# Abbreviations
+# mc: motor controler
+# lf: left front
+# lb: left back
+# rf: right front
+# rb: right back
+
 from __future__ import division
 import canopen
 import rospy
@@ -57,11 +64,11 @@ class MotorControllerNode:
         self.node.rpdo.read()
 
         # PDO callbacks
-        self.node.tpdo[1].add_callback(self.tpdo1_cb)
-        self.node.tpdo[2].add_callback(self.tpdo2_cb)
+        self.node.tpdo[1].add_callback(self.tpdo1_callback)
+        self.node.tpdo[2].add_callback(self.tpdo2_callback)
 
         # Heartbeat callbacks
-        self.node.nmt.add_hearbeat_callback(self.heartbeat_cb)
+        self.node.nmt.add_hearbeat_callback(self.heartbeat_callback)
 
         # Publishers
         self.state_publisher = rospy.Publisher('/motor_controller/{}/state'.format(self.topic_name), Int32, queue_size=10)
@@ -74,7 +81,7 @@ class MotorControllerNode:
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm
         self.node.rpdo[1].transmit()
     
-    def tpdo1_cb(self, tpdo1):
+    def tpdo1_callback(self, tpdo1):
         # tpdo1 contains the following elements:
         # 0: statusword
         # 1: current, the value of 1000 means rated current is being drawn
@@ -89,14 +96,14 @@ class MotorControllerNode:
         # 2
         self.wheel_rpm_actual_publisher.publish( tpdo1[2].raw / self.gear_ratio )
 
-    def tpdo2_cb(self, tpdo2):
+    def tpdo2_callback(self, tpdo2):
         # tpdo2 contains the following elements:
         # 0: error_word
 
         # 0
         self.error_word_publisher.publish(tpdo2[0].raw)
 
-    def heartbeat_cb(self, nmt_state_int):
+    def heartbeat_callback(self, nmt_state_int):
         self.heartbeat_publisher.publish(nmt_state_int)
 
 class MotorControllerNetwork:
