@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="overseer" type="overseer.py" name="overseer" output="screen" cwd="node" />
+</launch>
