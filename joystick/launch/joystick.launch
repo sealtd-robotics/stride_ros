@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="joystick" type="joy.py" name="joystick" output="screen">
+    <rosparam file="$(find joystick)/params/params.yaml" command="load"/>
+  </node>
+</launch>

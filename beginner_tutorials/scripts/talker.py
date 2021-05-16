@@ -37,7 +37,7 @@
 ## to the 'chatter' topic
 
 import rospy
-from std_msgs.msg import String
+from std_msgs.msg import String, Float32
 from geometry_msgs.msg import Twist
 from can_interface.msg import WheelRPM
 import time
@@ -52,8 +52,8 @@ def talker():
     pub7 = rospy.Publisher('a7', String, queue_size=10)
     pub8 = rospy.Publisher('a8', String, queue_size=10)
     pub9 = rospy.Publisher('a9', String, queue_size=10)
-    pub10 = rospy.Publisher('a10', String, queue_size=10)
-    pub11 = rospy.Publisher('wheel_rpm_command', WheelRPM, queue_size=10)
+    pub10 = rospy.Publisher('a10', Float32, queue_size=10)
+    pub11 = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=10)
     pub12 = rospy.Publisher('robot_velocity_commmand', Twist, queue_size=10)
 
     rospy.init_node('talker', anonymous=True)
@@ -66,10 +66,10 @@ def talker():
         hello_str = "d hello world %s" % rospy.get_time()
         
         wheel_rpm = WheelRPM()
-        wheel_rpm.left_front = 6
-        wheel_rpm.left_back = 0
-        wheel_rpm.right_front = 0
-        wheel_rpm.right_back = 0
+        wheel_rpm.left_front = -6.0
+        wheel_rpm.left_back = -7.0
+        wheel_rpm.right_front = -8.0
+        wheel_rpm.right_back = -9.0
 
         robot_vel_cmd = Twist()
         robot_vel_cmd.linear.x = 0 / 9.54929658551
@@ -84,7 +84,7 @@ def talker():
         pub7.publish(hello_str)
         pub8.publish(hello_str)
         pub9.publish(hello_str)
-        pub10.publish(hello_str)
+        pub10.publish(float('inf'))
         pub11.publish(wheel_rpm)
         time.sleep(0.1)
 
@@ -123,7 +123,7 @@ def talker():
         # pub12.publish(robot_vel_cmd)
         # time.sleep(1)
 
-        break
+        
 
         rate.sleep()
 

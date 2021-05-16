@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import String
+from geometry_msgs.msg import Twist
+from can_interface.msg import WheelRPM
 import time
 
-def callback(data):
-    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+def callback(msg):
+    print('received')
+    # print(msg.left_front)
     
 def listener():
 
@@ -15,7 +18,7 @@ def listener():
     # run simultaneously.
     rospy.init_node('listener', anonymous=True)
 
-    rospy.Subscriber("a1", String, callback, queue_size=1)
+    rospy.Subscriber("/wheel_rpm_command", WheelRPM, callback, queue_size=10)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()

@@ -121,6 +121,7 @@ if __name__ ==  '__main__':
     # Overseer
     overseer = Overseer()
 
+    rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         if overseer.state == 'manual':
             if handheld.is_estop_pressed:
@@ -160,7 +161,5 @@ if __name__ ==  '__main__':
                     overseer.to_manual()#
             elif handheld.is_estop_pressed:
                 overseer.to_e_stopped()#
-            
 
-
-    rospy.spin()
+        rate.sleep()
