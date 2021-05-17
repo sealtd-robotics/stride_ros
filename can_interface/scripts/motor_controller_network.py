@@ -14,29 +14,6 @@ from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, Int32
 import time
 
-# Conversion dictionary for motor controller state
-# state_binary_string = '{0:07b}'.format(tpdo1[0].raw) # convert int to binary string, padding it to 7 bits if needed
-# state_binary_string = state_binary_string[-7:] # only the least significant 7 bits represent the state
-# state_description = mc_state_description.get(state_binary_string)
-# mc_state_description = {
-#     '0000000': "not ready to switch on",
-#     '1000000': "switch on disabled",
-#     '0100001': "ready to switch on",
-#     '0100011': "switched on",
-#     '0100111': "operation enabled",
-#     '0000111': "quick stop active",
-#     '0001111': "fault reaction active",
-#     '0001000': "fault",
-# }
-
-# Conversion dictionary for CANopen NMT state
-# nmt_state_description = {
-#     0: "boot up",
-#     4: "stopped",
-#     5: "operational",
-#     127: "pre-operational",
-# }
-
 class MotorControllerNode:
     def __init__(self, node, topic_name):
         self.gear_ratio = rospy.get_param('~gear_ratio')
@@ -72,7 +49,7 @@ class MotorControllerNode:
 
         # Publishers
         self.state_publisher = rospy.Publisher('/motor_controller/{}/state'.format(self.topic_name), Int32, queue_size=10)
-        self.heartbeat_publisher = rospy.Publisher('/motor_controller/{}/heartbeat'.format(self.topic_name), Int32, queue_size=10)
+        self.heartbeat_publisher = rospy.Publisher('/motor_controller/{}/heartbeat_nmt'.format(self.topic_name), Int32, queue_size=10)
         self.motor_current_publisher = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)

@@ -62,7 +62,7 @@ class MotorController:
         self.topic_name = topic_name
         self.error_word = 0
 
-        rospy.Subscriber('/motor_controller/{}/error_word'.format(self.topic_name), Int32, self.set_error_word, queue_size=10)
+        rospy.Subscriber('/motor_controller/{}/error_word'.format(self.topic_name), Int32, self.set_error_word)
 
     def set_error_word(self, msg):
         self.error_word = msg.data
@@ -80,9 +80,9 @@ class Gui:
         self.is_stop_clicked = False
         self.is_start_clicked = False
         self.is_recover_clicked = False
-        rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback, queue_size=20)
-        rospy.Subscriber('/gui/start_clicked', Empty, self.start_callback, queue_size=20)
-        rospy.Subscriber('/gui/recover_clicked', Empty, self.recover_callback, queue_size=20)
+        rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
+        rospy.Subscriber('/gui/start_clicked', Empty, self.start_callback)
+        rospy.Subscriber('/gui/recover_clicked', Empty, self.recover_callback)
 
     def stop_callback(self, msg):
         self.is_stop_clicked = True
@@ -96,7 +96,7 @@ class Gui:
 class Handheld:
     def __init__(self):
         self.is_estop_pressed = False
-        rospy.Subscriber('/handheld/is_estop_pressed', Bool, self.estop_callback, queue_size=20)
+        rospy.Subscriber('/handheld/is_estop_pressed', Bool, self.estop_callback)
 
     def estop_callback(self, msg):
         self.is_estop_pressed = msg.data

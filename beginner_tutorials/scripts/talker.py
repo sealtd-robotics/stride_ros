@@ -123,8 +123,6 @@ def talker():
         # pub12.publish(robot_vel_cmd)
         # time.sleep(1)
 
-        
-
         rate.sleep()
 
 if __name__ == '__main__':
