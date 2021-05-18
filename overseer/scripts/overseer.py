@@ -42,19 +42,19 @@ class Overseer(Machine):
         self.initialize()
 
     def on_enter_manual(self):
-        self.state_publisher.publish( state_to_int[self.state] )
+        pass
 
     def on_enter_auto(self):
-        self.state_publisher.publish( state_to_int[self.state] )
+        pass
 
     def on_enter_e_stopped(self):
-        self.state_publisher.publish( state_to_int[self.state] )
+        pass
 
     def on_enter_fault(self):
-        self.state_publisher.publish( state_to_int[self.state] )
+        pass
 
     def on_enter_gui_stopped(self):
-        self.state_publisher.publish( state_to_int[self.state] )
+        pass
 
 
 class MotorController:
@@ -123,6 +123,8 @@ if __name__ ==  '__main__':
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
+        overseer.state_publisher.publish( state_to_int[overseer.state] )
+
         if overseer.state == 'manual':
             if handheld.is_estop_pressed:
                 overseer.to_e_stopped()#
