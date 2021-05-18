@@ -25,12 +25,9 @@ class DifferentialDrive:
         
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
-    def sync_overseer_state(self, req):
-        self.overseer_state = req.data
-        return SingleIntResponse()
-
     def publish_wheel_rpm(self, pose2d):
-        if not (self.overseer_state == 1 or self.overseer_state == 2): # if not in either manual or auto, don't publish
+        # if not in either manual or auto, don't publish
+        if not (self.overseer_state == 1 or self.overseer_state == 2):
             return
 
         robot_v = pose2d.x
@@ -50,8 +47,8 @@ class DifferentialDrive:
 
         self.wheel_rpm_publisher.publish(msg)
 
-    def overseer_state_callback(self, state):
-        self.overseer_state = state.data
+    def overseer_state_callback(self, new_state):
+        self.overseer_state = new_state.data
 
 
 if __name__ ==  '__main__':

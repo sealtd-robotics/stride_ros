@@ -18,23 +18,18 @@ class MotorControllerNode:
     def __init__(self, node, topic_name):
         self.gear_ratio = rospy.get_param('~gear_ratio')
         self.rated_current = rospy.get_param('~rated_current')
+
         self.node = node
         self.topic_name = topic_name
 
-        # Change motor controller internal state
-        ## Send a "shut down" command to go to "Ready to Switch On" state
+        self.overseer_state = 0
         self.sdo_controlword = self.node.sdo[0x6040]
-        self.sdo_controlword.raw = int('0110',2)
-        time.sleep(0.01)
 
-        ## Then send a "Enable Operation" command to go to the "Operation Enable" state
-        ## This state enables power to motor
-        self.sdo_controlword.raw = int('1111',2)
-        time.sleep(0.01)
+        # Change motor controller internal state
+        self.enable_power()
 
         # Change motor controller NMT state to Operational, which allows PDO communication
-        self.node.nmt.state = "OPERATIONAL"
-        time.sleep(0.01)
+        self.change_nmt_state('OPERATIONAL')
 
         # PDO setup
         self.node.tpdo.read()
@@ -53,6 +48,44 @@ class MotorControllerNode:
         self.motor_current_publisher = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
+
+        # Subscribers
+        rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
+
+    def overseer_state_callback(self, new_state):
+        if self.overseer_state == new_state.data:
+            return
+
+        is_current_state_inoperable = self.overseer_state == 3 or \
+                                        self.overseer_state == 4 or \
+                                        self.overseer_state == 5
+
+        # if overseer state changes from inoperable to manual, run recovery steps
+        if is_current_state_inoperable and new_state.data == 1:
+            self.fault_reset_command()
+            self.enable_power()
+            self.change_nmt_state('OPERATIONAL')
+
+        self.overseer_state = new_state.data
+
+    def change_nmt_state(self, nmt_state):
+        # nmt_state is a string
+        self.node.nmt.state = nmt_state
+        time.sleep(0.02)
+
+    def fault_reset_command(self):
+        self.sdo_controlword.raw = int('10000000',2) # 1000 0000
+        time.sleep(0.02)
+
+    def enable_power(self):
+        # Send a "shut down" command to go to "Ready to Switch On" state
+        self.sdo_controlword.raw = int('0110',2)
+        time.sleep(0.02)
+
+        # Then send a "Enable Operation" command to go to the "Operation Enable" state
+        # This state enables power to motor
+        self.sdo_controlword.raw = int('1111',2)
+        time.sleep(0.02)
 
     def spin(self, wheel_rpm):
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm

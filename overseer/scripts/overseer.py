@@ -19,18 +19,18 @@ state_to_int = {
     'manual': 1,
     'auto': 2,
     'e_stopped': 3,
-    'fault': 4,
+    'error': 4,
     'gui_stopped': 5,
 }
 
 class Overseer(Machine):
     def __init__(self):
-        states = ['initial', 'manual', 'auto', 'e_stopped', 'fault', 'gui_stopped']
+        states = ['initial', 'manual', 'auto', 'e_stopped', 'error', 'gui_stopped']
         Machine.__init__(self, states=states, initial='initial', auto_transitions=False)
         self.add_transition('initialize', 'initial', 'manual')
         self.add_transition('to_e_stopped', '*', 'e_stopped')
-        self.add_transition('to_manual', ['e_stopped', 'fault', 'gui_stopped'], 'manual')
-        self.add_transition('to_fault', '*', 'fault')
+        self.add_transition('to_manual', ['e_stopped', 'error', 'gui_stopped'], 'manual')
+        self.add_transition('to_error', '*', 'error')
         self.add_transition('to_gui_stopped', ['manual', 'auto'], 'gui_stopped')
 
         # GUI
@@ -50,7 +50,7 @@ class Overseer(Machine):
     def on_enter_e_stopped(self):
         pass
 
-    def on_enter_fault(self):
+    def on_enter_error(self):
         pass
 
     def on_enter_gui_stopped(self):
@@ -129,7 +129,7 @@ if __name__ ==  '__main__':
             if handheld.is_estop_pressed:
                 overseer.to_e_stopped()#
             elif are_mcs_bad(mcs):
-                overseer.to_fault()#
+                overseer.to_error()#
             elif gui.is_stop_clicked:
                 gui.is_stop_clicked = False
                 overseer.to_gui_stopped()#
@@ -137,17 +137,17 @@ if __name__ ==  '__main__':
             if handheld.is_estop_pressed:
                 overseer.to_e_stopped()
             elif are_mcs_bad(mcs) or 0: # add gps_bad condition here
-                overseer.to_fault()
+                overseer.to_error()
             elif gui.is_stop_clicked:
                 gui.is_stop_clicked = False
                 overseer.to_gui_stopped()
         elif overseer.state == 'e_stopped':
             if not handheld.is_estop_pressed:
                 if are_mcs_bad(mcs):
-                    overseer.to_fault()#
+                    overseer.to_error()#
                 else:
                     overseer.to_manual()#
-        elif overseer.state == 'fault':
+        elif overseer.state == 'error':
             if handheld.is_estop_pressed:
                 overseer.to_e_stopped()#
             elif gui.is_recover_clicked:
@@ -158,7 +158,7 @@ if __name__ ==  '__main__':
             if gui.is_start_clicked:
                 gui.is_start_clicked = False
                 if are_mcs_bad(mcs):
-                    overseer.to_fault()#
+                    overseer.to_error()#
                 else:
                     overseer.to_manual()#
             elif handheld.is_estop_pressed:
