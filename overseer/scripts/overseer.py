@@ -14,66 +14,43 @@ from std_msgs.msg import Int32, Empty, Bool
 import time
 import enum
 
-state_to_int = {
-    'initial': 0,
-    'manual': 1,
-    'auto': 2,
-    'e_stopped': 3,
-    'error': 4,
-    'gui_stopped': 5,
-}
-
-class Overseer(Machine):
-    def __init__(self):
-        states = ['initial', 'manual', 'auto', 'e_stopped', 'error', 'gui_stopped']
-        Machine.__init__(self, states=states, initial='initial', auto_transitions=False)
-        self.add_transition('initialize', 'initial', 'manual')
-        self.add_transition('to_e_stopped', '*', 'e_stopped')
-        self.add_transition('to_manual', ['e_stopped', 'error', 'gui_stopped'], 'manual')
-        self.add_transition('to_error', '*', 'error')
-        self.add_transition('to_gui_stopped', ['manual', 'auto'], 'gui_stopped')
-
-        # GUI
-        self.gui = Gui()
-
-        # Publishers
-        self.state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10, latch=True)
-
-        self.initialize()
-
-    def on_enter_manual(self):
-        pass
-
-    def on_enter_auto(self):
-        pass
-
-    def on_enter_e_stopped(self):
-        pass
-
-    def on_enter_error(self):
-        pass
-
-    def on_enter_gui_stopped(self):
-        pass
-
+# States
+MANUAL = 1
+AUTO = 2
+E_STOPPED = 3
+ERROR = 4
+STOPPED = 5
 
 class MotorController:
     def __init__(self, topic_name):
         self.topic_name = topic_name
         self.error_word = 0
+        self.state = 0
+        self.nmt_state = 0
 
         rospy.Subscriber('/motor_controller/{}/error_word'.format(self.topic_name), Int32, self.set_error_word)
+        rospy.Subscriber('/motor_controller/{}/state'.format(self.topic_name), Int32, self.set_state)
+        rospy.Subscriber('/motor_controller/{}/heartbeat_nmt'.format(self.topic_name), Int32, self.set_nmt_state)
 
     def set_error_word(self, msg):
         self.error_word = msg.data
 
+    def set_state(self, msg):
+        self.state = msg.data
+
+    def set_nmt_state(self, msg):
+        self.nmt_state = msg.data
+
 def are_mcs_bad(mcs): # mcs = motor controllers (plural)
-    return (
-        mcs[0].error_word or
-        mcs[1].error_word or
-        mcs[2].error_word or
-        mcs[3].error_word
-    )
+    are_bad = False
+
+    # state: 39 is operation enabled
+    # nmt_state: 5 is operational
+    for mc in mcs:
+        are_bad =  are_bad or mc.error_word #or mc.state != 39 or mc.nmt_state != 5
+    
+    return are_bad
+
 
 class Gui:
     def __init__(self):
@@ -118,50 +95,52 @@ if __name__ ==  '__main__':
     # Handheld
     handheld = Handheld()
 
-    # Overseer
-    overseer = Overseer()
+    # Publishers
+    state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10, latch=True)
+    
+    # Set initial state
+    state = MANUAL
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
-        overseer.state_publisher.publish( state_to_int[overseer.state] )
-
-        if overseer.state == 'manual':
+        if state == MANUAL:
             if handheld.is_estop_pressed:
-                overseer.to_e_stopped()#
+                state = E_STOPPED
             elif are_mcs_bad(mcs):
-                overseer.to_error()#
+                state = ERROR
             elif gui.is_stop_clicked:
                 gui.is_stop_clicked = False
-                overseer.to_gui_stopped()#
-        elif overseer.state == 'auto':
+                state = STOPPED
+        elif state == AUTO:
             if handheld.is_estop_pressed:
-                overseer.to_e_stopped()
+                state = E_STOPPED
             elif are_mcs_bad(mcs) or 0: # add gps_bad condition here
-                overseer.to_error()
+                state = ERROR
             elif gui.is_stop_clicked:
                 gui.is_stop_clicked = False
-                overseer.to_gui_stopped()
-        elif overseer.state == 'e_stopped':
+                state = STOPPED
+        elif state == E_STOPPED:
             if not handheld.is_estop_pressed:
                 if are_mcs_bad(mcs):
-                    overseer.to_error()#
+                    state = ERROR
                 else:
-                    overseer.to_manual()#
-        elif overseer.state == 'error':
+                    state = MANUAL
+        elif state == ERROR:
             if handheld.is_estop_pressed:
-                overseer.to_e_stopped()#
+                state = E_STOPPED
             elif gui.is_recover_clicked:
                 gui.is_recover_clicked = False
                 if not are_mcs_bad(mcs):
-                    overseer.to_manual()#
-        elif overseer.state == 'gui_stopped':
+                    state = MANUAL
+        elif state == STOPPED:
             if gui.is_start_clicked:
                 gui.is_start_clicked = False
                 if are_mcs_bad(mcs):
-                    overseer.to_error()#
+                    state = ERROR
                 else:
-                    overseer.to_manual()#
+                    state = MANUAL
             elif handheld.is_estop_pressed:
-                overseer.to_e_stopped()#
+                state = E_STOPPED
 
+        state_publisher.publish( state )
         rate.sleep()
