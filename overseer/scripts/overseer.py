@@ -55,20 +55,19 @@ def are_mcs_bad(mcs): # mcs = motor controllers (plural)
 class Gui:
     def __init__(self):
         self.is_stop_clicked = False
-        self.is_start_clicked = False
-        self.is_recover_clicked = False
+        self.is_enable_manual_clicked = False
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
-        rospy.Subscriber('/gui/start_clicked', Empty, self.start_callback)
-        rospy.Subscriber('/gui/recover_clicked', Empty, self.recover_callback)
+        rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
+
+    def reset_button_clicks(self): # this is for handling burst of clicks in a slow network and hanlding buffered clicks not consumed by current state
+        self.is_stop_clicked = False
+        self.is_enable_manual_clicked = False
 
     def stop_callback(self, msg):
         self.is_stop_clicked = True
 
-    def start_callback(self, msg):
-        self.is_start_clicked = True
-
-    def recover_callback(self, msg):
-        self.is_recover_clicked = True
+    def enable_manual_callback(self, msg):
+        self.is_enable_manual_clicked = True
 
 class Handheld:
     def __init__(self):
@@ -86,61 +85,62 @@ if __name__ ==  '__main__':
     mc_lb = MotorController('left_back')
     mc_rf = MotorController('right_front')
     mc_rb = MotorController('right_back')
-
     mcs = [mc_lf, mc_lb, mc_rf, mc_rb] # mcs = motor controllers (plural)
 
-    # GUI
     gui = Gui()
 
-    # Handheld
     handheld = Handheld()
+
+    # initial state
+    state = STOPPED
 
     # Publishers
     state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10, latch=True)
-    
-    # Set initial state
-    state = MANUAL
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
+        # Manual
         if state == MANUAL:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
             elif are_mcs_bad(mcs):
                 state = ERROR
             elif gui.is_stop_clicked:
-                gui.is_stop_clicked = False
                 state = STOPPED
+            gui.reset_button_clicks()
+        
+        # Auto (currently can't go to this state)
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
             elif are_mcs_bad(mcs) or 0: # add gps_bad condition here
                 state = ERROR
             elif gui.is_stop_clicked:
-                gui.is_stop_clicked = False
                 state = STOPPED
+            gui.reset_button_clicks()
+
+        # E_Stopped
         elif state == E_STOPPED:
             if not handheld.is_estop_pressed:
-                if are_mcs_bad(mcs):
-                    state = ERROR
-                else:
-                    state = MANUAL
+                state = STOPPED
+            gui.reset_button_clicks()
+
+        # Error
         elif state == ERROR:
-            if handheld.is_estop_pressed:
-                state = E_STOPPED
-            elif gui.is_recover_clicked:
-                gui.is_recover_clicked = False
-                if not are_mcs_bad(mcs):
-                    state = MANUAL
+            # The error state triggers logging in another node.
+            # It then goes to STOPPED directly
+            state = STOPPED
+
+        # Stopped
         elif state == STOPPED:
-            if gui.is_start_clicked:
-                gui.is_start_clicked = False
-                if are_mcs_bad(mcs):
-                    state = ERROR
-                else:
-                    state = MANUAL
+            if gui.is_enable_manual_clicked and not are_mcs_bad(mcs):
+                state = MANUAL
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
+
+            # todo: add elif for going to AUTO
+
+            gui.reset_button_clicks()
 
         state_publisher.publish( state )
         rate.sleep()
