@@ -9,7 +9,7 @@ from __future__ import division
 import math
 import rospy
 from geometry_msgs.msg import Pose2D
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Int32
 from joystick.msg import Stick
 
 class Joystick:
@@ -17,14 +17,24 @@ class Joystick:
         self.v_max = rospy.get_param('~v_max')
         self.w_max_spin_in_place = rospy.get_param('~w_max_spin_in_place') # max angular velocity when spinning in place
 
+        self.overseer_state = 0
+
         self.velocity_publisher = rospy.Publisher('/robot_velocity_commmand', Pose2D, queue_size=1)
         self.turning_radius_publisher = rospy.Publisher('/robot_turning_radius', Float32, queue_size=1)
 
         rospy.Subscriber('/joystick', Stick, self.publish_velocity, queue_size=1)
+        rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
         self.rate = rospy.Rate(1)
 
+    def overseer_state_callback(self, new_state):
+        self.overseer_state = new_state.data
+
     def publish_velocity(self, stick):
+        # if not in either manual or auto, don't publish
+        if not (self.overseer_state == 1 or self.overseer_state == 2):
+            return
+
         v, w, r = self.joystick_to_velocities(stick.travel, stick.angle)
 
         velocity = Pose2D()
