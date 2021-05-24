@@ -1,0 +1,5 @@
+rostopic echo /overseer/state
+rostopic pub /handheld/is_estop_pressed std_msgs/Bool 0
+rostopic pub /motor_controller/left_back/error_word std_msgs/Int32 0
+rostopic pub /gui/stop_clicked std_msgs/Empty
+rostopic pub /handheld/is_estop_pressed std_msgs/Bool 1

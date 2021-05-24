@@ -1,0 +1,8 @@
+prefix=/home/chedanix/work/stride/ros/rosbridge_suite-develop/install
+
+Name: rosbridge_server
+Description: Description of rosbridge_server
+Version: 0.11.13
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

@@ -1,0 +1,2 @@
+beginner_tutorials:can_interface:drive_mechanism:joystick:overseer
+-DCATKIN_DEVEL_PREFIX=/home/chedanix/work/stride/ros/stride_ws/devel -DCMAKE_INSTALL_PREFIX=/home/chedanix/work/stride/ros/stride_ws/install -G Unix Makefiles
