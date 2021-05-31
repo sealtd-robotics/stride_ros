@@ -1,2 +1,0 @@
-rosapi:rosbridge_library:rosbridge_msgs:rosbridge_server:rosbridge_suite
--DCATKIN_DEVEL_PREFIX=/home/chedanix/work/stride/ros/rosbridge_suite-develop/devel -DCMAKE_INSTALL_PREFIX=/home/chedanix/work/stride/ros/rosbridge_suite-develop/install -G Unix Makefiles

@@ -1,8 +1,0 @@
-prefix=/home/chedanix/work/stride/ros/stride_ws/install
-
-Name: overseer
-Description: Description of overseer
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 

@@ -1,0 +1,3 @@
+# STRIDE
+---
+Development workspace
