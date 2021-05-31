@@ -98,7 +98,8 @@ class MotorControllerNode:
         # 2: actual velociy of motor input shaft
 
         # 0
-        self.state_publisher.publish( tpdo1[0].raw )
+        # only the first 7 bits represent the state. "0111 1111" is 127 
+        self.state_publisher.publish( tpdo1[0].raw & 127 )
 
         # 1
         self.motor_current_publisher.publish(abs( tpdo1[1].raw / 1000 * self.rated_current) )

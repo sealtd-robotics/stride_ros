@@ -1,2 +1,2 @@
 v_max: 1.4 # max linear velocity (m/s)
-w_max_spin_in_place: 0.3 # max angular velocity when spinning in place (rad/s)
+w_max_spin_in_place: 5 # max angular velocity when spinning in place (rad/s)
