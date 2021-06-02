@@ -11,8 +11,10 @@ from __future__ import division
 import canopen
 import rospy
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Float32, Int32
+from std_msgs.msg import Float32, Int32, Bool
 import time
+import threading
+from datetime import datetime
 
 class MotorControllerNode:
     def __init__(self, node, topic_name):
@@ -22,6 +24,7 @@ class MotorControllerNode:
         self.node = node
         self.topic_name = topic_name
 
+        self.heartbeat_arrival_time = self.get_time_now_in_ms() + 5000 # added some time buffer for startup
         self.overseer_state = 0
         self.sdo_controlword = self.node.sdo[0x6040]
 
@@ -45,12 +48,25 @@ class MotorControllerNode:
         # Publishers
         self.state_publisher = rospy.Publisher('/motor_controller/{}/state'.format(self.topic_name), Int32, queue_size=10)
         self.heartbeat_publisher = rospy.Publisher('/motor_controller/{}/heartbeat_nmt'.format(self.topic_name), Int32, queue_size=10)
+        self.heartbeat_timeout_publisher = rospy.Publisher('/motor_controller/{}/is_heartbeat_timeout'.format(self.topic_name), Bool, queue_size=10)
         self.motor_current_publisher = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
+
+        # Heartbeat timeout thread
+        self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
+        self.heartbeat_thread.start()
+
+    def monitor_heartbeat(self):
+        while True:
+            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 2000: ###### CHANGE TO 1000 LATER !!!!!!!!!!!!!!!!!
+                self.heartbeat_timeout_publisher.publish(True)
+            else:
+                self.heartbeat_timeout_publisher.publish(False)
+            time.sleep(0.1)
 
     def overseer_state_callback(self, new_state):
         if self.overseer_state == new_state.data:
@@ -60,11 +76,13 @@ class MotorControllerNode:
                                         self.overseer_state == 4 or \
                                         self.overseer_state == 5
 
-        # if overseer state changes from inoperable to manual, run recovery steps
-        if is_current_state_inoperable and new_state.data == 1:
+        # if overseer state changes from inoperable to manual or auto, run recovery steps
+        if is_current_state_inoperable and (new_state.data == 1 or new_state.data == 2):
+            # must change to CANopen operational before enable_power(), otherwise missing the master heartbeat won't disable voltage again after recovering 
+            self.change_nmt_state('OPERATIONAL')
+            
             self.fault_reset_command()
             self.enable_power()
-            self.change_nmt_state('OPERATIONAL')
 
         self.overseer_state = new_state.data
 
@@ -114,8 +132,19 @@ class MotorControllerNode:
         # 0
         self.error_word_publisher.publish(tpdo2[0].raw)
 
+    def get_time_now_in_ms(self):
+        epoch = datetime.utcfromtimestamp(0)
+        now = datetime.utcnow()
+        delta = now - epoch
+        return delta.total_seconds() * 1000
+
     def heartbeat_callback(self, nmt_state_int):
         self.heartbeat_publisher.publish(nmt_state_int)
+
+        if nmt_state_int == 127: # "pre-operational":
+            self.change_nmt_state('OPERATIONAL')
+
+        self.heartbeat_arrival_time = self.get_time_now_in_ms()
 
 class MotorControllerNetwork:
     def __init__(self):
@@ -162,13 +191,15 @@ class MotorControllerNetwork:
         self.mc_lb_node.spin(msg_wheel_rpm.left_back)
         self.mc_rf_node.spin(msg_wheel_rpm.right_front)
         self.mc_rb_node.spin(msg_wheel_rpm.right_back)
-            
+
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')
 
     motor_controller_network = MotorControllerNetwork()
 
     rospy.spin()
+        
+
 
     
 

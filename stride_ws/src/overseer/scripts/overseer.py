@@ -26,10 +26,15 @@ class MotorController:
         self.error_word = 0
         self.state = 0
         self.nmt_state = 0
+        self.is_heartbeat_timeout = False
 
         rospy.Subscriber('/motor_controller/{}/error_word'.format(self.topic_name), Int32, self.set_error_word)
         rospy.Subscriber('/motor_controller/{}/state'.format(self.topic_name), Int32, self.set_state)
         rospy.Subscriber('/motor_controller/{}/heartbeat_nmt'.format(self.topic_name), Int32, self.set_nmt_state)
+        rospy.Subscriber('/motor_controller/{}/is_heartbeat_timeout'.format(self.topic_name), Bool, self.set_is_heartbeat_timeout)
+
+    def set_is_heartbeat_timeout(self, msg):
+        self.is_heartbeat_timeout = msg.data
 
     def set_error_word(self, msg):
         self.error_word = msg.data
@@ -39,6 +44,7 @@ class MotorController:
 
     def set_nmt_state(self, msg):
         self.nmt_state = msg.data
+        
 
 def are_mcs_bad(mcs): # mcs = motor controllers (plural)
     are_bad = False
@@ -46,7 +52,7 @@ def are_mcs_bad(mcs): # mcs = motor controllers (plural)
     # state: 39 is operation enabled
     # nmt_state: 5 is operational
     for mc in mcs:
-        are_bad =  are_bad or mc.error_word #or mc.state != 39 or mc.nmt_state != 5
+        are_bad =  are_bad or mc.error_word or mc.is_heartbeat_timeout #or mc.state != 39 or mc.nmt_state != 5
     
     return are_bad
 
@@ -126,7 +132,7 @@ if __name__ ==  '__main__':
 
         # Error
         elif state == ERROR:
-            # The error state triggers logging in another node.
+            # The error state triggers logging in another node (yet to be implemented)
             # It then goes to STOPPED directly
             state = STOPPED
 
