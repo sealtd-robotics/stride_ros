@@ -12,6 +12,8 @@ import rospy
 from std_msgs.msg import Int32, Empty, Bool
 import time
 import enum
+import threading
+from datetime import datetime
 
 # States
 MANUAL = 1
@@ -46,7 +48,7 @@ class MotorController:
         self.nmt_state = msg.data
         
 
-def are_mcs_bad(mcs): # mcs = motor controllers (plural)
+def are_mcs_bad(mcs): # are motor controllers bad?
     are_bad = False
 
     # state: 39 is operation enabled
@@ -61,8 +63,25 @@ class Gui:
     def __init__(self):
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
+        self.heartbeat_arrival_time = self.get_time_now_in_ms()
+        self.is_heartbeat_timeout = False
+
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
         rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
+        rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback)
+
+        # Heartbeat timeout thread
+        self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
+        self.heartbeat_thread.start()
+
+    def monitor_heartbeat(self):
+        while True:
+            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 2000:
+                self.is_heartbeat_timeout = True
+            else:
+                self.is_heartbeat_timeout = False
+            time.sleep(0.1)
+
 
     def reset_button_clicks(self): # this is for handling burst of clicks in a slow network and hanlding buffered clicks not consumed by current state
         self.is_stop_clicked = False
@@ -73,6 +92,15 @@ class Gui:
 
     def enable_manual_callback(self, msg):
         self.is_enable_manual_clicked = True
+
+    def get_time_now_in_ms(self):
+        epoch = datetime.utcfromtimestamp(0)
+        now = datetime.utcnow()
+        delta = now - epoch
+        return delta.total_seconds() * 1000
+
+    def heartbeat_callback(self, nmt_state_int):
+        self.heartbeat_arrival_time = self.get_time_now_in_ms()
 
 class Handheld:
     def __init__(self):
@@ -108,7 +136,7 @@ if __name__ ==  '__main__':
         if state == MANUAL:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif are_mcs_bad(mcs):
+            elif are_mcs_bad(mcs) or gui.is_heartbeat_timeout:
                 state = ERROR
             elif gui.is_stop_clicked:
                 state = STOPPED
@@ -118,7 +146,7 @@ if __name__ ==  '__main__':
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif are_mcs_bad(mcs) or 0: # add gps_bad condition here
+            elif are_mcs_bad(mcs) or gui.is_heartbeat_timeout or 0: # add gps_bad condition here
                 state = ERROR
             elif gui.is_stop_clicked:
                 state = STOPPED
@@ -138,7 +166,7 @@ if __name__ ==  '__main__':
 
         # Stopped
         elif state == STOPPED:
-            if gui.is_enable_manual_clicked and not are_mcs_bad(mcs):
+            if gui.is_enable_manual_clicked and not are_mcs_bad(mcs) and not gui.is_heartbeat_timeout:
                 state = MANUAL
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
