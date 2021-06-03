@@ -28,11 +28,12 @@ class MotorControllerNode:
         self.overseer_state = 0
         self.sdo_controlword = self.node.sdo[0x6040]
 
+        # Change motor controller NMT state to Operational, which allows PDO communication
+        # this must come before enable_power() for heartbeat safety to work properly
+        self.change_nmt_state('OPERATIONAL')
+
         # Change motor controller internal state
         self.enable_power()
-
-        # Change motor controller NMT state to Operational, which allows PDO communication
-        self.change_nmt_state('OPERATIONAL')
 
         # PDO setup
         self.node.tpdo.read()
@@ -62,7 +63,7 @@ class MotorControllerNode:
 
     def monitor_heartbeat(self):
         while True:
-            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 2000: ###### CHANGE TO 1000 LATER !!!!!!!!!!!!!!!!!
+            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 1000:
                 self.heartbeat_timeout_publisher.publish(True)
             else:
                 self.heartbeat_timeout_publisher.publish(False)
@@ -78,10 +79,11 @@ class MotorControllerNode:
 
         # if overseer state changes from inoperable to manual or auto, run recovery steps
         if is_current_state_inoperable and (new_state.data == 1 or new_state.data == 2):
-            # must change to CANopen operational before enable_power(), otherwise missing the master heartbeat won't disable voltage again after recovering 
-            self.change_nmt_state('OPERATIONAL')
-            
             self.fault_reset_command()
+
+            # When changing CANopen NMT to Operational, Faulhaber state must be in "Switch on Disabled" for heartbeat safety to work properly
+            self.change_nmt_state('OPERATIONAL')
+
             self.enable_power()
 
         self.overseer_state = new_state.data
@@ -167,7 +169,14 @@ class MotorControllerNetwork:
         self.network = canopen.Network()
         self.network.connect(channel=channel, bustype=bustype, bitrate=bitrate)
 
-        # Create nodes
+        # Create local node
+        self.local_node = canopen.LocalNode(local_node_id, local_eds_path)
+        self.network.add_node(self.local_node)
+
+        ## start heartbeat
+        self.local_node.nmt.start_heartbeat(300)
+
+        # Create motor controller nodes
         node = self.network.add_node(mc_lf_node_id, mc_eds_path)
         self.mc_lf_node = MotorControllerNode(node, 'left_front')
 
@@ -179,9 +188,6 @@ class MotorControllerNetwork:
 
         node = self.network.add_node(mc_rb_node_id, mc_eds_path)
         self.mc_rb_node = MotorControllerNode(node, 'right_back')
-        
-        self.local_node = canopen.LocalNode(local_node_id, local_eds_path)
-        self.network.add_node(self.local_node)
 
         # Subscribers
         rospy.Subscriber('/wheel_rpm_command', WheelRPM, self.drive, queue_size=1)
