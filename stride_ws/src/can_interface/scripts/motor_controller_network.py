@@ -29,11 +29,7 @@ class MotorControllerNode:
         self.sdo_controlword = self.node.sdo[0x6040]
 
         # Change motor controller NMT state to Operational, which allows PDO communication
-        # this must come before enable_power() for heartbeat safety to work properly
         self.change_nmt_state('OPERATIONAL')
-
-        # Change motor controller internal state
-        self.enable_power()
 
         # PDO setup
         self.node.tpdo.read()
@@ -80,11 +76,7 @@ class MotorControllerNode:
         # if overseer state changes from inoperable to manual or auto, run recovery steps
         if is_current_state_inoperable and (new_state.data == 1 or new_state.data == 2):
             self.fault_reset_command()
-
-            # When changing CANopen NMT to Operational, Faulhaber state must be in "Switch on Disabled" for heartbeat safety to work properly
             self.change_nmt_state('OPERATIONAL')
-
-            self.enable_power()
 
         self.overseer_state = new_state.data
 
@@ -105,6 +97,10 @@ class MotorControllerNode:
         # Then send a "Enable Operation" command to go to the "Operation Enable" state
         # This state enables power to motor
         self.sdo_controlword.raw = int('1111',2)
+        time.sleep(0.02)
+
+    def quick_stop_controlword(self):
+        self.sdo_controlword.raw = 2
         time.sleep(0.02)
 
     def spin(self, wheel_rpm):
@@ -150,6 +146,9 @@ class MotorControllerNode:
 
 class MotorControllerNetwork:
     def __init__(self):
+        self.overseer_state = 0
+        self.has_quick_stop_been_applied = False
+
         # Get motor controller parameters
         mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
         mc_lb_node_id = rospy.get_param('~mc_lb_node_id') # motor controller at left back
@@ -191,12 +190,36 @@ class MotorControllerNetwork:
 
         # Subscribers
         rospy.Subscriber('/wheel_rpm_command', WheelRPM, self.drive, queue_size=1)
+        rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
 
-    def drive(self, msg_wheel_rpm):
-        self.mc_lf_node.spin(msg_wheel_rpm.left_front)
-        self.mc_lb_node.spin(msg_wheel_rpm.left_back)
-        self.mc_rf_node.spin(msg_wheel_rpm.right_front)
-        self.mc_rb_node.spin(msg_wheel_rpm.right_back)
+    def set_overseer_state(self, msg):
+        self.overseer_state = msg.data
+
+    def drive(self, msg): # type of msg is WheelRPM
+        # self.mc_lf_node.spin(msg.left_front)
+        # self.mc_lb_node.spin(msg.left_back)
+        # self.mc_rf_node.spin(msg.right_front)
+        # self.mc_rb_node.spin(msg.right_back)
+        if self.overseer_state == 1 or self.overseer_state == 5: # MANUAL or STOPPED
+            if msg.left_front == 0 and msg.left_back == 0 and msg.right_front == 0 and msg.right_back == 0:
+                self.mc_lf_node.quick_stop_controlword()
+                self.mc_lb_node.quick_stop_controlword()
+                self.mc_rf_node.quick_stop_controlword()
+                self.mc_rb_node.quick_stop_controlword()
+
+                self.has_quick_stop_been_applied = True
+            else:
+                if self.has_quick_stop_been_applied:
+                    self.mc_lf_node.enable_power()
+                    self.mc_lb_node.enable_power()
+                    self.mc_rf_node.enable_power()
+                    self.mc_rb_node.enable_power()
+                self.has_quick_stop_been_applied = False
+
+                self.mc_lf_node.spin(msg.left_front)
+                self.mc_lb_node.spin(msg.left_back)
+                self.mc_rf_node.spin(msg.right_front)
+                self.mc_rb_node.spin(msg.right_back)
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')

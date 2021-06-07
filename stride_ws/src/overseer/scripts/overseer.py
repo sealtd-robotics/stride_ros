@@ -76,7 +76,7 @@ class Gui:
 
     def monitor_heartbeat(self):
         while True:
-            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 2000:
+            if self.get_time_now_in_ms() - self.heartbeat_arrival_time > 1000:
                 self.is_heartbeat_timeout = True
             else:
                 self.is_heartbeat_timeout = False
@@ -118,7 +118,7 @@ if __name__ ==  '__main__':
     mc_lb = MotorController('left_back')
     mc_rf = MotorController('right_front')
     mc_rb = MotorController('right_back')
-    mcs = [mc_lf, mc_lb, mc_rf, mc_rb] # mcs = motor controllers (plural)
+    mcs = [mc_lf, mc_lb, mc_rf, mc_rb] # mcs = motor controllers
 
     gui = Gui()
 
