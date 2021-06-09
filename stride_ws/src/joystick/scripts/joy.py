@@ -52,7 +52,11 @@ class Joystick:
         elif abs(angle - math.pi) < 1e-5:
             return -self.v_max * travel, 0, float('inf')
 
-        v_max_at_angle = self.v_max * math.cos(angle)**2
+        scaling = math.cos(angle)**2 * 4
+        if scaling > 1:
+            scaling = 1
+        v_max_at_angle = self.v_max * scaling
+        
 
         r = math.tan(-angle - math.pi / 2)
 

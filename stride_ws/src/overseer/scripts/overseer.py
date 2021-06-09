@@ -27,6 +27,9 @@ class ErrorHandler:
         self.gui = gui
         self.handheld = handheld
 
+        # Publishers
+        self.error_publisher = rospy.Publisher('/overseer/has_error', Empty, queue_size=10, latch=True)
+
     def has_error(self, overseer_state, log_error):
         errors = ""
         has_error = False
@@ -53,8 +56,10 @@ class ErrorHandler:
         if overseer_state == AUTO: # implement this later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
             pass
 
-        # Log errors
+        # Log errors and inform GUI
         if has_error and log_error:
+            self.error_publisher.publish()
+
             time = datetime.now().strftime("%H:%M:%S")
             errors = time + "\n" + errors + "\n"
 
