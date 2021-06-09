@@ -28,7 +28,7 @@ class ErrorHandler:
         self.handheld = handheld
 
         # Publishers
-        self.error_publisher = rospy.Publisher('/overseer/has_error', Empty, queue_size=10, latch=True)
+        self.error_publisher = rospy.Publisher('/overseer/has_error', Empty, queue_size=10)
 
     def has_error(self, overseer_state, log_error):
         errors = ""

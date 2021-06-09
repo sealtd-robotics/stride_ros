@@ -63,7 +63,7 @@ class Joystick:
         v = math.copysign( travel * v_max_at_angle, r) # applying the sign of r
 
         # a small angular velocity is induced when joystick is near +/- 90 degrees to make robot spin in place
-        w_spin_in_place = self.w_max_spin_in_place * math.sin(angle) ** 100 * travel
+        w_spin_in_place = self.w_max_spin_in_place * math.sin(angle) ** 50 * travel
 
         w = self.special_divide(v, r) + w_spin_in_place
 
