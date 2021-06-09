@@ -2,7 +2,7 @@
 
 # Abbreviations
 # mc: motor controller
-# mcs: motor controllers (plural)
+# mcs: motor controllers (as a list)
 # lf: left front
 # lb: left back
 # rf: right front
@@ -19,12 +19,56 @@ from datetime import datetime
 MANUAL = 1
 AUTO = 2
 E_STOPPED = 3
-ERROR = 4
 STOPPED = 5
 
+class ErrorHandler:
+    def __init__(self, mcs, gui, handheld):
+        self.mcs = mcs
+        self.gui = gui
+        self.handheld = handheld
+
+    def has_error(self, overseer_state, log_error):
+        errors = ""
+        has_error = False
+
+        # Motor controllers
+        for mc in self.mcs:
+            error_word = mc.error_word
+            if error_word != 0:
+                errors = errors + "{} error_word: {}\n".format(mc.name, error_word)
+                has_error = True
+            
+            is_heartbeat_timeout = mc.is_heartbeat_timeout
+            if is_heartbeat_timeout == True:
+                errors = errors + "{} is_heartbeat_timeout: {}\n".format(mc.name, is_heartbeat_timeout)
+                has_error = True
+        
+        # GUI
+        is_gui_heartbeat_timeout = gui.is_heartbeat_timeout
+        if is_gui_heartbeat_timeout == True:
+            errors = errors + "GUI is_heartbeat_timeout: {}\n".format(is_gui_heartbeat_timeout)
+            has_error = True
+
+        # AUTO state
+        if overseer_state == AUTO: # implement this later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+            pass
+
+        # Log errors
+        if has_error and log_error:
+            time = datetime.now().strftime("%H:%M:%S")
+            errors = time + "\n" + errors + "\n"
+
+            date = datetime.now().strftime("%Y_%m_%d")
+            filename = 'error_log_{}.txt'.format(date)
+            with open('../../../error_log/' + filename, 'a') as f:
+                f.write(errors)
+
+        return has_error
+
 class MotorController:
-    def __init__(self, topic_name):
+    def __init__(self, topic_name, name):
         self.topic_name = topic_name
+        self.name = name
         self.error_word = 0
         self.state = 0
         self.nmt_state = 0
@@ -46,18 +90,6 @@ class MotorController:
 
     def set_nmt_state(self, msg):
         self.nmt_state = msg.data
-        
-
-def are_mcs_bad(mcs): # are motor controllers bad?
-    are_bad = False
-
-    # state: 39 is operation enabled
-    # nmt_state: 5 is operational
-    for mc in mcs:
-        are_bad =  are_bad or mc.error_word or mc.is_heartbeat_timeout #or mc.state != 39 or mc.nmt_state != 5
-    
-    return are_bad
-
 
 class Gui:
     def __init__(self):
@@ -114,15 +146,17 @@ if __name__ ==  '__main__':
     node = rospy.init_node('overseer')
 
     # Motor Controllers
-    mc_lf = MotorController('left_front')
-    mc_lb = MotorController('left_back')
-    mc_rf = MotorController('right_front')
-    mc_rb = MotorController('right_back')
+    mc_lf = MotorController('left_front', 'Motor Controller 1')
+    mc_lb = MotorController('left_back', 'Motor Controller 2')
+    mc_rf = MotorController('right_front', 'Motor Controller 3')
+    mc_rb = MotorController('right_back', 'Motor Controller 4')
     mcs = [mc_lf, mc_lb, mc_rf, mc_rb] # mcs = motor controllers
 
     gui = Gui()
 
     handheld = Handheld()
+
+    error_handler = ErrorHandler(mcs, gui, handheld)
 
     # initial state
     state = STOPPED
@@ -136,9 +170,7 @@ if __name__ ==  '__main__':
         if state == MANUAL:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif are_mcs_bad(mcs) or gui.is_heartbeat_timeout:
-                state = ERROR
-            elif gui.is_stop_clicked:
+            elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
             gui.reset_button_clicks()
         
@@ -146,9 +178,7 @@ if __name__ ==  '__main__':
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif are_mcs_bad(mcs) or gui.is_heartbeat_timeout or 0: # add gps_bad condition here
-                state = ERROR
-            elif gui.is_stop_clicked:
+            elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
             gui.reset_button_clicks()
 
@@ -158,15 +188,9 @@ if __name__ ==  '__main__':
                 state = STOPPED
             gui.reset_button_clicks()
 
-        # Error
-        elif state == ERROR:
-            # The error state triggers logging in another node (yet to be implemented)
-            # It then goes to STOPPED directly
-            state = STOPPED
-
         # Stopped
         elif state == STOPPED:
-            if gui.is_enable_manual_clicked and not are_mcs_bad(mcs) and not gui.is_heartbeat_timeout:
+            if gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
                 state = MANUAL
             elif handheld.is_estop_pressed:
                 state = E_STOPPED

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Abbreviations
-# mc: motor controler
+# mc: motor controller
 # lf: left front
 # lb: left back
 # rf: right front
