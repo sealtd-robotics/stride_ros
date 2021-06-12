@@ -11,7 +11,7 @@ from __future__ import division
 import canopen
 import rospy
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Float32, Int32, Bool
+from std_msgs.msg import Float32, Int32, Bool, Empty
 import time
 import threading
 from datetime import datetime
@@ -20,6 +20,8 @@ class MotorControllerNode:
     def __init__(self, node, topic_name):
         self.gear_ratio = rospy.get_param('~gear_ratio')
         self.rated_current = rospy.get_param('~rated_current')
+        self.error_word = 0
+        self.state = 0
 
         self.node = node
         self.topic_name = topic_name
@@ -65,6 +67,7 @@ class MotorControllerNode:
                 self.heartbeat_timeout_publisher.publish(False)
             time.sleep(0.1)
 
+    # May not be needed anymore....... Test it !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def overseer_state_callback(self, new_state):
         if self.overseer_state == new_state.data:
             return
@@ -114,8 +117,10 @@ class MotorControllerNode:
         # 2: actual velociy of motor input shaft
 
         # 0
-        # only the first 7 bits represent the state. "0111 1111" is 127 
-        self.state_publisher.publish( tpdo1[0].raw & 127 )
+        # only the first 7 bits represent the state. "0111 1111" is 127
+        state = tpdo1[0].raw & 127
+        self.state_publisher.publish(state)
+        self.state = state
 
         # 1
         self.motor_current_publisher.publish(abs( tpdo1[1].raw / 1000 * self.rated_current) )
@@ -128,7 +133,9 @@ class MotorControllerNode:
         # 0: error_word
 
         # 0
-        self.error_word_publisher.publish(tpdo2[0].raw)
+        error_word = tpdo2[0].raw
+        self.error_word_publisher.publish(error_word)
+        self.error_word = error_word
 
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -147,7 +154,13 @@ class MotorControllerNode:
 class MotorControllerNetwork:
     def __init__(self):
         self.overseer_state = 0
+        self.does_brake_when_stopped = False
         self.has_quick_stop_been_applied = False
+
+        self.left_front_rpm = 0
+        self.left_back_rpm = 0
+        self.right_front_rpm = 0
+        self.right_back_rpm = 0
 
         # Get motor controller parameters
         mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
@@ -188,44 +201,115 @@ class MotorControllerNetwork:
         node = self.network.add_node(mc_rb_node_id, mc_eds_path)
         self.mc_rb_node = MotorControllerNode(node, 'right_back')
 
+        # Publishers
+        self.does_brake_when_stopped_publisher = rospy.Publisher('/motor_controller_network/does_brake_when_stopped', Bool, queue_size=1)
+
         # Subscribers
-        rospy.Subscriber('/wheel_rpm_command', WheelRPM, self.drive, queue_size=1)
+        rospy.Subscriber('/wheel_rpm_command', WheelRPM, self.set_rpm, queue_size=1)
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
+        rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
+
+        # Thread to continuously publish brake_when_stopped boolean
+        threading.Thread(target=self.publish_does_brake_when_stopped).start()
+
+        # Thread to continously send out motion-related CAN commands to all motors
+        threading.Thread(target=self.drive).start()
+
+        # Thread to relax motor when braked to prevent continuous high current draw
+        threading.Thread(target=self.relax_motors).start()
+
+    def can_relax(self):
+        return self.overseer_state == 1 and self.does_brake_when_stopped and \
+                self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0
+
+    def relax_motors(self):
+        interval = 5
+        while True:
+            time.sleep(interval)
+            if self.can_relax():
+                # enable_power() actually disables and then re-enables power 
+                self.mc_lf_node.enable_power()
+
+            time.sleep(interval)
+            if self.can_relax():
+                self.mc_lb_node.enable_power()
+
+            time.sleep(interval)
+            if self.can_relax():
+                self.mc_rf_node.enable_power()
+
+            time.sleep(interval)
+            if self.can_relax():
+                self.mc_rb_node.enable_power()
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
 
-    def drive(self, msg): # type of msg is WheelRPM
-        # self.mc_lf_node.spin(msg.left_front)
-        # self.mc_lb_node.spin(msg.left_back)
-        # self.mc_rf_node.spin(msg.right_front)
-        # self.mc_rb_node.spin(msg.right_back)
-        if self.overseer_state == 1 or self.overseer_state == 5: # MANUAL or STOPPED
-            if msg.left_front == 0 and msg.left_back == 0 and msg.right_front == 0 and msg.right_back == 0:
-                self.mc_lf_node.quick_stop_controlword()
-                self.mc_lb_node.quick_stop_controlword()
-                self.mc_rf_node.quick_stop_controlword()
-                self.mc_rb_node.quick_stop_controlword()
+    def toggle_does_brake_when_stopped(self, msg):
+        self.does_brake_when_stopped = not self.does_brake_when_stopped
 
-                self.has_quick_stop_been_applied = True
-            else:
-                if self.has_quick_stop_been_applied:
-                    self.mc_lf_node.enable_power()
-                    self.mc_lb_node.enable_power()
-                    self.mc_rf_node.enable_power()
-                    self.mc_rb_node.enable_power()
-                self.has_quick_stop_been_applied = False
+    def publish_does_brake_when_stopped(self):
+        while True:
+            if self.overseer_state == 5:
+                self.does_brake_when_stopped = False
+            self.does_brake_when_stopped_publisher.publish(self.does_brake_when_stopped)
+            time.sleep(0.1)
 
-                self.mc_lf_node.spin(msg.left_front)
-                self.mc_lb_node.spin(msg.left_back)
-                self.mc_rf_node.spin(msg.right_front)
-                self.mc_rb_node.spin(msg.right_back)
+    def set_rpm(self,msg):
+        self.left_front_rpm = msg.left_front
+        self.left_back_rpm = msg.left_back
+        self.right_front_rpm = msg.right_front
+        self.right_back_rpm = msg.right_back
+
+    def enable_power_for_all_motors(self):
+        # this if condition is to prevent the error of enabling power when the main battery is unplugged
+        if self.has_quick_stop_been_applied:
+            self.mc_lf_node.enable_power()
+            self.mc_lb_node.enable_power()
+            self.mc_rf_node.enable_power()
+            self.mc_rb_node.enable_power()
+
+            self.has_quick_stop_been_applied = False
+
+    def send_zero_rpm_to_all_motors(self):
+        self.mc_lf_node.spin(0)
+        self.mc_lb_node.spin(0)
+        self.mc_rf_node.spin(0)
+        self.mc_rb_node.spin(0)
+
+    def quick_stop_all_motors(self):
+        self.mc_lf_node.quick_stop_controlword()
+        self.mc_lb_node.quick_stop_controlword()
+        self.mc_rf_node.quick_stop_controlword()
+        self.mc_rb_node.quick_stop_controlword()
+
+        self.has_quick_stop_been_applied = True
+
+    def drive(self): # type of msg is WheelRPM
+        while True:
+            time.sleep(0.1)
+            if self.overseer_state == 5: # STOPPED state
+                self.quick_stop_all_motors()
+            elif self.overseer_state == 1: # MANUAL state
+                if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
+                    if self.does_brake_when_stopped:
+                        self.enable_power_for_all_motors()
+                        self.send_zero_rpm_to_all_motors()
+                    else:
+                        self.quick_stop_all_motors()
+                else:
+                    self.enable_power_for_all_motors()
+
+                    self.mc_lf_node.spin(self.left_front_rpm)
+                    self.mc_lb_node.spin(self.left_back_rpm)
+                    self.mc_rf_node.spin(self.right_front_rpm)
+                    self.mc_rb_node.spin(self.right_back_rpm)
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')
 
     motor_controller_network = MotorControllerNetwork()
-
+    
     rospy.spin()
         
 
