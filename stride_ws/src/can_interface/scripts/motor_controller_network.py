@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Abbreviations
+# mcn: MotorControllerNetwork
 # mc: motor controller
 # lf: left front
 # lb: left back
@@ -57,6 +58,7 @@ class MotorControllerNode:
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
+        self.heartbeat_thread.setDaemon(True)
         self.heartbeat_thread.start()
 
     def monitor_heartbeat(self):
@@ -210,13 +212,19 @@ class MotorControllerNetwork:
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
 
         # Thread to continuously publish brake_when_stopped boolean
-        threading.Thread(target=self.publish_does_brake_when_stopped).start()
+        self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
+        self.mcn_thread_1.setDaemon(True)
+        self.mcn_thread_1.start()
 
         # Thread to continously send out motion-related CAN commands to all motors
-        threading.Thread(target=self.drive).start()
+        self.mcn_thread_2 = threading.Thread(target=self.drive)
+        self.mcn_thread_2.setDaemon(True)
+        self.mcn_thread_2.start()
 
         # Thread to relax motor when braked to prevent continuous high current draw
-        threading.Thread(target=self.relax_motors).start()
+        self.mcn_thread_3 = threading.Thread(target=self.relax_motors)
+        self.mcn_thread_3.setDaemon(True)
+        self.mcn_thread_3.start()
 
     def can_relax(self):
         return self.overseer_state == 1 and self.does_brake_when_stopped and \

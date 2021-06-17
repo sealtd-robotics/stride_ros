@@ -109,6 +109,7 @@ class Gui:
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
+        self.heartbeat_thread.setDaemon(True)
         self.heartbeat_thread.start()
 
     def monitor_heartbeat(self):
