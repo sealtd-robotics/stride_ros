@@ -30,7 +30,7 @@ class ErrorHandler:
         # Publishers
         self.error_publisher = rospy.Publisher('/overseer/has_error', Empty, queue_size=10)
 
-    def has_error(self, overseer_state, log_error):
+    def has_error(self, overseer_state, should_log_error):
         errors = ""
         has_error = False
 
@@ -53,11 +53,11 @@ class ErrorHandler:
             has_error = True
 
         # AUTO state
-        if overseer_state == AUTO: # implement this later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-            pass
+        if overseer_state == AUTO:
+            pass # implement this later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         # Log errors and inform GUI
-        if has_error and log_error:
+        if has_error and should_log_error:
             self.error_publisher.publish()
 
             time = datetime.now().strftime("%H:%M:%S")
@@ -71,18 +71,14 @@ class ErrorHandler:
         return has_error
 
 class MotorController:
-    def __init__(self, topic_name, name):
-        self.topic_name = topic_name
+    def __init__(self, location, name):
+        self.location = location
         self.name = name
         self.error_word = 0
-        self.state = 0
-        self.nmt_state = 0
         self.is_heartbeat_timeout = False
 
-        rospy.Subscriber('/motor_controller/{}/error_word'.format(self.topic_name), Int32, self.set_error_word)
-        rospy.Subscriber('/motor_controller/{}/state'.format(self.topic_name), Int32, self.set_state)
-        rospy.Subscriber('/motor_controller/{}/heartbeat_nmt'.format(self.topic_name), Int32, self.set_nmt_state)
-        rospy.Subscriber('/motor_controller/{}/is_heartbeat_timeout'.format(self.topic_name), Bool, self.set_is_heartbeat_timeout)
+        rospy.Subscriber('/motor_controller/{}/error_word'.format(self.location), Int32, self.set_error_word)
+        rospy.Subscriber('/motor_controller/{}/is_heartbeat_timeout'.format(self.location), Bool, self.set_is_heartbeat_timeout)
 
     def set_is_heartbeat_timeout(self, msg):
         self.is_heartbeat_timeout = msg.data
@@ -90,17 +86,11 @@ class MotorController:
     def set_error_word(self, msg):
         self.error_word = msg.data
 
-    def set_state(self, msg):
-        self.state = msg.data
-
-    def set_nmt_state(self, msg):
-        self.nmt_state = msg.data
-
 class Gui:
     def __init__(self):
+        self.heartbeat_arrival_time = self.get_time_now_in_ms()
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
-        self.heartbeat_arrival_time = self.get_time_now_in_ms()
         self.is_heartbeat_timeout = False
 
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
@@ -120,8 +110,8 @@ class Gui:
                 self.is_heartbeat_timeout = False
             time.sleep(0.1)
 
-
-    def reset_button_clicks(self): # this is for handling burst of clicks in a slow network and hanlding buffered clicks not consumed by current state
+    # this is for handling burst of clicks in a slow network and hanlding buffered clicks not consumed by current state
+    def reset_button_clicks(self):
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
 
@@ -156,7 +146,7 @@ if __name__ ==  '__main__':
     mc_lb = MotorController('left_back', 'Motor Controller 2')
     mc_rf = MotorController('right_front', 'Motor Controller 3')
     mc_rb = MotorController('right_back', 'Motor Controller 4')
-    mcs = [mc_lf, mc_lb, mc_rf, mc_rb] # mcs = motor controllers
+    mcs = [mc_lf, mc_lb, mc_rf, mc_rb]
 
     gui = Gui()
 
@@ -168,7 +158,7 @@ if __name__ ==  '__main__':
     state = STOPPED
 
     # Publishers
-    state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10, latch=True)
+    state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10)
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
@@ -178,21 +168,18 @@ if __name__ ==  '__main__':
                 state = E_STOPPED
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
-            gui.reset_button_clicks()
         
-        # Auto (currently can't go to this state)
+        # Auto (can't transition to this state yet)
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
-            gui.reset_button_clicks()
 
         # E_Stopped
         elif state == E_STOPPED:
             if not handheld.is_estop_pressed:
                 state = STOPPED
-            gui.reset_button_clicks()
 
         # Stopped
         elif state == STOPPED:
@@ -203,7 +190,6 @@ if __name__ ==  '__main__':
 
             # todo: add elif for going to AUTO
 
-            gui.reset_button_clicks()
-
+        gui.reset_button_clicks()
         state_publisher.publish( state )
         rate.sleep()

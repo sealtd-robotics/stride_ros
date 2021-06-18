@@ -5,8 +5,8 @@ from geometry_msgs.msg import Twist
 from can_interface.msg import WheelRPM
 import time
 
-def callback(msg):
-    print('received')
+def callback():
+    print('received and yooooooooooo')
     # print(msg.left_front)
     
 def listener():
