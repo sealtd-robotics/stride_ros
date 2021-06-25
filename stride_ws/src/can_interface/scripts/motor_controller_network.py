@@ -23,6 +23,7 @@ class MotorControllerNode:
         self.rated_current = rospy.get_param('~rated_current')
         self.error_word = 0
         self.state = 0
+        self.wheel_rpm_actual = 0
 
         self.node = node
         self.topic_name = topic_name
@@ -129,6 +130,7 @@ class MotorControllerNode:
 
         # 2
         self.wheel_rpm_actual_publisher.publish( tpdo1[2].raw / self.gear_ratio )
+        self.wheel_rpm_actual = tpdo1[2].raw / self.gear_ratio
 
     def tpdo2_callback(self, tpdo2):
         # tpdo2 contains the following elements:
@@ -293,10 +295,21 @@ class MotorControllerNetwork:
 
         self.has_quick_stop_been_applied = True
 
+    def is_any_motor_above_this_wheel_rpm(self, rpm):
+        return (
+            abs(self.mc_lb_node.wheel_rpm_actual) > rpm or
+            abs(self.mc_lf_node.wheel_rpm_actual) > rpm or
+            abs(self.mc_rf_node.wheel_rpm_actual) > rpm or
+            abs(self.mc_rb_node.wheel_rpm_actual) > rpm
+        )
+
     def drive(self): # type of msg is WheelRPM
         while True:
             time.sleep(0.1)
             if self.overseer_state == 5: # STOPPED state
+                while self.is_any_motor_above_this_wheel_rpm(750):
+                    self.enable_power_for_all_motors()
+                    self.send_zero_rpm_to_all_motors()
                 self.quick_stop_all_motors()
             elif self.overseer_state == 1: # MANUAL state
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
@@ -304,6 +317,8 @@ class MotorControllerNetwork:
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
+                        while self.is_any_motor_above_this_wheel_rpm(60):
+                            self.send_zero_rpm_to_all_motors()
                         self.quick_stop_all_motors()
                 else:
                     self.enable_power_for_all_motors()
