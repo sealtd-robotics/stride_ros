@@ -6,5 +6,7 @@
     <include file="$(find drive_mechanism)/launch/drive_mechanism.launch" />
     <include file="$(find joystick)/launch/joystick.launch" />
     <include file="$(find overseer)/launch/overseer.launch" />
+    <include file="$(find advanced_navigation_driver)/launch/with_rs232_usb_converter.launch" />
+
 
 </launch>

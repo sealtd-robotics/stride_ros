@@ -1,3 +1,12 @@
 {
-    "cmake.configureOnOpen": false
+  "cmake.configureOnOpen": false,
+
+  "files.associations": {
+    "ostream": "cpp"
+  },
+  "python.autoComplete.extraPaths": [
+    "/home/chedanix/work/stride/ros/stride_ws/devel/lib/python2.7/dist-packages",
+    "/home/chedanix/work/stride/ros/rosbridge_suite-develop/devel/lib/python2.7/dist-packages",
+    "/opt/ros/melodic/lib/python2.7/dist-packages"
+  ]
 }

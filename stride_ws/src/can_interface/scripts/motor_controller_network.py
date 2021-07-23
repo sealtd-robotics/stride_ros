@@ -117,7 +117,7 @@ class MotorControllerNode:
         # tpdo1 contains the following elements:
         # 0: statusword
         # 1: current, the value of 1000 means rated current is being drawn
-        # 2: actual velociy of motor input shaft
+        # 2: actual velocity of motor input shaft
 
         # 0
         # only the first 7 bits represent the state. "0111 1111" is 127
@@ -272,7 +272,7 @@ class MotorControllerNetwork:
         self.right_back_rpm = msg.right_back
 
     def enable_power_for_all_motors(self):
-        # this if condition is to prevent the error of enabling power when the main battery is unplugged
+        # this condition is to prevent the error of enabling power when the main battery is unplugged
         if self.has_quick_stop_been_applied:
             self.mc_lf_node.enable_power()
             self.mc_lb_node.enable_power()
@@ -295,7 +295,7 @@ class MotorControllerNetwork:
 
         self.has_quick_stop_been_applied = True
 
-    def is_any_motor_above_this_wheel_rpm(self, rpm):
+    def is_any_measured_wheel_rpm_above_this(self, rpm):
         return (
             abs(self.mc_lb_node.wheel_rpm_actual) > rpm or
             abs(self.mc_lf_node.wheel_rpm_actual) > rpm or
@@ -307,7 +307,7 @@ class MotorControllerNetwork:
         while True:
             time.sleep(0.1)
             if self.overseer_state == 5: # STOPPED state
-                while self.is_any_motor_above_this_wheel_rpm(750):
+                while self.is_any_measured_wheel_rpm_above_this(450):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
                 self.quick_stop_all_motors()
@@ -317,7 +317,8 @@ class MotorControllerNetwork:
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
-                        while self.is_any_motor_above_this_wheel_rpm(60):
+                        while self.is_any_measured_wheel_rpm_above_this(450):
+                            self.enable_power_for_all_motors()
                             self.send_zero_rpm_to_all_motors()
                         self.quick_stop_all_motors()
                 else:

@@ -54,7 +54,7 @@ class ErrorHandler:
 
         # AUTO state
         if overseer_state == AUTO:
-            pass # implement this later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            pass # implement this later (for GPU error) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         # Log errors and inform GUI
         if has_error and should_log_error:
