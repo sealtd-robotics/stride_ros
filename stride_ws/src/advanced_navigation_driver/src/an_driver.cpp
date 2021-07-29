@@ -45,8 +45,26 @@
 #include <std_msgs/UInt16.h>
 #include <std_msgs/UInt8.h>
 #include <std_msgs/Float32.h>
+#include <thread>
 
 #define RADIANS_TO_DEGREES (180.0/M_PI)
+
+void RequestMagneticCalibrationStatus()
+{
+	// The GPS cannot be configured to continuously output calibration data. A request is needed.
+
+	an_packet_t *status_request{an_packet_allocate(1, 1)};
+	status_request->data[0] = 191;
+	an_packet_encode(status_request);
+
+	while(ros::ok)
+	{
+		SendBuf(reinterpret_cast<unsigned char *> (status_request->header),6);
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	}
+
+	an_packet_free(&status_request);
+}
 
 void MagneticCalibrationCallback(const std_msgs::UInt8& msg)
 {
@@ -62,18 +80,9 @@ int main(int argc, char *argv[]) {
 	ros::init(argc, argv, "an_device_node");
 	ros::NodeHandle nh;
 	ros::NodeHandle pnh("~");
+	ros::Rate loop_rate(100);
 
-
-
-
-	// CHANGE THIS TO 100 HZ !!!!!!!!!!!!!!!!!!
-	ros::Rate loop_rate(30);
-	
-
-
-
-
-	printf("\nYour Advanced Navigation ROS driver is currently running\nPress Ctrl-C to interrupt\n");
+	printf("\nYour Advanced Navigation ROS driver has started\nPress Ctrl-C to interrupt\n");
 
 	// Set up the COM port
 	std::string com_port;
@@ -188,19 +197,16 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+	// Start thread to request magnetic calibration status
+	std::thread thread1(RequestMagneticCalibrationStatus);
+
 	an_decoder_initialise(&an_decoder);
 
 	// Loop continuously, polling for packets
 	while (ros::ok())
 	{
 		ros::spinOnce();
-
-		// Requests Magnetic Calibration Status
-		// an_packet_t *status_request{an_packet_allocate(1, 1)};
-		// status_request->data[0] = 191;
-		// an_packet_encode(status_request);
-		// SendBuf(reinterpret_cast<unsigned char *> (status_request->header),6);
-		// an_packet_free(&status_request);
+		loop_rate.sleep();
 
 		// Read Data from Port
 		if ((bytes_received = PollComport(an_decoder_pointer(&an_decoder), an_decoder_size(&an_decoder))) > 0)
@@ -212,7 +218,6 @@ int main(int argc, char *argv[]) {
 			while ((an_packet = an_packet_decode(&an_decoder)) != NULL)
 			{
 				// std::cout << unsigned(an_packet->id) << std::endl;
-				loop_rate.sleep();
 
 				// system state packet //
 				if (an_packet->id == packet_id_system_state)
@@ -439,6 +444,5 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-
 }
 
