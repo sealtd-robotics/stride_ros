@@ -58,44 +58,44 @@ class Receptionist:
     def __init__(self):
         self.custom_scripts_directory = os.path.dirname(sys.argv[0]) + "/../../../custom_scripts"
         self.should_abort = False
-        self.is_self_driving = False
+        self.is_auto_on = False
 
         # Publishers
-        self.is_self_driving_publisher = rospy.Publisher('/robot_commander/is_self_driving', Bool, queue_size=1)
-        self.is_self_driving_publisher.publish(False)
+        self.is_auto_on_publisher = rospy.Publisher('/robot_commander/is_auto_on', Bool, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/start_custom_script', Empty, self.start_custom_script, queue_size=1)
-        rospy.Subscriber('/overseer/state', Int32, self.should_abort_callback, queue_size=1)
+        rospy.Subscriber('/overseer/state', Int32, self.set_should_abort_callback, queue_size=10)
 
     def start_custom_script(self, msg):
-        if not self.is_self_driving:
-            self.is_self_driving = True
-            self.is_self_driving_publisher.publish(self.is_self_driving)
+        if not self.is_auto_on:
+            self.is_auto_on = True
+            self.is_auto_on_publisher.publish(self.is_auto_on)
 
             try:
                 execfile(self.custom_scripts_directory + "/script1.py")
             except Exception as e:
                 print(e)
 
-            self.is_self_driving = False
-            self.is_self_driving_publisher.publish(self.is_self_driving)
+            self.is_auto_on = False
+            self.is_auto_on_publisher.publish(self.is_auto_on)
 
-    def should_abort_callback(self, overseer_state):
-        # One way to abort the thread is killing this ROS node, which automatically respawns
-        if self.is_self_driving and overseer_state.data == 5:
+    def set_should_abort_callback(self, overseer_state):
+        # One way to abort a thread is killing this ROS node, which automatically respawns
+        if self.is_auto_on and overseer_state.data == 5:
             self.should_abort = True
 
 
 if __name__ == '__main__':
-    node = rospy.init_node('self_driving_executor')
+    node = rospy.init_node('robot_commander')
 
     receptionist = Receptionist()
 
     rate = rospy.Rate(10)
 
-    # One way to abort the thread is killing this ROS node, which automatically respawns
     while not rospy.is_shutdown():
+        # One way to abort a thread is killing this ROS node, which automatically respawns
         if receptionist.should_abort:
+            receptionist.is_auto_on_publisher.publish(False) # if node gets killed, signal False
             break
         rate.sleep()
