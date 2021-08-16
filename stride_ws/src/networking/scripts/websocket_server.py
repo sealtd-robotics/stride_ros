@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# abbreviations
+# mc: motor controller
+
 from __future__ import division
 import canopen
 import rospy
@@ -34,6 +37,40 @@ class RosInterface:
             "robotTurningRadius": 0,
             "overseerState": 0,
             "doesBrakeWhenStopped": False,
+            "motorControllers": {
+                "leftFront": {
+                    "state": 0,
+                    "heartbeatNmt": 0,
+                    "motorCurrentDraw": 0,
+                    "wheelRpmActual": 0,
+                    "errorWord": 0,
+                    "isHeartbeatTimeout": False,
+                },
+                "leftBack": {
+                    "state": 0,
+                    "heartbeatNmt": 0,
+                    "motorCurrentDraw": 0,
+                    "wheelRpmActual": 0,
+                    "errorWord": 0,
+                    "isHeartbeatTimeout": False,
+                },
+                "rightFront": {
+                    "state": 0,
+                    "heartbeatNmt": 0,
+                    "motorCurrentDraw": 0,
+                    "wheelRpmActual": 0,
+                    "errorWord": 0,
+                    "isHeartbeatTimeout": False,
+                },
+                "rightBack": {
+                    "state": 0,
+                    "heartbeatNmt": 0,
+                    "motorCurrentDraw": 0,
+                    "wheelRpmActual": 0,
+                    "errorWord": 0,
+                    "isHeartbeatTimeout": False,
+                },
+            },
             "gps": {
                 "status": -1,
                 "latitude": 0,
@@ -64,6 +101,7 @@ class RosInterface:
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/motor_controller_network/does_brake_when_stopped', Bool, self.subscriber_callback_4, queue_size=1)
 
+        # GPS Subcribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_2, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
         rospy.Subscriber('/an_device/Imu', Imu, self.gps_subscriber_callback_3, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -75,6 +113,39 @@ class RosInterface:
         rospy.Subscriber('/an_device/magnetic_calibration/progress', UInt8, self.gps_subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/an_device/magnetic_calibration/error', UInt8, self.gps_subscriber_callback_10, queue_size=1)
 
+        # Motor Controller Subscribers
+        # Left Front
+        rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_front/heartbeat_nmt', Int32, self.left_front_mc_callback_2, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_front/motor_current_draw', Float32, self.left_front_mc_callback_3, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_front/wheel_rpm_actual', Float32, self.left_front_mc_callback_4, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_front/error_word', Int32, self.left_front_mc_callback_5, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_front/is_heartbeat_timeout', Bool, self.left_front_mc_callback_6, queue_size=1)
+
+        # Left Back
+        rospy.Subscriber('/motor_controller/left_back/state', Int32, self.left_back_mc_callback_1, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_back/heartbeat_nmt', Int32, self.left_back_mc_callback_2, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_back/motor_current_draw', Float32, self.left_back_mc_callback_3, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_back/wheel_rpm_actual', Float32, self.left_back_mc_callback_4, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_back/error_word', Int32, self.left_back_mc_callback_5, queue_size=1)
+        rospy.Subscriber('/motor_controller/left_back/is_heartbeat_timeout', Bool, self.left_back_mc_callback_6, queue_size=1)
+
+        # Right Front
+        rospy.Subscriber('/motor_controller/right_front/state', Int32, self.right_front_mc_callback_1, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_front/heartbeat_nmt', Int32, self.right_front_mc_callback_2, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_front/motor_current_draw', Float32, self.right_front_mc_callback_3, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_front/wheel_rpm_actual', Float32, self.right_front_mc_callback_4, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_front/error_word', Int32, self.right_front_mc_callback_5, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_front/is_heartbeat_timeout', Bool, self.right_front_mc_callback_6, queue_size=1)
+
+        # Right Back
+        rospy.Subscriber('/motor_controller/right_back/state', Int32, self.right_back_mc_callback_1, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_back/heartbeat_nmt', Int32, self.right_back_mc_callback_2, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_back/motor_current_draw', Float32, self.right_back_mc_callback_3, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_back/wheel_rpm_actual', Float32, self.right_back_mc_callback_4, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_back/error_word', Int32, self.right_back_mc_callback_5, queue_size=1)
+        rospy.Subscriber('/motor_controller/right_back/is_heartbeat_timeout', Bool, self.right_back_mc_callback_6, queue_size=1)
+
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
         self.stop_clicked_publisher = rospy.Publisher('/gui/stop_clicked', Empty, queue_size=1)
@@ -82,7 +153,8 @@ class RosInterface:
         self.heartbeat_publisher = rospy.Publisher('/gui/heartbeat', Empty, queue_size=1)
         self.toggle_brake_publisher = rospy.Publisher('/gui/brake_when_stopped_toggled', Empty, queue_size=1)
         self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
-        
+    
+    # Callbacks
     def subscriber_callback_1(self, msg):
         self.robotState['robotVelocityCommand']['v'] = msg.x
         self.robotState['robotVelocityCommand']['w'] = msg.theta
@@ -96,10 +168,68 @@ class RosInterface:
     def subscriber_callback_4(self, msg):
         self.robotState['doesBrakeWhenStopped'] = msg.data
 
+    # Motor Controller Callbacks
+    # Left Front
+    def left_front_mc_callback_1(self, msg):
+        self.robotState['motorControllers']['leftFront']['state'] = msg.data
+    def left_front_mc_callback_2(self, msg):
+        self.robotState['motorControllers']['leftFront']['heartbeatNmt'] = msg.data
+    def left_front_mc_callback_3(self, msg):
+        self.robotState['motorControllers']['leftFront']['motorCurrentDraw'] = msg.data
+    def left_front_mc_callback_4(self, msg):
+        self.robotState['motorControllers']['leftFront']['wheelRpmActual'] = msg.data
+    def left_front_mc_callback_5(self, msg):
+        self.robotState['motorControllers']['leftFront']['errorWord'] = msg.data
+    def left_front_mc_callback_6(self, msg):
+        self.robotState['motorControllers']['leftFront']['isHeartbeatTimeout'] = msg.data
+
+    # Left Back
+    def left_back_mc_callback_1(self, msg):
+        self.robotState['motorControllers']['leftBack']['state'] = msg.data
+    def left_back_mc_callback_2(self, msg):
+        self.robotState['motorControllers']['leftBack']['heartbeatNmt'] = msg.data
+    def left_back_mc_callback_3(self, msg):
+        self.robotState['motorControllers']['leftBack']['motorCurrentDraw'] = msg.data
+    def left_back_mc_callback_4(self, msg):
+        self.robotState['motorControllers']['leftBack']['wheelRpmActual'] = msg.data
+    def left_back_mc_callback_5(self, msg):
+        self.robotState['motorControllers']['leftBack']['errorWord'] = msg.data
+    def left_back_mc_callback_6(self, msg):
+        self.robotState['motorControllers']['leftBack']['isHeartbeatTimeout'] = msg.data
+
+    # Right Front
+    def right_front_mc_callback_1(self, msg):
+        self.robotState['motorControllers']['rightFront']['state'] = msg.data
+    def right_front_mc_callback_2(self, msg):
+        self.robotState['motorControllers']['rightFront']['heartbeatNmt'] = msg.data
+    def right_front_mc_callback_3(self, msg):
+        self.robotState['motorControllers']['rightFront']['motorCurrentDraw'] = msg.data
+    def right_front_mc_callback_4(self, msg):
+        self.robotState['motorControllers']['rightFront']['wheelRpmActual'] = msg.data
+    def right_front_mc_callback_5(self, msg):
+        self.robotState['motorControllers']['rightFront']['errorWord'] = msg.data
+    def right_front_mc_callback_6(self, msg):
+        self.robotState['motorControllers']['rightFront']['isHeartbeatTimeout'] = msg.data
+
+    # Right Back
+    def right_back_mc_callback_1(self, msg):
+        self.robotState['motorControllers']['rightBack']['state'] = msg.data
+    def right_back_mc_callback_2(self, msg):
+        self.robotState['motorControllers']['rightBack']['heartbeatNmt'] = msg.data
+    def right_back_mc_callback_3(self, msg):
+        self.robotState['motorControllers']['rightBack']['motorCurrentDraw'] = msg.data
+    def right_back_mc_callback_4(self, msg):
+        self.robotState['motorControllers']['rightBack']['wheelRpmActual'] = msg.data
+    def right_back_mc_callback_5(self, msg):
+        self.robotState['motorControllers']['rightBack']['errorWord'] = msg.data
+    def right_back_mc_callback_6(self, msg):
+        self.robotState['motorControllers']['rightBack']['isHeartbeatTimeout'] = msg.data
+
+    # GPS callbacks
     def gps_subscriber_callback_1(self, msg):
         self.robotState['gps']['status'] = msg.status.status
         self.robotState['gps']['latitude'] = msg.latitude
-        self.robotState['gps']['longtitude'] = msg.longtitude
+        self.robotState['gps']['longtitude'] = msg.longitude
         self.robotState['gps']['latitudeVariance'] = msg.position_covariance[0]
         self.robotState['gps']['longtitudeVariance'] = msg.position_covariance[4]
         time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
@@ -148,40 +278,59 @@ class MyServerProtocol(WebSocketServerProtocol):
 
     def __init__(self):
         super(MyServerProtocol, self).__init__()
-        self.is_closed = False
+        self.is_connected = False
         self.ros_interface = RosInterface()
     
     def onConnect(self, request):
         print("Client connecting: {}".format(request.peer))
-        print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
 
     def onOpen(self):
         print("WebSocket connection open.")
+        self.is_connected = True
         MyServerProtocol.websocket_client_count += 1
+        print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
 
         self.thread1 = threading.Thread(target=self.transmit_robot_state)
         self.thread1.setDaemon(True)
         self.thread1.start()
 
     def onMessage(self, payload, isBinary):
-        if isBinary:
-            print("Binary message received: {} bytes".format(len(payload)))
-        else:
-            print("Text message received: {}".format(payload.decode('utf8')))
+        # if isBinary:
+        #     print("Binary message received: {} bytes".format(len(payload)))
+        # else:
+        #     print("Text message received: {}".format(payload.decode('utf8')))
 
-        # echo back message verbatim
-        self.sendMessage(payload, isBinary)
+        # # echo back message verbatim
+        # self.sendMessage(payload, isBinary)
+
+        message = json.loads(payload.decode('utf8'))
+
+        if message['type'] == '/joystick':
+            stick = Stick()
+            stick.travel = message['travel']
+            stick.angle = message['angle']
+            self.ros_interface.joystick_publisher.publish(stick)
+        elif message['type'] == '/gui/stop_clicked':
+            self.ros_interface.stop_clicked_publisher.publish()
+        elif message['type'] == '/gui/enable_manual_clicked':
+            self.ros_interface.enable_manual_publisher.publish()
+        elif message['type'] == '/gui/heartbeat':
+            self.ros_interface.heartbeat_publisher.publish()
+        elif message['type'] == '/gui/brake_when_stopped_toggled':
+            self.ros_interface.toggle_brake_publisher.publish()
+        elif message['type'] == '/an_device/magnetic_calibration/calibrate':
+            self.ros_interface.start_calibration_publisher.publish(message['method'])
+
 
     def onClose(self, wasClean, code, reason):
-        self.is_closed = True
+        self.is_connected = False
         MyServerProtocol.websocket_client_count -= 1
         print("WebSocket connection closed: {}".format(reason))
-
-
+        print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
 
     def transmit_robot_state(self):
         rate = rospy.Rate(10)
-        while not self.is_closed:
+        while self.is_connected:
             newRobotState = self.ros_interface.robotState
             newRobotState["websocketClientCount"] = MyServerProtocol.websocket_client_count
 

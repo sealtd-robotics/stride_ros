@@ -37,6 +37,10 @@ class Joystick:
 
         v, w, r = self.joystick_to_velocities(stick.travel, stick.angle)
 
+        # JSON, used in networking, does not allow infinity 
+        if math.isinf(r):
+            r = 0
+
         velocity = Pose2D()
         velocity.x = v
         velocity.theta = w

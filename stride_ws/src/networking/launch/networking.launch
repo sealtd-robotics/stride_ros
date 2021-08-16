@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="networking" type="websocket_server.py" name="websocket_server" output="screen" cwd="node" />
+</launch>
