@@ -40,6 +40,7 @@ import rospy
 from std_msgs.msg import String, Float32
 from geometry_msgs.msg import Twist
 from can_interface.msg import WheelRPM
+from sensor_msgs.msg import NavSatFix
 import time
 
 def talker():
@@ -55,9 +56,11 @@ def talker():
     pub10 = rospy.Publisher('a10', Float32, queue_size=10)
     pub11 = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=10)
     pub12 = rospy.Publisher('robot_velocity_commmand', Twist, queue_size=10)
+    pub13 = rospy.Publisher('/an_device/NavSatFix', NavSatFix, queue_size=10)
 
+    count = 0
     rospy.init_node('talker', anonymous=True)
-    rate = rospy.Rate(20) # 10hz
+    rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
         hello_str1 = "a hello world %s" % rospy.get_time()
         hello_str2 = "b hello world %s" % rospy.get_time()
@@ -86,42 +89,17 @@ def talker():
         pub9.publish(hello_str)
         pub10.publish(float('inf'))
         pub11.publish(wheel_rpm)
-        time.sleep(0.1)
 
         robot_vel_cmd.linear.x = 0
         robot_vel_cmd.angular.z = 0
         pub12.publish(robot_vel_cmd)
-        time.sleep(1)
 
-        # robot_vel_cmd.linear.x = 0 / 9.54929658551
-        # robot_vel_cmd.angular.z = 0 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
+        count += 0.000001
+        navSatFix = NavSatFix()
+        navSatFix.latitude = count
+        navSatFix.longitude = count
+        pub13.publish(navSatFix)
 
-        # robot_vel_cmd.linear.x = 60 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
-
-        # robot_vel_cmd.linear.x = 0 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
-
-        # robot_vel_cmd.linear.x = 60 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
-
-        # robot_vel_cmd.linear.x = 0 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
-
-
-        # robot_vel_cmd.linear.x = 60 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
-
-        # robot_vel_cmd.linear.x = 0 / 9.54929658551
-        # pub12.publish(robot_vel_cmd)
-        # time.sleep(1)
 
         rate.sleep()
 

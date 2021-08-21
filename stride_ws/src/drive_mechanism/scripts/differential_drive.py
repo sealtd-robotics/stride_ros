@@ -21,7 +21,7 @@ class DifferentialDrive:
 
         self.wheel_rpm_publisher = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
-        rospy.Subscriber('/robot_velocity_commmand', Pose2D, self.publish_wheel_rpm, queue_size=1)
+        rospy.Subscriber('/robot_velocity_command', Pose2D, self.publish_wheel_rpm, queue_size=1)
         
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 

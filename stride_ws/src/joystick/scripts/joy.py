@@ -19,7 +19,7 @@ class Joystick:
 
         self.overseer_state = 0
 
-        self.velocity_publisher = rospy.Publisher('/robot_velocity_commmand', Pose2D, queue_size=1)
+        self.velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.turning_radius_publisher = rospy.Publisher('/robot_turning_radius', Float32, queue_size=1)
 
         rospy.Subscriber('/joystick', Stick, self.publish_velocity, queue_size=1)
@@ -62,9 +62,9 @@ class Joystick:
         v_max_at_angle = self.v_max * scaling
         
 
-        r = math.tan(-angle - math.pi / 2)
+        r = math.tan(-angle - math.pi / 2) * 2
 
-        v = math.copysign( travel * v_max_at_angle, r) # applying the sign of r
+        v = math.copysign( travel * v_max_at_angle, r) # applying the sign of r to the first argument
 
         # a small angular velocity is induced when joystick is near +/- 90 degrees to make robot spin in place
         w_spin_in_place = self.w_max_spin_in_place * math.sin(angle) ** 50 * travel

@@ -23,6 +23,7 @@ import sys
 from twisted.python import log
 from twisted.internet import reactor
 
+
 class RosInterface:
     def __init__(self):
         self.gps_callback_sleep_time = 0.1
@@ -229,34 +230,34 @@ class RosInterface:
     def gps_subscriber_callback_1(self, msg):
         self.robotState['gps']['status'] = msg.status.status
         self.robotState['gps']['latitude'] = msg.latitude
-        self.robotState['gps']['longtitude'] = msg.longitude
+        self.robotState['gps']['longitude'] = msg.longitude
         self.robotState['gps']['latitudeVariance'] = msg.position_covariance[0]
-        self.robotState['gps']['longtitudeVariance'] = msg.position_covariance[4]
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        self.robotState['gps']['longitudeVariance'] = msg.position_covariance[4]
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_2(self, msg):
         self.robotState['gps']['northVelocity'] = msg.linear.x
         self.robotState['gps']['eastVelocity'] = msg.linear.y
         self.robotState['gps']['zAngularVelocity'] = msg.angular.z
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_3(self, msg):
         self.robotState['gps']['xAcceleration'] = msg.linear_acceleration.x
         self.robotState['gps']['yAcceleration'] = msg.linear_acceleration.y
         self.robotState['gps']['zAcceleration'] = msg.linear_acceleration.z
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_4(self, msg):
         self.robotState['gps']['systemStatus'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_5(self, msg):
         self.robotState['gps']['filterStatus'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_6(self, msg):
         self.robotState['gps']['heading'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # for throttling high publishing rate
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_7(self, msg):
         self.robotState['gps']['xMagnetometer'] = msg.x
@@ -275,20 +276,19 @@ class RosInterface:
 
 class MyServerProtocol(WebSocketServerProtocol):
     websocket_client_count = 0
+    ros_interface = RosInterface()
 
-    def __init__(self):
-        super(MyServerProtocol, self).__init__()
-        self.is_connected = False
-        self.ros_interface = RosInterface()
-    
+    # The init function of this class is only called right before a connection
+
     def onConnect(self, request):
         print("Client connecting: {}".format(request.peer))
 
     def onOpen(self):
         print("WebSocket connection open.")
-        self.is_connected = True
-        MyServerProtocol.websocket_client_count += 1
         print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
+
+        MyServerProtocol.websocket_client_count += 1
+        self.is_connected = True
 
         self.thread1 = threading.Thread(target=self.transmit_robot_state)
         self.thread1.setDaemon(True)
@@ -309,17 +309,17 @@ class MyServerProtocol(WebSocketServerProtocol):
             stick = Stick()
             stick.travel = message['travel']
             stick.angle = message['angle']
-            self.ros_interface.joystick_publisher.publish(stick)
+            MyServerProtocol.ros_interface.joystick_publisher.publish(stick)
         elif message['type'] == '/gui/stop_clicked':
-            self.ros_interface.stop_clicked_publisher.publish()
+            MyServerProtocol.ros_interface.stop_clicked_publisher.publish()
         elif message['type'] == '/gui/enable_manual_clicked':
-            self.ros_interface.enable_manual_publisher.publish()
+            MyServerProtocol.ros_interface.enable_manual_publisher.publish()
         elif message['type'] == '/gui/heartbeat':
-            self.ros_interface.heartbeat_publisher.publish()
+            MyServerProtocol.ros_interface.heartbeat_publisher.publish()
         elif message['type'] == '/gui/brake_when_stopped_toggled':
-            self.ros_interface.toggle_brake_publisher.publish()
+            MyServerProtocol.ros_interface.toggle_brake_publisher.publish()
         elif message['type'] == '/an_device/magnetic_calibration/calibrate':
-            self.ros_interface.start_calibration_publisher.publish(message['method'])
+            MyServerProtocol.ros_interface.start_calibration_publisher.publish(message['method'])
 
 
     def onClose(self, wasClean, code, reason):
@@ -331,7 +331,7 @@ class MyServerProtocol(WebSocketServerProtocol):
     def transmit_robot_state(self):
         rate = rospy.Rate(10)
         while self.is_connected:
-            newRobotState = self.ros_interface.robotState
+            newRobotState = MyServerProtocol.ros_interface.robotState
             newRobotState["websocketClientCount"] = MyServerProtocol.websocket_client_count
 
             robotStateMessage = json.dumps(newRobotState, ensure_ascii = False).encode('utf8')
