@@ -307,7 +307,7 @@ class MotorControllerNetwork:
         while True:
             time.sleep(0.1)
             if self.overseer_state == 5: # STOPPED state
-                while self.is_any_measured_wheel_rpm_above_this(450):
+                while self.is_any_measured_wheel_rpm_above_this(250):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
                 self.quick_stop_all_motors()
@@ -317,7 +317,7 @@ class MotorControllerNetwork:
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
-                        while self.is_any_measured_wheel_rpm_above_this(450):
+                        while self.is_any_measured_wheel_rpm_above_this(250):
                             self.enable_power_for_all_motors()
                             self.send_zero_rpm_to_all_motors()
                         self.quick_stop_all_motors()

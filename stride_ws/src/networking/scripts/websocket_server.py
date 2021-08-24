@@ -154,6 +154,7 @@ class RosInterface:
         self.heartbeat_publisher = rospy.Publisher('/gui/heartbeat', Empty, queue_size=1)
         self.toggle_brake_publisher = rospy.Publisher('/gui/brake_when_stopped_toggled', Empty, queue_size=1)
         self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
+        self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
     
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -284,10 +285,10 @@ class MyServerProtocol(WebSocketServerProtocol):
         print("Client connecting: {}".format(request.peer))
 
     def onOpen(self):
+        MyServerProtocol.websocket_client_count += 1
         print("WebSocket connection open.")
         print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
 
-        MyServerProtocol.websocket_client_count += 1
         self.is_connected = True
 
         self.thread1 = threading.Thread(target=self.transmit_robot_state)
@@ -320,7 +321,11 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.toggle_brake_publisher.publish()
         elif message['type'] == '/an_device/magnetic_calibration/calibrate':
             MyServerProtocol.ros_interface.start_calibration_publisher.publish(message['method'])
-
+        elif message['type'] == '/robot_velocity_command':
+            pose2d = Pose2D()
+            pose2d.x = message['x']
+            pose2d.theta = message['theta']
+            MyServerProtocol.ros_interface.robot_velocity_publisher.publish(pose2d)
 
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
