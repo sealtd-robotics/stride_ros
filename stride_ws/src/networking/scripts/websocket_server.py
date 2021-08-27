@@ -7,7 +7,7 @@ from __future__ import division
 import canopen
 import rospy
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Float32, UInt16, UInt8, Int32, Bool, Empty
+from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty
 from geometry_msgs.msg import Pose2D, Vector3, Twist
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
@@ -38,6 +38,9 @@ class RosInterface:
             "robotTurningRadius": 0,
             "overseerState": 0,
             "doesBrakeWhenStopped": False,
+            "robotTemperature": 0,
+            "batteryTemperature": 0,
+            "batteryVoltage": 0,
             "motorControllers": {
                 "leftFront": {
                     "state": 0,
@@ -101,6 +104,9 @@ class RosInterface:
         rospy.Subscriber('/robot_turning_radius', Float32, self.subscriber_callback_2, queue_size=1)
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/motor_controller_network/does_brake_when_stopped', Bool, self.subscriber_callback_4, queue_size=1)
+        rospy.Subscriber('/robot_temperature', Int16, self.subscriber_callback_5, queue_size=1)
+        rospy.Subscriber('/battery_temperature', Int16, self.subscriber_callback_6, queue_size=1)
+        rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
 
         # GPS Subcribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -169,6 +175,15 @@ class RosInterface:
 
     def subscriber_callback_4(self, msg):
         self.robotState['doesBrakeWhenStopped'] = msg.data
+
+    def subscriber_callback_5(self, msg):
+        self.robotState['robotTemperature'] = msg.data
+
+    def subscriber_callback_6(self, msg):
+        self.robotState['batteryTemperature'] = msg.data
+
+    def subscriber_callback_7(self, msg):
+        self.robotState['batteryVoltage'] = msg.data
 
     # Motor Controller Callbacks
     # Left Front
