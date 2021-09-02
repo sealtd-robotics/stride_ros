@@ -37,6 +37,7 @@ class RosInterface:
             },
             "robotTurningRadius": 0,
             "overseerState": 0,
+            # websocketClientCount will be added before sending out
             "doesBrakeWhenStopped": False,
             "robotTemperature": 0,
             "batteryTemperature": 0,
@@ -291,11 +292,14 @@ class RosInterface:
 
 
 class MyServerProtocol(WebSocketServerProtocol):
+    # All connections will share the class variables
     websocket_client_count = 0
     ros_interface = RosInterface()
+    shared_path = {'type': '', 'latitudes':[], 'longitudes':[]}
 
-    # The init function of this class is only called right before a connection
+    # The init function of this class is called before each connection and is only relevent to that connection
 
+    # Each connection will have its own onConnect, onOpen, onMessage, and onClose 
     def onConnect(self, request):
         print("Client connecting: {}".format(request.peer))
 
@@ -305,10 +309,19 @@ class MyServerProtocol(WebSocketServerProtocol):
         print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
 
         self.is_connected = True
+        self.message_arrival_time = self.get_time_now_in_ms()
 
         self.thread1 = threading.Thread(target=self.transmit_robot_state)
         self.thread1.setDaemon(True)
         self.thread1.start()
+
+        self.thread2 = threading.Thread(target=self.transmit_shared_path)
+        self.thread2.setDaemon(True)
+        self.thread2.start()
+
+        self.thread3 = threading.Thread(target=self.close_if_no_incoming_messages)
+        self.thread3.setDaemon(True)
+        self.thread3.start()
 
     def onMessage(self, payload, isBinary):
         # if isBinary:
@@ -320,6 +333,8 @@ class MyServerProtocol(WebSocketServerProtocol):
         # self.sendMessage(payload, isBinary)
 
         message = json.loads(payload.decode('utf8'))
+
+        self.message_arrival_time = self.get_time_now_in_ms()
 
         if message['type'] == '/joystick':
             stick = Stick()
@@ -341,12 +356,20 @@ class MyServerProtocol(WebSocketServerProtocol):
             pose2d.x = message['x']
             pose2d.theta = message['theta']
             MyServerProtocol.ros_interface.robot_velocity_publisher.publish(pose2d)
+        elif message['type'] == 'sharedPath':
+            MyServerProtocol.shared_path = {'type': 'sharedPath', 'latitudes': message['latitudes'], 'longitudes': message['longitudes']}
 
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
         MyServerProtocol.websocket_client_count -= 1
         print("WebSocket connection closed: {}".format(reason))
         print("Number of clients: {}".format(MyServerProtocol.websocket_client_count))
+
+    def get_time_now_in_ms(self):
+        epoch = datetime.utcfromtimestamp(0)
+        now = datetime.utcnow()
+        delta = now - epoch
+        return delta.total_seconds() * 1000
 
     def transmit_robot_state(self):
         rate = rospy.Rate(10)
@@ -356,6 +379,29 @@ class MyServerProtocol(WebSocketServerProtocol):
 
             robotStateMessage = json.dumps(newRobotState, ensure_ascii = False).encode('utf8')
             reactor.callFromThread(self.sendMessage, robotStateMessage, False)
+            rate.sleep()
+
+    def transmit_shared_path(self):
+        rate = rospy.Rate(2)
+        previous_path = MyServerProtocol.shared_path
+        while self.is_connected:
+            is_new_path = id(previous_path) != id(MyServerProtocol.shared_path)
+            
+            if is_new_path:
+                pathMessage = json.dumps(MyServerProtocol.shared_path, ensure_ascii = False).encode('utf8')
+                reactor.callFromThread(self.sendMessage, pathMessage, False)
+
+                previous_path = MyServerProtocol.shared_path # shallow copy
+                print('Path has been shared')
+            
+            rate.sleep()
+
+    def close_if_no_incoming_messages(self):
+        rate = rospy.Rate(2)
+        while self.is_connected:
+            if self.get_time_now_in_ms() - self.message_arrival_time > 4000:
+                reactor.callFromThread(self.sendClose)
+
             rate.sleep()
 
 def shutdown():
