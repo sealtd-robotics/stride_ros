@@ -1,2 +1,2 @@
 wheel_sep: 0.545 # seperation between left and right wheels in meters
-wheel_radius: 0.0229 # in meters
+wheel_radius: 0.0239 # in meters

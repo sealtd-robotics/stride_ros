@@ -10,7 +10,7 @@ from __future__ import division
 import rospy
 import math
 import os
-from std_msgs.msg import Int32, Float32, String
+from std_msgs.msg import Int32, Float32, String, Empty
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
 from math import cos, sin, sqrt, pi, atan2
@@ -18,7 +18,7 @@ from glob import glob
 
 class PathFollower:
     def __init__(self):
-        self.point_interval = 0.15   # meters
+        self.point_spacing = 0.15   # meters. Is this needed?
         self.look_ahead_points = 4
 
         self.current_path_index = 0
@@ -30,9 +30,9 @@ class PathFollower:
         self.robot_heading = 0
         self.path_easts = []
         self.path_norths = []
-        self.robot_east = 0
-        self.robot_north = 0
-        self.turning_radius = 0
+        self.robot_east = 1
+        self.robot_north = 1
+        self.turning_radius = 1
 
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -40,6 +40,7 @@ class PathFollower:
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1, queue_size=10)
+        rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2, queue_size=1)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
@@ -87,18 +88,19 @@ class PathFollower:
                     line_number += 1
                     continue
                 
-            lat_long = line.split()
-            latitude = float(lat_long[0])
-            longitude = float(lat_long[1])
+                lat_long = line.split()
+                latitude = float(lat_long[0])
+                longitude = float(lat_long[1])
 
-            # make the first point a reference point
-            if line_number == 2:
-                self.assign_reference_point(latitude, longitude)
+                # make the first point a reference point
+                if line_number == 2:
+                    self.assign_reference_point(latitude, longitude)
+                    line_number += 1
 
-            (pos_north, pos_east) = self.LL2NE(latitude, longitude)
+                (pos_north, pos_east) = self.LL2NE(latitude, longitude)
 
-            self.path_easts.append(pos_east)
-            self.path_norths.append(pos_north)
+                self.path_easts.append(pos_east)
+                self.path_norths.append(pos_north)
         
         filename = os.path.basename(filepath)
         self.path_name_publisher.publish(filename)
@@ -117,7 +119,6 @@ class PathFollower:
 
         x_next = self.path_easts[self.current_path_index + 1]
         y_next = self.path_norths[self.current_path_index + 1]
-
         m = (y_next - y_cur) / (x_next - x_cur)
 
         # Slope of the perpendicular line to the original line
@@ -133,7 +134,7 @@ class PathFollower:
         k_robot = m_perp * (self.robot_east - x_next) / (self.robot_north - y_next)
 
         # If the two above points are on different sides of the line
-        if k_cur * k_robt < 0:
+        if k_cur * k_robot < 0:
             self.current_path_index += 1
 
     def update_turning_radius(self):
@@ -142,34 +143,47 @@ class PathFollower:
         # robot point
         x1 = self.robot_east
         y1 = self.robot_north
+        # print('x1', x1)
+        # print('y1', y1)
 
         # look-ahead point
-        x2 = self.path_easts[self.current_path_index]
-        y2 = self.path_norths[self.current_path_index]
+        x2 = self.path_easts[self.current_path_index + self.look_ahead_points]
+        y2 = self.path_norths[self.current_path_index + self.look_ahead_points]
+        # print('x2', x2)
+        # print('y2', y2)
 
         # make heading begin on the x-axis and go counter-clockwise as positive
         adjusted_heading = -self.robot_heading - pi/2
 
-        # distanc from robot to look-ahead point
+        # distance from robot to look-ahead point
         distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
 
         self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
+        # print(distance)
+        # print(look_ahead_angle)
+        # print(adjusted_heading)
+        # print(self.turning_radius)
 
     def publish_robot_velocity(self):
 
         pose2d = Pose2D()
-        pose2d.x = 3
-        pose2d.theta = 3 / self.turning_radius
+        pose2d.x = 0.5
+        pose2d.theta = 0.5 / self.turning_radius
 
         self.robot_velocity_publisher.publish(pose2d)
+
 
 
     # Subscriber callbacks
     def subscriber_callback_1(self, msg):
         self.overseer_state = msg.data
+
+    def subscriber_callback_2(self, msg):
+        self.load_path()
+
 
     # GPS subscriber callbacks
     def gps_subscriber_callback_1(self, msg):
@@ -193,4 +207,6 @@ if __name__ ==  '__main__':
             pf.update_current_path_index()
             pf.update_turning_radius()
             pf.publish_robot_velocity()
+        else:
+            pf.current_path_index = 0
         rate.sleep() 

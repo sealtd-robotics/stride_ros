@@ -303,9 +303,9 @@ class MotorControllerNetwork:
             abs(self.mc_rb_node.wheel_rpm_actual) > rpm
         )
 
-    def drive(self): # type of msg is WheelRPM
+    def drive(self):
         while True:
-            time.sleep(0.1)
+            time.sleep(0.02)
             if self.overseer_state == 5: # STOPPED state
                 while self.is_any_measured_wheel_rpm_above_this(250):
                     self.enable_power_for_all_motors()
@@ -328,6 +328,13 @@ class MotorControllerNetwork:
                     self.mc_lb_node.spin(self.left_back_rpm)
                     self.mc_rf_node.spin(self.right_front_rpm)
                     self.mc_rb_node.spin(self.right_back_rpm)
+            elif self.overseer_state == 2: # AUTO state
+                self.enable_power_for_all_motors()
+
+                self.mc_lf_node.spin(self.left_front_rpm)
+                self.mc_lb_node.spin(self.left_back_rpm)
+                self.mc_rf_node.spin(self.right_front_rpm)
+                self.mc_rb_node.spin(self.right_back_rpm)
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')

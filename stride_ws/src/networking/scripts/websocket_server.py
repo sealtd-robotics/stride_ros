@@ -14,6 +14,8 @@ from joystick.msg import Stick
 import time
 import threading
 from datetime import datetime
+import os
+from glob import glob
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketServerFactory
@@ -171,7 +173,7 @@ class RosInterface:
         self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
-        self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', String, queue_size=1)
+        self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
     
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -375,9 +377,13 @@ class MyServerProtocol(WebSocketServerProtocol):
         elif message['type'] == '/gui/start_path_following_clicked':
             MyServerProtocol.ros_interface.start_following_publisher.publish()
         elif message['type'] == '/gui/upload_path_clicked':
-            pathText = String()
-            pathText.data = message['pathText']
-            MyServerProtocol.ros_interface.upload_path_publisher.publish(pathText)
+            # remove all txt files (there should only be one txt file allowed in the folder)
+            for path in glob ('../../../path/*.txt'):
+                os.remove(path)
+            
+            with open('../../../path/' + message['filename'], 'w+') as f:
+                f.write(message['fileContent'])
+            MyServerProtocol.ros_interface.upload_path_publisher.publish()
 
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
