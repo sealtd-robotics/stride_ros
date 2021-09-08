@@ -7,7 +7,7 @@ from __future__ import division
 import canopen
 import rospy
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty
+from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
 from geometry_msgs.msg import Pose2D, Vector3, Twist
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
@@ -97,7 +97,11 @@ class RosInterface:
                 "magneticCalibrationStatus": 0,
                 "magneticCalibrationProgress": 0,
                 "magneticCalibrationError": 0,
-            }
+            },
+            "pathFollower": {
+                "pathName": "",
+                "scriptName": "",
+            },
         }
         
         # Subscribers
@@ -108,6 +112,7 @@ class RosInterface:
         rospy.Subscriber('/robot_temperature', Int16, self.subscriber_callback_5, queue_size=1)
         rospy.Subscriber('/battery_temperature', Int16, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
+
 
         # GPS Subcribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -154,6 +159,9 @@ class RosInterface:
         rospy.Subscriber('/motor_controller/right_back/error_word', Int32, self.right_back_mc_callback_5, queue_size=1)
         rospy.Subscriber('/motor_controller/right_back/is_heartbeat_timeout', Bool, self.right_back_mc_callback_6, queue_size=1)
 
+        # Path Follower Subscribers
+        rospy.Subscriber('/path_follower/path_name', String, self.path_follower_callback_1, queue_size=1)
+
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
         self.stop_clicked_publisher = rospy.Publisher('/gui/stop_clicked', Empty, queue_size=1)
@@ -162,6 +170,8 @@ class RosInterface:
         self.toggle_brake_publisher = rospy.Publisher('/gui/brake_when_stopped_toggled', Empty, queue_size=1)
         self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
+        self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
+        self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', String, queue_size=1)
     
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -290,6 +300,10 @@ class RosInterface:
     def gps_subscriber_callback_10(self, msg):
         self.robotState['gps']['magneticCalibrationError'] = msg.data
 
+    # Path follower callbacks
+    def path_follower_callback_1(self, msg):
+        self.robotState['pathFollower']['pathName'] = msg.data
+
 
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
@@ -358,6 +372,12 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.robot_velocity_publisher.publish(pose2d)
         elif message['type'] == 'sharedPath':
             MyServerProtocol.shared_path = {'type': 'sharedPath', 'latitudes': message['latitudes'], 'longitudes': message['longitudes']}
+        elif message['type'] == '/gui/start_path_following_clicked':
+            MyServerProtocol.ros_interface.start_following_publisher.publish()
+        elif message['type'] == '/gui/upload_path_clicked':
+            pathText = String()
+            pathText.data = message['pathText']
+            MyServerProtocol.ros_interface.upload_path_publisher.publish(pathText)
 
     def onClose(self, wasClean, code, reason):
         self.is_connected = False

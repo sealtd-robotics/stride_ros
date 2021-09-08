@@ -1,28 +1,42 @@
+#!/usr/bin/env python
+
 # Abbreviations
 # v: linear velocity
 # w: angular velocity
+# lat_ref: latitude reference
+# long_ref: longitude reference
 
+from __future__ import division
 import rospy
 import math
-from std_msgs.msg import Int32
+import os
+from std_msgs.msg import Int32, Float32, String
+from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
-from math import cos, sin, sqrt, pi
+from math import cos, sin, sqrt, pi, atan2
+from glob import glob
 
 class PathFollower:
     def __init__(self):
-        self.point_interval = 0.2   # meters
-        self.look_ahead_points = 3
+        self.point_interval = 0.15   # meters
+        self.look_ahead_points = 4
 
         self.current_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
         self.E_factor = 0
         self.N_factor = 0
-        self.latitude_measured = 0
-        self.longitude_measured = 0
-        self.heading_measured = 0
-        self.easts = np.array([])
-        self.norths = np.array([])
-        
+        self.lat_ref = 0
+        self.long_ref = 0
+        self.robot_heading = 0
+        self.path_easts = []
+        self.path_norths = []
+        self.robot_east = 0
+        self.robot_north = 0
+        self.turning_radius = 0
+
+        # Publishers
+        self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
+        self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1, queue_size=10)
@@ -30,32 +44,43 @@ class PathFollower:
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_subscriber_callback_2, queue_size=1)
+
+        # Load path at startup
+        self.load_path()
         
 
         # rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_3, queue_size=1)
     
-    def EN_factors(self, lat_ref):
+    def assign_reference_point(self, latitude, longitude):
+        self.lat_ref = latitude
+        self.long_ref = longitude
+
         e = 0.0818191908426
         R = 6378137
 
-        E_factor = cos(lat_ref*pi/180)*R/sqrt(1-(sin(lat_ref*pi/180)**2*e**2))*pi/180
-
-        N_factor = (1-e**2)*R/((1-(sin(lat_ref*pi/180)**2*e**2))*sqrt(1-(sin(lat_ref*pi/180)**2*e**2)))*pi/180
-        
-        return (E_factor, N_factor)
+        self.E_factor = cos(self.lat_ref*pi/180)*R/sqrt(1-(sin(self.lat_ref*pi/180)**2*e**2))*pi/180
+        self.N_factor = (1-e**2)*R/((1-(sin(self.lat_ref*pi/180)**2*e**2))*sqrt(1-(sin(self.lat_ref*pi/180)**2*e**2)))*pi/180
     
-    def LL2NE(self, latitude, longitude, lat_ref, long_ref, E_factor, N_factor):
-        pos_east = (longitude - long_ref) * E_factor
-        pos_north = (latitude - lat_ref) * N_factor
+    # Latitude Longitude to North East
+    def LL2NE(self, latitude, longitude):
+        pos_east = (longitude - self.long_ref) * self.E_factor
+        pos_north = (latitude - self.lat_ref) * self.N_factor
         return (pos_north, pos_east)
 
     def load_path(self):
-        file = '../../../path/' + 'stride_path_fan.txt'
-        self.easts = []
-        self.norths = []
+        txt_files = glob('../../../path/*.txt')
+        
+        if len(txt_files) == 0:
+            return
+        
+        filepath = txt_files[0]
+        
+
+        self.path_easts = []
+        self.path_norths = []
 
         line_number = 1
-        with open(file, 'r') as f:
+        with open(filepath, 'r') as f:
             for line in f.readlines():
                 # omit the first line in file
                 if line_number == 1:
@@ -63,46 +88,83 @@ class PathFollower:
                     continue
                 
             lat_long = line.split()
-            latitude = lat_long[0]
-            longitude = lat_long[1]
+            latitude = float(lat_long[0])
+            longitude = float(lat_long[1])
 
             # make the first point a reference point
-            if line_number == 1:
-                lat_ref = latitude
-                long_ref = longitude
-                (self.E_factor, self.N_factor) = self.EN_factors(lat_ref)
+            if line_number == 2:
+                self.assign_reference_point(latitude, longitude)
 
-            (pos_north, pos_east) = self.LL2NE(latitude, longitude, lat_ref, long_ref, self.E_factor, self.N_factor)
+            (pos_north, pos_east) = self.LL2NE(latitude, longitude)
 
-            self.easts.append(pos_east)
-            self.norths.append(pos_north)
+            self.path_easts.append(pos_east)
+            self.path_norths.append(pos_north)
+        
+        filename = os.path.basename(filepath)
+        self.path_name_publisher.publish(filename)
 
-        self.is_path_loaded = True
-
-        for i in range(0, len(self.easts)):
-            print(self.easts[i], self.norths[i])
+        # for i in range(0, len(self.path_easts)):
+        #     print(self.path_easts[i], self.path_norths[i])
 
     def update_current_path_index(self):
-        # Find slope of line connecting current index and the next index
-        x1 = self.easts[self.current_path_index]
-        y1 = self.norths[self.current_path_index]
+        # if current index is the last index, return
+        if self.current_path_index == len(self.path_easts) - 1:
+            return
 
-        x2 = self.easts[self.current_path_index + 1]
-        y2 = self.norths[self.current_path_index + 1]
+        # Find slope of line (m) connecting current index and the next index
+        x_cur = self.path_easts[self.current_path_index]
+        y_cur = self.path_norths[self.current_path_index]
 
-        m = (y2 - y1) / (x2 - x1)
+        x_next = self.path_easts[self.current_path_index + 1]
+        y_next = self.path_norths[self.current_path_index + 1]
+
+        m = (y_next - y_cur) / (x_next - x_cur)
 
         # Slope of the perpendicular line to the original line
         m_perp = -1/m
 
-        # point-slope form for current index point
-        k1 = m_perp * (x1 - x2) / (y1 - y2)
+        # Notes: The point-slope form of the perpendicular line at point (x_next, y_next) is as follows:
+        # 0 = m_perp * (x - x_next) / (y - y_next)
 
-        # point-slope form for current location of robot
-        k2 = m_perp * ()
+        # Determine which side of the line the current index point lies on, indicated by the sign of k_cur
+        k_cur = m_perp * (x_cur - x_next) / (y_cur - y_next)
 
-        # if (x1, y1) and the current location of robot are on the opposite sides of the perpendicular line,
-        # increment self.current_path_index
+        # Determine which side of the line the robot lies on, indicated by the sign of k_robot
+        k_robot = m_perp * (self.robot_east - x_next) / (self.robot_north - y_next)
+
+        # If the two above points are on different sides of the line
+        if k_cur * k_robt < 0:
+            self.current_path_index += 1
+
+    def update_turning_radius(self):
+        # Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
+        
+        # robot point
+        x1 = self.robot_east
+        y1 = self.robot_north
+
+        # look-ahead point
+        x2 = self.path_easts[self.current_path_index]
+        y2 = self.path_norths[self.current_path_index]
+
+        # make heading begin on the x-axis and go counter-clockwise as positive
+        adjusted_heading = -self.robot_heading - pi/2
+
+        # distanc from robot to look-ahead point
+        distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+
+        # angle from robot to look-ahead point
+        look_ahead_angle = atan2(y2-y1, x2-x1)
+
+        self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
+
+    def publish_robot_velocity(self):
+
+        pose2d = Pose2D()
+        pose2d.x = 3
+        pose2d.theta = 3 / self.turning_radius
+
+        self.robot_velocity_publisher.publish(pose2d)
 
 
     # Subscriber callbacks
@@ -111,28 +173,24 @@ class PathFollower:
 
     # GPS subscriber callbacks
     def gps_subscriber_callback_1(self, msg):
-        self.latitude_measured = msg.latitude     # degree
-        self.longitude_measured = msg.longitude   # degree
+        (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
 
     def gps_subscriber_callback_2(self, msg):
-        self.heading_measured = msg.data    # radian
+        self.robot_heading = msg.data    # radian
 
     # def gps_subscriber_callback_3(self, msg):
     #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5
     #     self.yaw_velocity_measured = msg.angular.z
 
-    def find_velocities(self):
-        v = 1
-        w = 2
-        return v, w
-
 if __name__ ==  '__main__':
     node = rospy.init_node('path_follower')
 
-    path_follower = PathFollower()
+    pf = PathFollower()
 
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
-        if path_follower.overseer_state == 2:    # 2 is the autonomous (AUTO) state
-            if 
+        if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
+            pf.update_current_path_index()
+            pf.update_turning_radius()
+            pf.publish_robot_velocity()
         rate.sleep() 

@@ -92,10 +92,12 @@ class Gui:
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
         self.is_heartbeat_timeout = False
+        self.is_start_following_clicked = False
 
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
         rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
         rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback)
+        rospy.Subscriber('/gui/start_path_following_clicked', Empty, self.start_following_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -114,6 +116,7 @@ class Gui:
     def reset_button_clicks(self):
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
+        self.is_start_following_clicked = False
 
     def stop_callback(self, msg):
         self.is_stop_clicked = True
@@ -129,6 +132,9 @@ class Gui:
 
     def heartbeat_callback(self, nmt_state_int):
         self.heartbeat_arrival_time = self.get_time_now_in_ms()
+
+    def start_following_callback(self, msg):
+        self.is_start_following_clicked = True
 
 class Handheld:
     def __init__(self):
@@ -166,10 +172,12 @@ if __name__ ==  '__main__':
         if state == MANUAL:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
+            elif gui.is_start_following_clicked:
+                state = AUTO
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
         
-        # Auto (can't transition to this state yet)
+        # Auto
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
@@ -185,10 +193,10 @@ if __name__ ==  '__main__':
         elif state == STOPPED:
             if gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
                 state = MANUAL
+            elif gui.is_start_following_clicked:
+                state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-
-            # todo: add elif for going to AUTO
 
         gui.reset_button_clicks()
         state_publisher.publish( state )
