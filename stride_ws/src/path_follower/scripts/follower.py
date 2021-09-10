@@ -22,7 +22,7 @@ from glob import glob
 class PathFollower:
     def __init__(self):
         self.point_spacing = 0.15   # meters. Is this needed?
-        self.look_ahead_points = 4
+        self.look_ahead_points = 5
 
         self.current_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
@@ -123,29 +123,38 @@ class PathFollower:
         #     print(self.path_easts[i], self.path_norths[i])
 
     def update_current_path_index(self):
+        max_index = len(self.path_easts) - 1
+
         # if current index is the last index, return
-        if self.current_path_index == len(self.path_easts) - 1:
+        if self.current_path_index == max_index:
             return
 
         # Find slope of line (m) connecting current index and the next index
         x_cur = self.path_easts[self.current_path_index]
         y_cur = self.path_norths[self.current_path_index]
 
-        x_next = self.path_easts[self.current_path_index + 1]
-        y_next = self.path_norths[self.current_path_index + 1]
+        x_next = self.path_easts[min(self.current_path_index + 1, max_index)]
+        y_next = self.path_norths[min(self.current_path_index + 1, max_index)]
         m = (y_next - y_cur) / (x_next - x_cur)
 
         # Slope of the perpendicular line to the original line
         m_perp = -1/m
 
         # Notes: The point-slope form of the perpendicular line at point (x_next, y_next) is as follows:
-        # 0 = m_perp * (x - x_next) / (y - y_next)
+        # 0 = m_perp * (x - x_next) / (y - y_next) - 1
 
         # Determine which side of the line the current index point lies on, indicated by the sign of k_cur
-        k_cur = m_perp * (x_cur - x_next) / (y_cur - y_next)
+        k_cur = (y_cur - y_next) - m_perp * (x_cur - x_next)
 
         # Determine which side of the line the robot lies on, indicated by the sign of k_robot
-        k_robot = m_perp * (self.robot_east - x_next) / (self.robot_north - y_next)
+        k_robot = (self.robot_north - y_next) - m_perp * (self.robot_east - x_next)
+
+        # print('cur')
+        # print(x_cur, y_cur)
+        # print('next')
+        # print(x_next, y_next)
+        # print('k_cur', k_cur)
+        # print('k_robot', k_robot)
 
         # If the two above points are on different sides of the line
         if k_cur * k_robot < 0:
@@ -153,33 +162,37 @@ class PathFollower:
 
     def update_turning_radius(self):
         # Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
+        max_index = len(self.path_easts) - 1
+
+        print(self.current_path_index)
         
         # robot point
         x1 = self.robot_east
         y1 = self.robot_north
-        # print('x1', x1)
-        # print('y1', y1)
+        print('x1', x1)
+        print('y1', y1)
 
         # look-ahead point
-        x2 = self.path_easts[self.current_path_index + self.look_ahead_points]
-        y2 = self.path_norths[self.current_path_index + self.look_ahead_points]
-        # print('x2', x2)
-        # print('y2', y2)
+        x2 = self.path_easts[min(max_index, self.current_path_index + self.look_ahead_points)]
+        y2 = self.path_norths[min(max_index, self.current_path_index + self.look_ahead_points)]
+        print('x2', x2)
+        print('y2', y2)
 
-        # make heading begin on the x-axis and go counter-clockwise as positive
-        adjusted_heading = -self.robot_heading - pi/2
+        # make heading begin on the x-axis (east axis)+
+        #  and go counter-clockwise as positive
+        adjusted_heading = pi/2 - self.robot_heading
+        # print('adjust_heading: ', adjusted_heading)
 
         # distance from robot to look-ahead point
         distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+        print('look ahead distance: ', distance)
 
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
+        # print('angle from robot to look-ahead point: ', look_ahead_angle)
 
         self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
-        # print(distance)
-        # print(look_ahead_angle)
-        # print(adjusted_heading)
-        # print(self.turning_radius)
+        # print('turning radius: ', self.turning_radius)
 
     def publish_robot_velocity(self):
 
