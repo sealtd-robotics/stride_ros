@@ -11,6 +11,7 @@ from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, Stri
 from geometry_msgs.msg import Pose2D, Vector3, Twist
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
+from path_follower.msg import Latlong
 import time
 import threading
 from datetime import datetime
@@ -30,7 +31,16 @@ class RosInterface:
     def __init__(self):
         self.gps_callback_sleep_time = 0.1
 
-        # javascript naming convention
+        # Does not get transmitted continuously
+        self.path_to_follow = {
+            "latitudes": [],
+            "longitudes": []
+        }
+
+        # robotState:
+        #   -javascript naming convention used
+        #   -additional keys will be added before sending out
+        #   -gets transmited continuously at certain rate
         self.robotState = {
             "type": "robotState",
             "robotVelocityCommand": {
@@ -39,7 +49,7 @@ class RosInterface:
             },
             "robotTurningRadius": 0,
             "overseerState": 0,
-            # websocketClientCount will be added before sending out
+            # "websocketClientCount" will be added before sending out
             "doesBrakeWhenStopped": False,
             "robotTemperature": 0,
             "batteryTemperature": 0,
@@ -163,6 +173,7 @@ class RosInterface:
 
         # Path Follower Subscribers
         rospy.Subscriber('/path_follower/path_name', String, self.path_follower_callback_1, queue_size=1)
+        rospy.Subscriber('/path_follower/path_to_follow', Latlong, self.path_follower_callback_2, queue_size=1)
 
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
@@ -306,6 +317,9 @@ class RosInterface:
     def path_follower_callback_1(self, msg):
         self.robotState['pathFollower']['pathName'] = msg.data
 
+    def path_follower_callback_2(self, msg):
+        self.path_to_follow['latitudes'] = msg.latitudes
+        self.path_to_follow['longitudes'] = msg.longitudes
 
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
@@ -338,6 +352,10 @@ class MyServerProtocol(WebSocketServerProtocol):
         self.thread3 = threading.Thread(target=self.close_if_no_incoming_messages)
         self.thread3.setDaemon(True)
         self.thread3.start()
+
+        self.thread4 = threading.Thread(target=self.transmit_path_to_follow)
+        self.thread4.setDaemon(True)
+        self.thread4.start()
 
     def onMessage(self, payload, isBinary):
         # if isBinary:
@@ -428,6 +446,28 @@ class MyServerProtocol(WebSocketServerProtocol):
             if self.get_time_now_in_ms() - self.message_arrival_time > 4000:
                 reactor.callFromThread(self.sendClose)
 
+            rate.sleep()
+
+    def transmit_path_to_follow(self):
+        rate = rospy.Rate(2)
+        previous_latitudes = []
+        previous_longitudes = []
+        while self.is_connected:
+            is_new_latitudes = id(previous_latitudes) != id(MyServerProtocol.ros_interface.path_to_follow['latitudes'])
+            is_new_longitudes = id(previous_longitudes) != id(MyServerProtocol.ros_interface.path_to_follow['longitudes'])
+            
+            if is_new_latitudes and is_new_longitudes:
+                path_to_follow = {'type': '/path_follower/path_to_follow',
+                                    'latitudes':MyServerProtocol.ros_interface.path_to_follow['latitudes'],
+                                    'longitudes':MyServerProtocol.ros_interface.path_to_follow['longitudes']}
+
+                pathMessage = json.dumps(path_to_follow, ensure_ascii = False).encode('utf8')
+                reactor.callFromThread(self.sendMessage, pathMessage, False)
+
+                previous_latitudes = MyServerProtocol.ros_interface.path_to_follow['latitudes'] # shallow copy
+                previous_longitudes = MyServerProtocol.ros_interface.path_to_follow['longitudes']
+                print('path_to_follow updated')
+            
             rate.sleep()
 
 def shutdown():

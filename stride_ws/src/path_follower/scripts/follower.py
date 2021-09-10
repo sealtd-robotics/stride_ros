@@ -13,8 +13,11 @@ import os
 from std_msgs.msg import Int32, Float32, String, Empty
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
+from path_follower.msg import Latlong
+
 from math import cos, sin, sqrt, pi, atan2
 from glob import glob
+
 
 class PathFollower:
     def __init__(self):
@@ -28,6 +31,8 @@ class PathFollower:
         self.lat_ref = 0
         self.long_ref = 0
         self.robot_heading = 0
+        self.latitudes = []
+        self.longitudes = []
         self.path_easts = []
         self.path_norths = []
         self.robot_east = 1
@@ -37,6 +42,7 @@ class PathFollower:
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
+        self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1, queue_size=10)
@@ -48,7 +54,6 @@ class PathFollower:
 
         # Load path at startup
         self.load_path()
-        
 
         # rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_3, queue_size=1)
     
@@ -75,13 +80,14 @@ class PathFollower:
             return
         
         filepath = txt_files[0]
-        
-
-        self.path_easts = []
-        self.path_norths = []
 
         line_number = 1
         with open(filepath, 'r') as f:
+            self.latitudes = []
+            self.longitudes = []
+            self.path_easts = []
+            self.path_norths = []
+
             for line in f.readlines():
                 # omit the first line in file
                 if line_number == 1:
@@ -97,6 +103,9 @@ class PathFollower:
                     self.assign_reference_point(latitude, longitude)
                     line_number += 1
 
+                self.latitudes.append(latitude)
+                self.longitudes.append(longitude)
+
                 (pos_north, pos_east) = self.LL2NE(latitude, longitude)
 
                 self.path_easts.append(pos_east)
@@ -104,6 +113,11 @@ class PathFollower:
         
         filename = os.path.basename(filepath)
         self.path_name_publisher.publish(filename)
+
+        latlong = Latlong()
+        latlong.latitudes = self.latitudes
+        latlong.longitudes = self.longitudes
+        self.path_to_follow_publisher.publish(latlong)
 
         # for i in range(0, len(self.path_easts)):
         #     print(self.path_easts[i], self.path_norths[i])
