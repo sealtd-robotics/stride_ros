@@ -56,35 +56,40 @@ class RobotCommander:
 
 class Receptionist:
     def __init__(self):
-        self.custom_scripts_directory = os.path.dirname(sys.argv[0]) + "/../../../custom_scripts"
+        self.script_folder = "../../../custom_script/"
         self.should_abort = False
-        self.is_auto_on = False
+        self.is_script_running = False
 
         # Publishers
-        self.is_auto_on_publisher = rospy.Publisher('/robot_commander/is_auto_on', Bool, queue_size=1)
+        self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/start_custom_script', Empty, self.start_custom_script, queue_size=1)
-        rospy.Subscriber('/overseer/state', Int32, self.set_should_abort_callback, queue_size=10)
+        rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback, queue_size=10)
 
-    def start_custom_script(self, msg):
-        if not self.is_auto_on:
-            self.is_auto_on = True
-            self.is_auto_on_publisher.publish(self.is_auto_on)
+        self.is_script_running_publisher.publish(False)
 
-            try:
-                execfile(self.custom_scripts_directory + "/script1.py")
-            except Exception as e:
-                print(e)
+    def start_custom_script(self):
+        try:
+            execfile(self.script_folder + "script1.py")
+        except Exception as e:
+            print(e)
 
-            self.is_auto_on = False
-            self.is_auto_on_publisher.publish(self.is_auto_on)
+        # The following 3 lines must run in this specific sequence
+        self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
+        time.sleep(0.5)
+        self.is_script_running = False
+        
 
-    def set_should_abort_callback(self, overseer_state):
-        # One way to abort a thread is killing this ROS node, which automatically respawns
-        if self.is_auto_on and overseer_state.data == 5:
+    def overseer_state_callback(self, overseer_state):
+        if overseer_state.data == 2 and not self.is_script_running:
+            self.is_script_running = True
+            self.is_script_running_publisher.publish(True)
+            
+            self.start_custom_script()
+
+        elif overseer_state.data != 2 and self.is_script_running:
             self.should_abort = True
-
 
 if __name__ == '__main__':
     node = rospy.init_node('robot_commander')
@@ -96,6 +101,6 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         # One way to abort a thread is killing this ROS node, which automatically respawns
         if receptionist.should_abort:
-            receptionist.is_auto_on_publisher.publish(False) # if node gets killed, signal False
+            receptionist.is_script_running_publisher.publish(False) # if node is about to be killed, signal False
             break
         rate.sleep()

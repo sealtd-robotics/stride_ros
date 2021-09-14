@@ -395,11 +395,16 @@ class MyServerProtocol(WebSocketServerProtocol):
         elif message['type'] == '/gui/start_path_following_clicked':
             MyServerProtocol.ros_interface.start_following_publisher.publish()
         elif message['type'] == '/gui/upload_path_clicked':
+            folder = '../../../path/'
+            
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+
             # remove all txt files (there should only be one txt file allowed in the folder)
-            for path in glob ('../../../path/*.txt'):
+            for path in glob (folder + '*.txt'):
                 os.remove(path)
             
-            with open('../../../path/' + message['filename'], 'w+') as f:
+            with open(folder + message['filename'], 'w+') as f:
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_path_publisher.publish()
 

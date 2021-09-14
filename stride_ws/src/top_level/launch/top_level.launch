@@ -9,5 +9,6 @@
     <include file="$(find overseer)/launch/overseer.launch" />
     <include file="$(find advanced_navigation_driver)/launch/advanced_navigation_driver.launch" />
     <include file="$(find path_follower)/launch/path_follower.launch" />
+    <include file="$(find robot_commander)/launch/robot_commander.launch" />
 
 </launch>

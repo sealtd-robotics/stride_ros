@@ -10,6 +10,7 @@ from __future__ import division
 import rospy
 import math
 import os
+import time
 from std_msgs.msg import Int32, Float32, String, Empty
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
@@ -21,8 +22,7 @@ from glob import glob
 
 class PathFollower:
     def __init__(self):
-        self.point_spacing = 0.15   # meters. Is this needed?
-        self.look_ahead_points = 5
+        self.look_ahead_points = 3
 
         self.current_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
@@ -43,6 +43,7 @@ class PathFollower:
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
+        self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1, queue_size=10)
@@ -74,7 +75,12 @@ class PathFollower:
         return (pos_north, pos_east)
 
     def load_path(self):
-        txt_files = glob('../../../path/*.txt')
+        folder = '../../../path/'
+            
+        if not os.path.exists(folder):
+            return
+
+        txt_files = glob(folder + '*.txt')
         
         if len(txt_files) == 0:
             return
@@ -125,7 +131,6 @@ class PathFollower:
     def update_current_path_index(self):
         max_index = len(self.path_easts) - 1
 
-        # if current index is the last index, return
         if self.current_path_index == max_index:
             return
 
@@ -149,60 +154,51 @@ class PathFollower:
         # Determine which side of the line the robot lies on, indicated by the sign of k_robot
         k_robot = (self.robot_north - y_next) - m_perp * (self.robot_east - x_next)
 
-        # print('cur')
-        # print(x_cur, y_cur)
-        # print('next')
-        # print(x_next, y_next)
-        # print('k_cur', k_cur)
-        # print('k_robot', k_robot)
-
         # If the two above points are on different sides of the line
         if k_cur * k_robot < 0:
             self.current_path_index += 1
+            self.current_path_index_publisher.publish(self.current_path_index)
 
     def update_turning_radius(self):
-        # Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
+        # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
+        
         max_index = len(self.path_easts) - 1
-
-        print(self.current_path_index)
         
         # robot point
         x1 = self.robot_east
         y1 = self.robot_north
-        print('x1', x1)
-        print('y1', y1)
 
         # look-ahead point
         x2 = self.path_easts[min(max_index, self.current_path_index + self.look_ahead_points)]
         y2 = self.path_norths[min(max_index, self.current_path_index + self.look_ahead_points)]
-        print('x2', x2)
-        print('y2', y2)
 
         # make heading begin on the x-axis (east axis)+
         #  and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
-        # print('adjust_heading: ', adjusted_heading)
 
         # distance from robot to look-ahead point
         distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
-        print('look ahead distance: ', distance)
 
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
-        # print('angle from robot to look-ahead point: ', look_ahead_angle)
 
         self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
-        # print('turning radius: ', self.turning_radius)
 
     def publish_robot_velocity(self):
+        max_index = len(self.path_easts) - 1
+
+        if self.current_path_index == max_index:
+            pose2d = Pose2D()
+            pose2d.x = 0
+            pose2d.theta = 0
+            self.robot_velocity_publisher.publish(pose2d)
+            return
 
         pose2d = Pose2D()
         pose2d.x = 0.5
         pose2d.theta = 0.5 / self.turning_radius
 
         self.robot_velocity_publisher.publish(pose2d)
-
-
 
     # Subscriber callbacks
     def subscriber_callback_1(self, msg):
@@ -235,5 +231,11 @@ if __name__ ==  '__main__':
             pf.update_turning_radius()
             pf.publish_robot_velocity()
         else:
+            # throttling the else statement
+            time.sleep(0.1)
+
+            # re-initialize variables
             pf.current_path_index = 0
+            pf.current_path_index_publisher.publish(0)
+
         rate.sleep() 
