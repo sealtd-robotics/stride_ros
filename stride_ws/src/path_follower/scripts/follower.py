@@ -38,16 +38,19 @@ class PathFollower:
         self.robot_east = 1
         self.robot_north = 1
         self.turning_radius = 1
+        self.desired_speed = 0
 
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1)
+        self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
 
         # Subscribers
-        rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1, queue_size=10)
-        rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2, queue_size=1)
+        rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
+        rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2)
+        rospy.Subscriber('/path_follower/desired_speed', Int32, self.subscriber_callback_3)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
@@ -125,6 +128,8 @@ class PathFollower:
         latlong.longitudes = self.longitudes
         self.path_to_follow_publisher.publish(latlong)
 
+        self.max_index_publisher.publish(len(self.path_easts) - 1)
+
         # for i in range(0, len(self.path_easts)):
         #     print(self.path_easts[i], self.path_norths[i])
 
@@ -146,7 +151,7 @@ class PathFollower:
         m_perp = -1/m
 
         # Notes: The point-slope form of the perpendicular line at point (x_next, y_next) is as follows:
-        # 0 = m_perp * (x - x_next) / (y - y_next) - 1
+        # 0 = (y_cur - y_next) - m_perp * (x_cur - x_next)
 
         # Determine which side of the line the current index point lies on, indicated by the sign of k_cur
         k_cur = (y_cur - y_next) - m_perp * (x_cur - x_next)
@@ -195,8 +200,8 @@ class PathFollower:
             return
 
         pose2d = Pose2D()
-        pose2d.x = 0.5
-        pose2d.theta = 0.5 / self.turning_radius
+        pose2d.x = self.desired_speed
+        pose2d.theta = self.desired_speed / self.turning_radius
 
         self.robot_velocity_publisher.publish(pose2d)
 
@@ -206,6 +211,9 @@ class PathFollower:
 
     def subscriber_callback_2(self, msg):
         self.load_path()
+
+    def subscriber_callback_3(self, msg):
+        self.desired_speed = msg.data
 
 
     # GPS subscriber callbacks
@@ -234,8 +242,9 @@ if __name__ ==  '__main__':
             # throttling the else statement
             time.sleep(0.1)
 
-            # re-initialize variables
+            # reset variables
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
+            pf.desired_speed = 0
 
         rate.sleep() 

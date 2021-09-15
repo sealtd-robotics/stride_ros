@@ -144,6 +144,14 @@ class Handheld:
     def estop_callback(self, msg):
         self.is_estop_pressed = msg.data
 
+class RobotCommander:
+    def __init__(self):
+        self.is_script_running = False
+        rospy.Subscriber('/robot_commander/is_script_running', Bool, self.is_script_running_callback)
+
+    def is_script_running_callback(self, msg):
+        self.is_script_running = msg.data
+
 if __name__ ==  '__main__':
     node = rospy.init_node('overseer')
 
@@ -160,11 +168,13 @@ if __name__ ==  '__main__':
 
     error_handler = ErrorHandler(mcs, gui, handheld)
 
+    rc = RobotCommander()
+
     # initial state
     state = STOPPED
 
     # Publishers
-    state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=10)
+    state_publisher = rospy.Publisher('/overseer/state', Int32, queue_size=20)
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
@@ -182,6 +192,8 @@ if __name__ ==  '__main__':
             if handheld.is_estop_pressed:
                 state = E_STOPPED
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
+                state = STOPPED
+            elif not rc.is_script_running:
                 state = STOPPED
 
         # E_Stopped
