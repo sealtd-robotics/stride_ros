@@ -5,7 +5,7 @@ rc = RobotCommander()
 
 # rc.move_till_end_of_path(speed)
 time.sleep(2)
-print("done")
+print("all done")
 
 
 # print("1")

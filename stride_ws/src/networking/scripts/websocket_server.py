@@ -174,6 +174,7 @@ class RosInterface:
         # Path Follower Subscribers
         rospy.Subscriber('/path_follower/path_name', String, self.path_follower_callback_1, queue_size=1)
         rospy.Subscriber('/path_follower/path_to_follow', Latlong, self.path_follower_callback_2, queue_size=1)
+        rospy.Subscriber('/path_follower/script_name', String, self.path_follower_callback_3, queue_size=1)
 
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
@@ -185,6 +186,7 @@ class RosInterface:
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
+        self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
     
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -321,6 +323,9 @@ class RosInterface:
         self.path_to_follow['latitudes'] = msg.latitudes
         self.path_to_follow['longitudes'] = msg.longitudes
 
+    def path_follower_callback_3(self, msg):
+        self.robotState['pathFollower']['scriptName'] = msg.data
+
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
     websocket_client_count = 0
@@ -407,6 +412,20 @@ class MyServerProtocol(WebSocketServerProtocol):
             with open(folder + message['filename'], 'w+') as f:
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_path_publisher.publish()
+
+        elif message['type'] == '/gui/upload_script_clicked':
+            folder = '../../../custom_script/'
+            
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+
+            # remove all txt files (there should only be one txt file allowed in the folder)
+            for path in glob (folder + '*.py'):
+                os.remove(path)
+            
+            with open(folder + message['filename'], 'w+') as f:
+                f.write(message['fileContent'])
+            MyServerProtocol.ros_interface.upload_script_publisher.publish()
 
     def onClose(self, wasClean, code, reason):
         self.is_connected = False

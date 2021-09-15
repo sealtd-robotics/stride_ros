@@ -6,8 +6,9 @@ import time
 import threading
 import os
 import sys
+from glob import glob
 
-from std_msgs.msg import Int32, Empty, Bool
+from std_msgs.msg import Int32, Empty, Bool, String
 from geometry_msgs.msg import Pose2D
 from datetime import datetime
 
@@ -76,11 +77,32 @@ class Receptionist:
 
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)
+        self.script_name_publisher = rospy.Publisher('/path_follower/script_name', String, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
+        rospy.Subscriber('/gui/upload_script_clicked', Empty, self.callback_1)
+
         self.is_script_running_publisher.publish(False)
+        self.check_script()
+
+    # !!!! Need to add syntax checking !!!
+    def check_script(self):
+        folder = '../../../custom_script/'
+        
+        if not os.path.exists(folder):
+            return
+
+        py_files = glob(folder + '*.py')
+        
+        if len(py_files) == 0:
+            return
+        
+        filepath = py_files[0]   
+
+        filename = os.path.basename(filepath)
+        self.script_name_publisher.publish(filename)
 
     def start_custom_script(self):
         try:
@@ -108,6 +130,9 @@ class Receptionist:
         elif overseer_state.data != 2 and self.is_script_running:
             self.should_abort = True
 
+    def callback_1(self, msg):
+        self.check_script()
+
 if __name__ == '__main__':
     node = rospy.init_node('robot_commander')
 
@@ -118,7 +143,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         # One way to abort a thread is killing this ROS node, which automatically respawns
         if receptionist.should_abort:
-            receptionist.is_script_running_publisher.publish(False) # if node is about to be killed, signal False
+            receptionist.is_script_running_publisher.publish(False)
             break
         rate.sleep()
     
