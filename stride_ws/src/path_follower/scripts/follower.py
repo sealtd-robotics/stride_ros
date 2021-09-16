@@ -50,7 +50,7 @@ class PathFollower:
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
         rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2)
-        rospy.Subscriber('/path_follower/desired_speed', Int32, self.subscriber_callback_3)
+        rospy.Subscriber('/path_follower/desired_speed', Float32, self.subscriber_callback_3)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
@@ -181,8 +181,8 @@ class PathFollower:
         #  and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
 
-        # distance from robot to look-ahead point
-        distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+        # distance from robot to look-ahead point, max() to prevent small distance for the last index
+        distance = max(sqrt( (x2-x1)**2 + (y2-y1)**2 ), 0.1)
 
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
@@ -198,7 +198,6 @@ class PathFollower:
             pose2d.theta = 0
             self.robot_velocity_publisher.publish(pose2d)
             return
-
         pose2d = Pose2D()
         pose2d.x = self.desired_speed
         pose2d.theta = self.desired_speed / self.turning_radius
@@ -232,19 +231,21 @@ if __name__ ==  '__main__':
 
     pf = PathFollower()
 
+    should_reset_variables = False
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
         if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
             pf.update_current_path_index()
             pf.update_turning_radius()
             pf.publish_robot_velocity()
-        else:
-            # throttling the else statement
-            time.sleep(0.1)
 
-            # reset variables
+            should_reset_variables = True
+
+        elif should_reset_variables:
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
             pf.desired_speed = 0
+
+            should_reset_variables = False
 
         rate.sleep() 

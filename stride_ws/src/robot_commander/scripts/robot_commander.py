@@ -8,7 +8,7 @@ import os
 import sys
 from glob import glob
 
-from std_msgs.msg import Int32, Empty, Bool, String
+from std_msgs.msg import Int32, Empty, Bool, String, Float32
 from geometry_msgs.msg import Pose2D
 from datetime import datetime
 
@@ -19,7 +19,7 @@ class RobotCommander:
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
-        self.desired_speed_publisher = rospy.Publisher('/path_follower/desired_speed', Int32, queue_size=1, latch=True)
+        self.desired_speed_publisher = rospy.Publisher('/path_follower/desired_speed', Float32, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -27,7 +27,6 @@ class RobotCommander:
 
     def move_till_end_of_path(self, speed):
         self.desired_speed_publisher.publish(speed)
-        self.max_path_index = 999
         rate = rospy.Rate(25)
         while (self.current_path_index != self.max_path_index):
             rate.sleep()
@@ -71,9 +70,11 @@ class RobotCommander:
 class Receptionist:
     def __init__(self):
         self.script_folder = "../../../custom_script/"
+        self.filename = ""
         self.should_abort = False
         self.is_script_running = False
         self.previous_state = -1
+        self.is_script_okay = False
 
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)
@@ -87,26 +88,31 @@ class Receptionist:
         self.is_script_running_publisher.publish(False)
         self.check_script()
 
-    # !!!! Need to add syntax checking !!!
     def check_script(self):
-        folder = '../../../custom_script/'
-        
-        if not os.path.exists(folder):
+
+        # !!!! Need to add syntax checking !!!!
+        self.is_script_okay = True
+        # !!!!
+
+        if not os.path.exists(self.script_folder):
             return
 
-        py_files = glob(folder + '*.py')
+        py_files = glob(self.script_folder + '*.py')
         
         if len(py_files) == 0:
             return
         
         filepath = py_files[0]   
 
-        filename = os.path.basename(filepath)
-        self.script_name_publisher.publish(filename)
+        self.filename = os.path.basename(filepath)
+        self.script_name_publisher.publish(self.filename)
 
     def start_custom_script(self):
+        if not self.is_script_okay:
+            return
+
         try:
-            execfile(self.script_folder + "script1.py")
+            execfile(self.script_folder + self.filename)
         except Exception as e:
             print(e)
 
@@ -146,5 +152,3 @@ if __name__ == '__main__':
             receptionist.is_script_running_publisher.publish(False)
             break
         rate.sleep()
-    
-    print('robot_commander node killed. It will be respawned immediately')

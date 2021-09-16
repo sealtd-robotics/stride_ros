@@ -1,12 +1,8 @@
 speed = 1
-t = 1000
 
 rc = RobotCommander()
 
-# rc.move_till_end_of_path(speed)
-time.sleep(2)
-print("all done")
-
+rc.move_till_end_of_path(speed)
 
 # print("1")
 # rc.go_straight_for_milliseconds(speed, t)
