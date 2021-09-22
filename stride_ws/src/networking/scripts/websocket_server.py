@@ -332,7 +332,7 @@ class MyServerProtocol(WebSocketServerProtocol):
     ros_interface = RosInterface()
     shared_path = {'type': '', 'latitudes':[], 'longitudes':[]}
 
-    # The init function of this class is called before each connection and is only relevent to that connection
+    # Side note: The init function of this class is called before each connection and is only relevent to that connection
 
     # Each connection will have its own onConnect, onOpen, onMessage, and onClose 
     def onConnect(self, request):

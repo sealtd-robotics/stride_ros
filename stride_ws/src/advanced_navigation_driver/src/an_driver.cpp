@@ -26,12 +26,16 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <fstream>
 #include <ros/ros.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <string>
+#include <ctime>
 
 #include "rs232/rs232.h"
 #include "an_packet_protocol.h"
@@ -48,6 +52,7 @@
 #include <thread>
 
 #define RADIANS_TO_DEGREES (180.0/M_PI)
+#define AN_PACKET_HEADER_SIZE 5
 
 void RequestMagneticCalibrationStatus()
 {
@@ -60,7 +65,7 @@ void RequestMagneticCalibrationStatus()
 	while(ros::ok)
 	{
 		SendBuf(reinterpret_cast<unsigned char *> (status_request->header),6);
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	}
 
 	an_packet_free(&status_request);
@@ -71,11 +76,37 @@ void MagneticCalibrationCallback(const std_msgs::UInt8& msg)
 	an_packet_t *an_packet{an_packet_allocate(1, 190)};
 	an_packet->data[0] = (int)msg.data;
 	an_packet_encode(an_packet);
-	SendBuf(reinterpret_cast<unsigned char *> (an_packet->header),6);
+	SendBuf(reinterpret_cast<unsigned char *> (an_packet->header), AN_PACKET_HEADER_SIZE + 1);
+	an_packet_free(&an_packet);
+}
+
+void RequestDebugMessages()
+{
+	an_packet_t *an_packet{an_packet_allocate(15, 1)};
+	an_packet->data[0] = 3;
+	an_packet->data[1] = 69;
+	an_packet->data[2] = 180;
+	an_packet->data[3] = 181;
+	an_packet->data[4] = 182;
+	an_packet->data[5] = 184;
+	an_packet->data[6] = 185;
+	an_packet->data[7] = 186;
+	an_packet->data[8] = 188;
+	an_packet->data[9] = 191;
+	an_packet->data[10] = 192;
+	an_packet->data[11] = 194;
+	an_packet->data[12] = 195;
+	an_packet->data[13] = 198;
+	an_packet->data[14] = 199;
+	an_packet_encode(an_packet);
+	SendBuf(reinterpret_cast<unsigned char *> (an_packet->header), AN_PACKET_HEADER_SIZE + 15);
 	an_packet_free(&an_packet);
 }
 
 int main(int argc, char *argv[]) {
+	// Debug logging
+	bool should_log_for_debug = true;
+
 	// Set up ROS node //
 	ros::init(argc, argv, "an_device_node");
 	ros::NodeHandle nh;
@@ -105,7 +136,7 @@ int main(int argc, char *argv[]) {
 	pnh.param("topic_prefix", topic_prefix, std::string("an_device"));
 
 	// Subscribers
-	ros::Subscriber sub = nh.subscribe(topic_prefix + "/magnetic_calibration/calibrate", 10, MagneticCalibrationCallback);
+	ros::Subscriber sub = nh.subscribe(topic_prefix + "/magnetic_calibration/calibrate", 1000, MagneticCalibrationCallback);
 
 	// Initialise Publishers and Topics //
 	ros::Publisher nav_sat_fix_pub=nh.advertise<sensor_msgs::NavSatFix>(topic_prefix + "/NavSatFix",10);
@@ -202,6 +233,24 @@ int main(int argc, char *argv[]) {
 
 	an_decoder_initialise(&an_decoder);
 
+	// Debug Logging
+	std::ofstream debug_file;
+	if (should_log_for_debug == true)
+	{
+		time_t now = time(0); // time in seconds since Jan 1 1970
+		tm *ltm = localtime(&now);
+		std::string filename = std::to_string(1900 + ltm->tm_year) + "_" +
+								std::to_string(1 + ltm->tm_mon) + "_" +
+								std::to_string(ltm->tm_mday) + "_" +
+								std::to_string(ltm->tm_hour) + "h_" +
+								std::to_string(ltm->tm_min) + "m" +
+								".ANPP";
+		std::string dir_name = "../../../gps_debug_log";
+		mkdir(dir_name.c_str(),0777);
+		debug_file.open(dir_name + "/" + filename);
+		RequestDebugMessages();
+	}
+
 	// Loop continuously, polling for packets
 	while (ros::ok())
 	{
@@ -217,7 +266,16 @@ int main(int argc, char *argv[]) {
 			// decode all the packets in the buffer //
 			while ((an_packet = an_packet_decode(&an_decoder)) != NULL)
 			{
-				// std::cout << unsigned(an_packet->id) << std::endl;
+				// debug logging
+				if (should_log_for_debug == true)
+				{
+					for (int i=0; i<AN_PACKET_HEADER_SIZE; i++) {
+						debug_file << an_packet->header[i];
+					}
+					for (int i=0; i < an_packet->length; i++) {
+						debug_file << an_packet->data[i];
+					}
+				}
 
 				// system state packet //
 				if (an_packet->id == packet_id_system_state)
@@ -443,6 +501,11 @@ int main(int argc, char *argv[]) {
 				an_packet_free(&an_packet);				
 			}
 		}
+	}
+
+	if (should_log_for_debug == true)
+	{
+		debug_file.close();
 	}
 }
 

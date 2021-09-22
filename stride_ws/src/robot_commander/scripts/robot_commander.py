@@ -19,7 +19,7 @@ class RobotCommander:
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
-        self.desired_speed_publisher = rospy.Publisher('/path_follower/desired_speed', Float32, queue_size=1, latch=True)
+        self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -27,9 +27,15 @@ class RobotCommander:
 
     def move_till_end_of_path(self, speed):
         self.desired_speed_publisher.publish(speed)
-        rate = rospy.Rate(25)
+        rate = rospy.Rate(50)
         while (self.current_path_index != self.max_path_index):
             rate.sleep()
+
+    def move_till_index(self, speed, index):
+        self.desired_speed_publisher.publish(speed)
+        rate = rospy.Rate(50)
+        while (self.current_path_index < index):
+            rate.sleep()     
 
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -71,10 +77,10 @@ class Receptionist:
     def __init__(self):
         self.script_folder = "../../../custom_script/"
         self.filename = ""
-        self.should_abort = False
         self.is_script_running = False
         self.previous_state = -1
         self.is_script_okay = False
+        self.overseer_state = 0
 
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)
@@ -83,7 +89,7 @@ class Receptionist:
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
-        rospy.Subscriber('/gui/upload_script_clicked', Empty, self.callback_1)
+        rospy.Subscriber('/gui/upload_script_clicked', Empty, self.upload_script_clicked_callback)
 
         self.is_script_running_publisher.publish(False)
         self.check_script()
@@ -94,61 +100,56 @@ class Receptionist:
         self.is_script_okay = True
         # !!!!
 
-        if not os.path.exists(self.script_folder):
-            return
+        if os.path.exists(self.script_folder):
+            py_files = glob(self.script_folder + '*.py')
+            if len(py_files) == 1:
+                filepath = py_files[0]   
 
-        py_files = glob(self.script_folder + '*.py')
-        
-        if len(py_files) == 0:
-            return
-        
-        filepath = py_files[0]   
-
-        self.filename = os.path.basename(filepath)
-        self.script_name_publisher.publish(self.filename)
+                self.filename = os.path.basename(filepath)
+                self.script_name_publisher.publish(self.filename)
 
     def start_custom_script(self):
-        if not self.is_script_okay:
-            return
-
-        try:
-            execfile(self.script_folder + self.filename)
-        except Exception as e:
-            print(e)
+        if self.is_script_okay:
+            try:
+                execfile(self.script_folder + self.filename)
+            except Exception as e:
+                print(e)
 
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
-        print("completed")
+        print("Custom script completed execution")
 
-    def overseer_state_callback(self, overseer_state):
-        if self.previous_state == overseer_state.data:
-            return
-        self.previous_state = overseer_state.data
+    def overseer_state_callback(self, msg):
+        self.overseer_state = msg.data
 
-        if overseer_state.data == 2 and not self.is_script_running:
-            self.is_script_running = True
-            self.is_script_running_publisher.publish(True)
-
-            custom_script_thread = threading.Thread(target=self.start_custom_script)
-            custom_script_thread.setDaemon(True)
-            custom_script_thread.start()
-        elif overseer_state.data != 2 and self.is_script_running:
-            self.should_abort = True
-
-    def callback_1(self, msg):
+    def upload_script_clicked_callback(self, msg):
         self.check_script()
 
 if __name__ == '__main__':
     node = rospy.init_node('robot_commander')
 
-    receptionist = Receptionist()
+    recept = Receptionist()
 
     rate = rospy.Rate(10)
 
     while not rospy.is_shutdown():
-        # One way to abort a thread is killing this ROS node, which automatically respawns
-        if receptionist.should_abort:
-            receptionist.is_script_running_publisher.publish(False)
-            break
+        # if there is a state change
+        if recept.previous_state != recept.overseer_state:
+            if recept.overseer_state == 2 and not recept.is_script_running:  # overseer state 2 is AUTO mode
+                recept.is_script_running = True
+                recept.is_script_running_publisher.publish(True)
+
+                custom_script_thread = threading.Thread(target=recept.start_custom_script)
+                custom_script_thread.setDaemon(True)
+                custom_script_thread.start()
+            
+            # If the STOP button is clicked when the custom script is still running, kill this ROS node by breaking out of the while loop.
+            # This ROS node will respawn after being killed
+            elif recept.overseer_state != 2 and recept.is_script_running:
+                recept.is_script_running_publisher.publish(False)
+                break
+
+            recept.previous_state = recept.overseer_state
+            
         rate.sleep()

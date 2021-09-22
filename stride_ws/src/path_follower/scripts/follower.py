@@ -50,7 +50,7 @@ class PathFollower:
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
         rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2)
-        rospy.Subscriber('/path_follower/desired_speed', Float32, self.subscriber_callback_3)
+        rospy.Subscriber('/robot_commander/desired_speed', Float32, self.subscriber_callback_3)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
@@ -177,17 +177,20 @@ class PathFollower:
         x2 = self.path_easts[min(max_index, self.current_path_index + self.look_ahead_points)]
         y2 = self.path_norths[min(max_index, self.current_path_index + self.look_ahead_points)]
 
-        # make heading begin on the x-axis (east axis)+
-        #  and go counter-clockwise as positive
+        # make heading begin on the x-axis (east axis) and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
 
-        # distance from robot to look-ahead point, max() to prevent small distance for the last index
-        distance = max(sqrt( (x2-x1)**2 + (y2-y1)**2 ), 0.1)
+        # distance from robot to look-ahead point
+        distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
 
         self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
+
+        # prevent sudden rotation when arriving at the last path index
+        if self.current_path_index == max_index - 1 and distance < 0.10:
+            self.turning_radius = 9999
 
     def publish_robot_velocity(self):
         max_index = len(self.path_easts) - 1
