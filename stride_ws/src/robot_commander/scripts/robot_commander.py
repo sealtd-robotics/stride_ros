@@ -6,16 +6,20 @@ import time
 import threading
 import os
 import sys
+import math
 from glob import glob
 
-from std_msgs.msg import Int32, Empty, Bool, String, Float32
-from geometry_msgs.msg import Pose2D
+from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
+from geometry_msgs.msg import Pose2D, Twist
 from datetime import datetime
 
 class RobotCommander:
     def __init__(self):
-        self.current_path_index = 0
-        self.max_path_index = 999
+        self.current_path_index = -1
+        self.max_path_index = -1
+        self.path_intervals = []
+        self.robot_speed = -1
+        self.robot_heading = -1
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -24,6 +28,17 @@ class RobotCommander:
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
+        rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
+
+        # GPS Subscribers
+        rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
+        rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
+
+        # blocking until all attributes have been updated by subscriber callbacks
+        while (self.current_path_index == -1 or self.max_path_index == -1 or
+                self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1):
+            time.sleep(0.1)
+
 
     def move_till_end_of_path(self, speed):
         self.desired_speed_publisher.publish(speed)
@@ -35,7 +50,26 @@ class RobotCommander:
         self.desired_speed_publisher.publish(speed)
         rate = rospy.Rate(50)
         while (self.current_path_index < index):
-            rate.sleep()     
+            rate.sleep()
+
+    # maybe add a try-except station to catch array[3:3] = []
+    def decel_to_stop_at_index(self, stop_index):
+        frequency = 50
+        rate = rospy.Rate(frequency)
+        period = 1/frequency
+
+        while (self.current_path_index < index):
+            # kinemetic equation: vf^2 = vi^2 + 2*a*d
+            vi = self.robot_speed
+            d = sum(self.path_intervals[ self.current_path_index : stop_index - 1 ])
+            a = -vi**2 / 2 / d
+
+            speed = vi + a*period # a is negative
+            speed = max(speed, 0.1) # prevent zero velocity before reaching the stop_index
+
+            desired_speed_publisher.publish(speed)
+            rate.sleep()
+
 
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -70,8 +104,17 @@ class RobotCommander:
     def current_path_index_callback(self, msg):
         self.current_path_index = msg.data
 
-    def max_path_index_callback(self,msg):
+    def max_path_index_callback(self, msg):
         self.max_path_index = msg.data
+
+    def path_intervals_callback(self, msg):
+        self.path_intervals = msg.data
+
+    def gps_twist_callback(self, msg):
+        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
+
+    def gps_heading_callback(self. msg):
+        self.robot_heading = msg.data # in radian
 
 class Receptionist:
     def __init__(self):
@@ -88,7 +131,6 @@ class Receptionist:
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
-
         rospy.Subscriber('/gui/upload_script_clicked', Empty, self.upload_script_clicked_callback)
 
         self.is_script_running_publisher.publish(False)

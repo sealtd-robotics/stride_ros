@@ -11,7 +11,7 @@ import rospy
 import math
 import os
 import time
-from std_msgs.msg import Int32, Float32, String, Empty
+from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
 from path_follower.msg import Latlong
@@ -39,6 +39,7 @@ class PathFollower:
         self.robot_north = 1
         self.turning_radius = 1
         self.desired_speed = 0
+        self.path_intervals = []
 
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -46,6 +47,7 @@ class PathFollower:
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1)
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
+        self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
@@ -96,6 +98,7 @@ class PathFollower:
             self.longitudes = []
             self.path_easts = []
             self.path_norths = []
+            self.path_intervals = []
 
             for line in f.readlines():
                 # omit the first line in file
@@ -130,8 +133,15 @@ class PathFollower:
 
         self.max_index_publisher.publish(len(self.path_easts) - 1)
 
-        # for i in range(0, len(self.path_easts)):
-        #     print(self.path_easts[i], self.path_norths[i])
+        # path_intervals[3] gives the distance between index 3 and 4
+        for i in range(0, len(self.path_easts) - 1):
+            dx = self.path_easts[i+1] - self.path_easts[i]
+            dy = self.path_norths[i+1] - self.path_norths[i]
+            distance = sqrt(dx**2 + dy**2)
+            self.path_intervals.append(distance)
+        msg = Float32MultiArray()
+        msg.data = self.path_intervals
+        self.path_intervals_publisher.publish(msg)
 
     def update_current_path_index(self):
         max_index = len(self.path_easts) - 1
