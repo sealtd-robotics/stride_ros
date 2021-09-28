@@ -37,7 +37,7 @@
 ## to the 'chatter' topic
 
 import rospy
-from std_msgs.msg import String, Float32
+from std_msgs.msg import String, Float32, Empty
 from geometry_msgs.msg import Twist
 from can_interface.msg import WheelRPM
 from sensor_msgs.msg import NavSatFix
@@ -57,6 +57,8 @@ def talker():
     pub11 = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=10)
     pub12 = rospy.Publisher('robot_velocity_commmand', Twist, queue_size=10)
     pub13 = rospy.Publisher('/an_device/NavSatFix', NavSatFix, queue_size=10)
+    pub14 = rospy.Publisher('/test', Empty, queue_size=10)
+    pub15 = rospy.Publisher('/blocking', Empty, queue_size=10)
 
     count = 0
     rospy.init_node('talker', anonymous=True)
@@ -100,6 +102,8 @@ def talker():
         navSatFix.longitude = count
         pub13.publish(navSatFix)
 
+        pub14.publish()
+        pub15.publish()
 
         rate.sleep()
 

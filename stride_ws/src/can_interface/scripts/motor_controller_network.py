@@ -31,6 +31,7 @@ class MotorControllerNode:
         self.heartbeat_arrival_time = self.get_time_now_in_ms() + 5000 # added some time buffer for startup
         self.overseer_state = 0
         self.sdo_controlword = self.node.sdo[0x6040]
+        self.sdo_ambient_temperature = self.node.sdo[0x232A][0x08]
 
         # Change motor controller NMT state to Operational, which allows PDO communication
         self.change_nmt_state('OPERATIONAL')
@@ -61,6 +62,12 @@ class MotorControllerNode:
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
         self.heartbeat_thread.setDaemon(True)
         self.heartbeat_thread.start()
+
+    def transmit_ambient_temperature(self, degree_F):
+        degree_C = (degree_F - 32) * 5 / 9
+        self.sdo_ambient_temperature.raw = degree_C
+
+        time.sleep(0.05) 
 
     def monitor_heartbeat(self):
         while True:
@@ -160,6 +167,7 @@ class MotorControllerNetwork:
         self.overseer_state = 0
         self.does_brake_when_stopped = False
         self.has_quick_stop_been_applied = False
+        self.ambient_temperature_F = 72
 
         self.left_front_rpm = 0
         self.left_back_rpm = 0
@@ -212,6 +220,7 @@ class MotorControllerNetwork:
         rospy.Subscriber('/wheel_rpm_command', WheelRPM, self.set_rpm, queue_size=1)
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
+        rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -227,6 +236,11 @@ class MotorControllerNetwork:
         self.mcn_thread_3 = threading.Thread(target=self.relax_motors)
         self.mcn_thread_3.setDaemon(True)
         self.mcn_thread_3.start()
+
+        # Thread to update ambient temperature of all motors
+        self.mcn_thread_4 = threading.Thread(target=self.update_ambient_temperature)
+        self.mcn_thread_4.setDaemon(True)
+        self.mcn_thread_4.start()
 
     def can_relax(self):
         return self.overseer_state == 1 and self.does_brake_when_stopped and \
@@ -264,6 +278,19 @@ class MotorControllerNetwork:
                 self.does_brake_when_stopped = False
             self.does_brake_when_stopped_publisher.publish(self.does_brake_when_stopped)
             time.sleep(0.1)
+    
+    def set_ambient_temperature(self, msg):
+        self.ambient_temperature_F = msg.data
+
+    def update_ambient_temperature(self):
+        while True:
+            self.mc_lf_node.transmit_ambient_temperature(self.ambient_temperature_F)
+            self.mc_lb_node.transmit_ambient_temperature(self.ambient_temperature_F)
+            self.mc_rf_node.transmit_ambient_temperature(self.ambient_temperature_F)
+            self.mc_rb_node.transmit_ambient_temperature(self.ambient_temperature_F)
+
+            time.sleep(10)
+            
 
     def set_rpm(self,msg):
         self.left_front_rpm = msg.left_front
@@ -317,6 +344,7 @@ class MotorControllerNetwork:
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
+
                         while self.is_any_measured_wheel_rpm_above_this(250):
                             self.enable_power_for_all_motors()
                             self.send_zero_rpm_to_all_motors()

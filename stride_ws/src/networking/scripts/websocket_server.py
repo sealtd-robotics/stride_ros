@@ -121,8 +121,8 @@ class RosInterface:
         rospy.Subscriber('/robot_turning_radius', Float32, self.subscriber_callback_2, queue_size=1)
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/motor_controller_network/does_brake_when_stopped', Bool, self.subscriber_callback_4, queue_size=1)
-        rospy.Subscriber('/robot_temperature', Int16, self.subscriber_callback_5, queue_size=1)
-        rospy.Subscriber('/battery_temperature', Int16, self.subscriber_callback_6, queue_size=1)
+        rospy.Subscriber('/robot_temperature', Int32, self.subscriber_callback_5, queue_size=1)
+        rospy.Subscriber('/battery_temperature', Int32, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
 
 

@@ -23,14 +23,13 @@ class RobotCommander:
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
-        self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1, latch=True)
+        self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1)
+        self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
-
-        # GPS Subscribers
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
 
@@ -43,7 +42,7 @@ class RobotCommander:
     def move_till_end_of_path(self, speed):
         self.desired_speed_publisher.publish(speed)
         rate = rospy.Rate(50)
-        while (self.current_path_index != self.max_path_index):
+        while (self.current_path_index < self.max_path_index):
             rate.sleep()
 
     def move_till_index(self, speed, index):
@@ -52,24 +51,54 @@ class RobotCommander:
         while (self.current_path_index < index):
             rate.sleep()
 
-    # maybe add a try-except station to catch array[3:3] = []
+    # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
+    def rotate_till_heading(self, angular_velocity, heading, heading_tolerance = 3):
+        pose2d = Pose2D()
+        pose2d.x = 0
+        pose2d.theta = angular_velocity
+        self.velocity_command_publisher.publish(pose2d)
+        
+        heading = heading % 360
+
+        heading_radian = heading / math.pi * 180
+        tolerance_radian = heading_tolerance / math.pi * 180
+
+        lower_bound = (heading_radian - tolerance_radian) % 360
+        upper_bound = (heading_radian + tolerance_radian) % 360
+
+        rate = rospy.Rate(50)
+        if upper_bound > lower_bound:
+            while self.robot_heading < lower_bound or self.robot_heading > upper_bound:
+                rate.sleep()
+        else:
+            while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
+                rate.sleep()
+        
+        pose2d.x = 0
+        pose2d.theta = 0
+        self.velocity_command_publisher.publish(pose2d)
+
     def decel_to_stop_at_index(self, stop_index):
+        self.stop_index_publisher.publish(stop_index)
+
         frequency = 50
         rate = rospy.Rate(frequency)
         period = 1/frequency
 
-        while (self.current_path_index < index):
-            # kinemetic equation: vf^2 = vi^2 + 2*a*d
-            vi = self.robot_speed
-            d = sum(self.path_intervals[ self.current_path_index : stop_index - 1 ])
-            a = -vi**2 / 2 / d
+        # kinemetic equation: vf^2 = vi^2 + 2*a*d
+        vi = self.robot_speed
+        d = sum(self.path_intervals[ self.current_path_index : stop_index ])
+        a = -vi**2 / 2 / d
 
-            speed = vi + a*period # a is negative
-            speed = max(speed, 0.1) # prevent zero velocity before reaching the stop_index
+        while (self.current_path_index < stop_index):
+            vi = vi + a*period # a is negative
+            vi = max(vi, 0.3) # prevent zero velocity before reaching the stop_index
+            self.desired_speed_publisher.publish(vi)
 
-            desired_speed_publisher.publish(speed)
             rate.sleep()
 
+        self.desired_speed_publisher.publish(0)
+        self.stop_index_publisher.publish(999999)
 
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -113,7 +142,7 @@ class RobotCommander:
     def gps_twist_callback(self, msg):
         self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
 
-    def gps_heading_callback(self. msg):
+    def gps_heading_callback(self, msg):
         self.robot_heading = msg.data # in radian
 
 class Receptionist:

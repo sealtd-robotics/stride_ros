@@ -4,14 +4,14 @@ from socket import socket, AF_INET, SOCK_DGRAM
 import struct
 import time
 import rospy
-from std_msgs.msg import Int16, Float32
+from std_msgs.msg import Int32, Float32
 
 if __name__ == "__main__":
     node = rospy.init_node('udp_socket')
 
     # Publishers
-    robot_temperature_publisher = rospy.Publisher('/robot_temperature', Int16, queue_size=1)
-    battery_temperature_publisher = rospy.Publisher('/battery_temperature', Int16, queue_size=1)
+    robot_temperature_publisher = rospy.Publisher('/robot_temperature', Int32, queue_size=1)
+    battery_temperature_publisher = rospy.Publisher('/battery_temperature', Int32, queue_size=1)
     battery_voltage_publisher = rospy.Publisher('/battery_voltage', Float32, queue_size=1)
 
     # for finding moving average

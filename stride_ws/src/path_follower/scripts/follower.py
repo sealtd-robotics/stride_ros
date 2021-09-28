@@ -22,7 +22,7 @@ from glob import glob
 
 class PathFollower:
     def __init__(self):
-        self.look_ahead_points = 3
+        self.look_ahead_points = 6
 
         self.current_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
@@ -40,12 +40,13 @@ class PathFollower:
         self.turning_radius = 1
         self.desired_speed = 0
         self.path_intervals = []
+        self.stop_index = 999999
 
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
-        self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1)
+        self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1, latch=True)
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
 
@@ -53,6 +54,7 @@ class PathFollower:
         rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
         rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2)
         rospy.Subscriber('/robot_commander/desired_speed', Float32, self.subscriber_callback_3)
+        rospy.Subscriber('/robot_commander/stop_index', Int32, self.subscriber_callback_4)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
@@ -184,8 +186,8 @@ class PathFollower:
         y1 = self.robot_north
 
         # look-ahead point
-        x2 = self.path_easts[min(max_index, self.current_path_index + self.look_ahead_points)]
-        y2 = self.path_norths[min(max_index, self.current_path_index + self.look_ahead_points)]
+        x2 = self.path_easts[min(max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
+        y2 = self.path_norths[min(max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
 
         # make heading begin on the x-axis (east axis) and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
@@ -198,9 +200,9 @@ class PathFollower:
 
         self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
 
-        # prevent sudden rotation when arriving at the last path index
-        if self.current_path_index == max_index - 1 and distance < 0.10:
-            self.turning_radius = 9999
+        # prevent sudden rotation when arriving at the last path index and the stop index
+        if (self.current_path_index >= max_index - 1 or self.current_path_index >= self.stop_index - 1) and distance < 0.1:
+            self.turning_radius = 99999
 
     def publish_robot_velocity(self):
         max_index = len(self.path_easts) - 1
@@ -227,6 +229,8 @@ class PathFollower:
     def subscriber_callback_3(self, msg):
         self.desired_speed = msg.data
 
+    def subscriber_callback_4(self, msg):
+        self.stop_index = msg.data
 
     # GPS subscriber callbacks
     def gps_subscriber_callback_1(self, msg):
@@ -251,7 +255,6 @@ if __name__ ==  '__main__':
             pf.update_current_path_index()
             pf.update_turning_radius()
             pf.publish_robot_velocity()
-
             should_reset_variables = True
 
         elif should_reset_variables:

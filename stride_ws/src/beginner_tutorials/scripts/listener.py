@@ -8,7 +8,7 @@ import time
 def blocking(msg):
     while True:
         print("blocking")
-        time.sleep(10)
+        time.sleep(5)
 
 def callback(msg):
     print('received and yooooooooooo')

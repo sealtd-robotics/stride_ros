@@ -1,2 +1,2 @@
-v_max: 4 # max linear velocity (m/s) (5.75 is fast, 2.5 is okay)
+v_max: 2.5 # max linear velocity (m/s) (5.75 is fast, 2.5 is okay)
 w_max_spin_in_place: 2 # max angular velocity when spinning in place (rad/s) (5 is fast, 2 is okay)

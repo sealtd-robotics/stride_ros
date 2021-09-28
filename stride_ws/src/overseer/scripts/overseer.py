@@ -182,7 +182,7 @@ if __name__ ==  '__main__':
         if state == MANUAL:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif gui.is_start_following_clicked:
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
                 state = AUTO
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
@@ -194,7 +194,10 @@ if __name__ ==  '__main__':
             elif gui.is_stop_clicked or error_handler.has_error(state, True):
                 state = STOPPED
             elif not rc.is_script_running:
-                state = STOPPED
+                # Making sure the rc.is_script_running has time to update
+                time.sleep(0.1)
+                if not rc.is_script_running:
+                    state = STOPPED
 
         # E_Stopped
         elif state == E_STOPPED:
@@ -205,11 +208,12 @@ if __name__ ==  '__main__':
         elif state == STOPPED:
             if gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
                 state = MANUAL
-            elif gui.is_start_following_clicked:
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
 
         gui.reset_button_clicks()
         state_publisher.publish( state )
+
         rate.sleep()
