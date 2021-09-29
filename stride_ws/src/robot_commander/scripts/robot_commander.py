@@ -25,6 +25,7 @@ class RobotCommander:
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1)
         self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
+        self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -52,19 +53,16 @@ class RobotCommander:
             rate.sleep()
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
-    def rotate_till_heading(self, angular_velocity, heading, heading_tolerance = 3):
-        pose2d = Pose2D()
-        pose2d.x = 0
-        pose2d.theta = angular_velocity
-        self.velocity_command_publisher.publish(pose2d)
+    def rotate_till_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
+        self.spin_velocity_publisher.publish(angular_velocity)
         
         heading = heading % 360
 
-        heading_radian = heading / math.pi * 180
-        tolerance_radian = heading_tolerance / math.pi * 180
+        heading_radian = heading / 180 * math.pi
+        tolerance_radian = heading_tolerance / 180 * math.pi
 
-        lower_bound = (heading_radian - tolerance_radian) % 360
-        upper_bound = (heading_radian + tolerance_radian) % 360
+        lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
+        upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
 
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
@@ -73,10 +71,11 @@ class RobotCommander:
         else:
             while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
                 rate.sleep()
-        
-        pose2d.x = 0
-        pose2d.theta = 0
-        self.velocity_command_publisher.publish(pose2d)
+        if brake_when_done:
+            while self.robot_angular_speed > 0.02:
+                self.spin_velocity_publisher.publish(0)
+                rate.sleep()
+
 
     def decel_to_stop_at_index(self, stop_index):
         self.stop_index_publisher.publish(stop_index)
@@ -141,6 +140,7 @@ class RobotCommander:
 
     def gps_twist_callback(self, msg):
         self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
+        self.robot_angular_speed = abs(msg.angular.z)
 
     def gps_heading_callback(self, msg):
         self.robot_heading = msg.data # in radian

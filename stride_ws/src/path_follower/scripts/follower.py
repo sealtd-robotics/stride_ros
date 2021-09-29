@@ -37,10 +37,11 @@ class PathFollower:
         self.path_norths = []
         self.robot_east = 1
         self.robot_north = 1
-        self.turning_radius = 1
+        self.turning_radius = 99999
         self.desired_speed = 0
         self.path_intervals = []
         self.stop_index = 999999
+        self.spin_in_place_velocity = 0
 
         # Publishers
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -51,19 +52,20 @@ class PathFollower:
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
 
         # Subscribers
-        rospy.Subscriber('/overseer/state', Int32, self.subscriber_callback_1)
-        rospy.Subscriber('/gui/upload_path_clicked', Empty, self.subscriber_callback_2)
-        rospy.Subscriber('/robot_commander/desired_speed', Float32, self.subscriber_callback_3)
-        rospy.Subscriber('/robot_commander/stop_index', Int32, self.subscriber_callback_4)
+        rospy.Subscriber('/overseer/state', Int32, self.callback_1)
+        rospy.Subscriber('/gui/upload_path_clicked', Empty, self.callback_2)
+        rospy.Subscriber('/robot_commander/desired_speed', Float32, self.callback_3)
+        rospy.Subscriber('/robot_commander/stop_index', Int32, self.callback_4)
+        rospy.Subscriber('/robot_commander/spin_in_place_velocity', Float32, self.callback_5)
 
         # GPS Subscribers
-        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1)
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_subscriber_callback_2, queue_size=1)
+        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
 
         # Load path at startup
         self.load_path()
 
-        # rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_3, queue_size=1)
+        # rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_3, queue_size=1)
     
     def assign_reference_point(self, latitude, longitude):
         self.lat_ref = latitude
@@ -204,7 +206,7 @@ class PathFollower:
         if (self.current_path_index >= max_index - 1 or self.current_path_index >= self.stop_index - 1) and distance < 0.1:
             self.turning_radius = 99999
 
-    def publish_robot_velocity(self):
+    def publish_path_following_velocity(self):
         max_index = len(self.path_easts) - 1
 
         if self.current_path_index == max_index:
@@ -219,27 +221,36 @@ class PathFollower:
 
         self.robot_velocity_publisher.publish(pose2d)
 
+    def publish_spin_velocity(self):
+        pose2d = Pose2D()
+        pose2d.x = 0
+        pose2d.theta = self.spin_in_place_velocity
+        self.robot_velocity_publisher.publish(pose2d)
+
     # Subscriber callbacks
-    def subscriber_callback_1(self, msg):
+    def callback_1(self, msg):
         self.overseer_state = msg.data
 
-    def subscriber_callback_2(self, msg):
+    def callback_2(self, msg):
         self.load_path()
 
-    def subscriber_callback_3(self, msg):
+    def callback_3(self, msg):
         self.desired_speed = msg.data
 
-    def subscriber_callback_4(self, msg):
+    def callback_4(self, msg):
         self.stop_index = msg.data
 
+    def callback_5(self, msg):
+        self.spin_in_place_velocity = msg.data
+
     # GPS subscriber callbacks
-    def gps_subscriber_callback_1(self, msg):
+    def gps_callback_1(self, msg):
         (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
 
-    def gps_subscriber_callback_2(self, msg):
+    def gps_callback_2(self, msg):
         self.robot_heading = msg.data    # radian
 
-    # def gps_subscriber_callback_3(self, msg):
+    # def gps_callback_3(self, msg):
     #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5
     #     self.yaw_velocity_measured = msg.angular.z
 
@@ -254,7 +265,10 @@ if __name__ ==  '__main__':
         if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
             pf.update_current_path_index()
             pf.update_turning_radius()
-            pf.publish_robot_velocity()
+            if pf.spin_in_place_velocity != 0:
+                pf.publish_spin_velocity()
+            else:
+                pf.publish_path_following_velocity()
             should_reset_variables = True
 
         elif should_reset_variables:
