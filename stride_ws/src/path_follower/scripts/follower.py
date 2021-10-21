@@ -57,6 +57,7 @@ class PathFollower:
         rospy.Subscriber('/robot_commander/desired_speed', Float32, self.callback_3)
         rospy.Subscriber('/robot_commander/stop_index', Int32, self.callback_4)
         rospy.Subscriber('/robot_commander/spin_in_place_velocity', Float32, self.callback_5)
+        rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
 
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
@@ -176,7 +177,8 @@ class PathFollower:
         # If the two above points are on different sides of the line
         if k_cur * k_robot < 0:
             self.current_path_index += 1
-            self.current_path_index_publisher.publish(self.current_path_index)
+        
+        self.current_path_index_publisher.publish(self.current_path_index)
 
     def update_turning_radius(self):
         # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
@@ -200,11 +202,11 @@ class PathFollower:
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
 
-        self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
-
         # prevent sudden rotation when arriving at the last path index and the stop index
-        if (self.current_path_index >= max_index - 1 or self.current_path_index >= self.stop_index - 1) and distance < 0.1:
-            self.turning_radius = 99999
+        if (self.current_path_index >= max_index - 1 or self.current_path_index >= self.stop_index - 1):
+            self.turning_radius = 999999
+        else:
+            self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
 
     def publish_path_following_velocity(self):
         max_index = len(self.path_easts) - 1
@@ -243,6 +245,9 @@ class PathFollower:
     def callback_5(self, msg):
         self.spin_in_place_velocity = msg.data
 
+    def callback_6(self, msg):
+        self.current_path_index = msg.data
+
     # GPS subscriber callbacks
     def gps_callback_1(self, msg):
         (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
@@ -259,7 +264,6 @@ if __name__ ==  '__main__':
 
     pf = PathFollower()
 
-    should_reset_variables = False
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
         if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
@@ -269,13 +273,11 @@ if __name__ ==  '__main__':
                 pf.publish_spin_velocity()
             else:
                 pf.publish_path_following_velocity()
-            should_reset_variables = True
 
-        elif should_reset_variables:
+        else:
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
             pf.desired_speed = 0
-
-            should_reset_variables = False
+            pf.spin_in_place_velocity = 0
 
         rate.sleep() 

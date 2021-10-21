@@ -490,7 +490,6 @@ class MyServerProtocol(WebSocketServerProtocol):
 
                 previous_latitudes = MyServerProtocol.ros_interface.path_to_follow['latitudes'] # shallow copy
                 previous_longitudes = MyServerProtocol.ros_interface.path_to_follow['longitudes']
-                print('path_to_follow updated')
             
             rate.sleep()
 

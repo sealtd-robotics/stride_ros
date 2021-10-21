@@ -44,6 +44,10 @@ from sensor_msgs.msg import NavSatFix
 import time
 
 def talker():
+    rospy.init_node('talker', anonymous=True)
+    pub0 = rospy.Publisher('a0', String, queue_size=10)
+    pub0.publish("1")
+
     pub1 = rospy.Publisher('a1', String, queue_size=10)
     pub2 = rospy.Publisher('a2', String, queue_size=10)
     pub3 = rospy.Publisher('a3', String, queue_size=10)
@@ -61,7 +65,6 @@ def talker():
     pub15 = rospy.Publisher('/blocking', Empty, queue_size=10)
 
     count = 0
-    rospy.init_node('talker', anonymous=True)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
         hello_str1 = "a hello world %s" % rospy.get_time()

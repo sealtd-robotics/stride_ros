@@ -105,7 +105,7 @@ void RequestDebugMessages()
 
 int main(int argc, char *argv[]) {
 	// Debug logging
-	bool should_log_for_debug = true;
+	bool should_log_for_debug = false;
 
 	// Set up ROS node //
 	ros::init(argc, argv, "an_device_node");

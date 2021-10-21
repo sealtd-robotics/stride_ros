@@ -1,8 +1,25 @@
-
-
 rc = RobotCommander()
 
-time.sleep(2)
+print('a')
+rc.move_till_index(2, 100)
+print('b')
+rc.decel_to_stop_at_index(110)
+rc.rotate_till_heading(-25/180*math.pi, 45)
+rc.move_till_index(1.5, 130)
+
+# time.sleep(3)
+
+# rc.move_till_end_of_path(1.5)
+
+# rc.rotate_till_heading(-25/180*math.pi, 180)
+
+# rc.move_till_index(1, 62)
+# rc.move_till_index(2, 100)
+# rc.decel_to_stop_at_index(122)
+# rc.rotate_till_heading(-25/180*math.pi, 30)
+# rc.move_till_index(2.5, 170)
+# time.sleep(2)
+# rc.move_till_end_of_path(2)
 
 # rc.move_till_end_of_path(speed = 1)
 

@@ -50,11 +50,14 @@ class Joystick:
     
     def joystick_to_velocities(self, travel, angle):
         # returns linear_velocity, angular_velocity, turning_radius
+
+        # travel <= 1. Scaled to slow down robot at the beginning of joystick movement
+        scaled_travel = travel ** 1.5
         
         if angle == 0:
-            return self.v_max * travel, 0, float('inf')
+            return self.v_max * scaled_travel, 0, float('inf')
         elif abs(angle - math.pi) < 1e-5:
-            return -self.v_max * travel, 0, float('inf')
+            return -self.v_max * scaled_travel, 0, float('inf')
 
         scaling = math.cos(angle)**2 * 4
         if scaling > 1:
@@ -64,7 +67,8 @@ class Joystick:
 
         r = math.tan(-angle - math.pi / 2) * 2
 
-        v = math.copysign( travel * v_max_at_angle, r) # applying the sign of r to the first argument
+        # copysign() to apply the sign of r to the first argument
+        v = math.copysign( v_max_at_angle * scaled_travel, r)
 
         # a small angular velocity is induced when joystick is near +/- 90 degrees to make robot spin in place
         w_spin_in_place = self.w_max_spin_in_place * math.sin(angle) ** 50 * travel

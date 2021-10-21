@@ -30,7 +30,6 @@ class MotorControllerNode:
 
         self.heartbeat_arrival_time = self.get_time_now_in_ms() + 5000 # added some time buffer for startup
         self.overseer_state = 0
-        self.sdo_controlword = self.node.sdo[0x6040]
         self.sdo_ambient_temperature = self.node.sdo[0x232A][0x08]
 
         # Change motor controller NMT state to Operational, which allows PDO communication
@@ -56,7 +55,7 @@ class MotorControllerNode:
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
 
         # Subscribers
-        rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
+        # rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -78,42 +77,48 @@ class MotorControllerNode:
             time.sleep(0.1)
 
     # May not be needed anymore....... Test it !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    def overseer_state_callback(self, new_state):
-        if self.overseer_state == new_state.data:
-            return
+    # def overseer_state_callback(self, new_state):
+    #     if self.overseer_state == new_state.data:
+    #         return
 
-        is_current_state_inoperable = self.overseer_state == 3 or \
-                                        self.overseer_state == 4 or \
-                                        self.overseer_state == 5
+    #     is_current_state_inoperable = self.overseer_state == 3 or \
+    #                                     self.overseer_state == 4 or \
+    #                                     self.overseer_state == 5
 
-        # if overseer state changes from inoperable to manual or auto, run recovery steps
-        if is_current_state_inoperable and (new_state.data == 1 or new_state.data == 2):
-            self.fault_reset_command()
-            self.change_nmt_state('OPERATIONAL')
+    #     # if overseer state changes from inoperable to manual or auto, run recovery steps
+    #     if is_current_state_inoperable and (new_state.data == 1 or new_state.data == 2):
+    #         self.fault_reset_command()
+    #         self.change_nmt_state('OPERATIONAL')
 
-        self.overseer_state = new_state.data
+    #     self.overseer_state = new_state.data
 
     def change_nmt_state(self, nmt_state):
         # nmt_state is a string
         self.node.nmt.state = nmt_state
         time.sleep(0.02)
 
-    def fault_reset_command(self):
-        self.sdo_controlword.raw = int('10000000',2) # 1000 0000
-        time.sleep(0.02)
+    # def fault_reset_command(self):
+    #     self.node.rpdo[2][0].raw = int('10000000',2) # 1000 0000
+    #     self.node.rpdo[2].transmit()
+    #     time.sleep(0.02)
 
     def enable_power(self):
+        # If power is already enabled, this function will switch off and on the power, relaxing the motor.
+
         # Send a "shut down" command to go to "Ready to Switch On" state
-        self.sdo_controlword.raw = int('0110',2)
+        self.node.rpdo[2][0].raw = int('0110',2)
+        self.node.rpdo[2].transmit()
         time.sleep(0.02)
 
         # Then send a "Enable Operation" command to go to the "Operation Enable" state
         # This state enables power to motor
-        self.sdo_controlword.raw = int('1111',2)
+        self.node.rpdo[2][0].raw = int('1111',2)
+        self.node.rpdo[2].transmit()
         time.sleep(0.02)
 
     def quick_stop_controlword(self):
-        self.sdo_controlword.raw = 2
+        self.node.rpdo[2][0].raw = int('10',2)
+        self.node.rpdo[2].transmit()
         time.sleep(0.02)
 
     def spin(self, wheel_rpm):
@@ -334,7 +339,7 @@ class MotorControllerNetwork:
         while True:
             time.sleep(0.02)
             if self.overseer_state == 5: # STOPPED state
-                while self.is_any_measured_wheel_rpm_above_this(250):
+                while self.is_any_measured_wheel_rpm_above_this(400):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
                 self.quick_stop_all_motors()
@@ -345,7 +350,7 @@ class MotorControllerNetwork:
                         self.send_zero_rpm_to_all_motors()
                     else:
 
-                        while self.is_any_measured_wheel_rpm_above_this(250):
+                        while self.is_any_measured_wheel_rpm_above_this(400):
                             self.enable_power_for_all_motors()
                             self.send_zero_rpm_to_all_motors()
                         self.quick_stop_all_motors()

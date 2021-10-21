@@ -96,7 +96,7 @@ class Gui:
 
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
         rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
-        rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback)
+        rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback, queue_size=1)
         rospy.Subscriber('/gui/start_path_following_clicked', Empty, self.start_following_callback)
 
         # Heartbeat timeout thread

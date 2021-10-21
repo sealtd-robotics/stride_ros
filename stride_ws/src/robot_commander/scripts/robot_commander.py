@@ -15,7 +15,7 @@ from datetime import datetime
 
 class RobotCommander:
     def __init__(self):
-        self.current_path_index = -1
+        self.current_path_index = 0
         self.max_path_index = -1
         self.path_intervals = []
         self.robot_speed = -1
@@ -26,6 +26,7 @@ class RobotCommander:
         self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1)
         self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
+        self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -34,28 +35,41 @@ class RobotCommander:
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
 
-        # blocking until all attributes have been updated by subscriber callbacks
-        while (self.current_path_index == -1 or self.max_path_index == -1 or
-                self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1):
+        # blocking until these attributes have been updated by subscriber callbacks
+        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1):
             time.sleep(0.1)
 
-
     def move_till_end_of_path(self, speed):
-        self.desired_speed_publisher.publish(speed)
+        print('Executing move_till_end_of_path')
         rate = rospy.Rate(50)
         while (self.current_path_index < self.max_path_index):
+            self.desired_speed_publisher.publish(speed)
+            rate.sleep()
+
+    def brake_to_stop(self):
+        print('Executing brake_to_stop')
+        rate = rospy.Rate(50)
+        while self.robot_speed > 0.1:
+            self.desired_speed_publisher.publish(0)
             rate.sleep()
 
     def move_till_index(self, speed, index):
-        self.desired_speed_publisher.publish(speed)
+        print('Executing move_till_index')
         rate = rospy.Rate(50)
         while (self.current_path_index < index):
+            self.desired_speed_publisher.publish(speed)
+            rate.sleep()
+
+    def set_index(self, index):
+        print('Executing set_index')
+        self.set_index_publisher.publish(index)
+        rate = rospy.Rate(50)
+        while (self.current_path_index != index):
             rate.sleep()
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
     def rotate_till_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
-        self.spin_velocity_publisher.publish(angular_velocity)
-        
+        print('Executing rotate_till_heading')
         heading = heading % 360
 
         heading_radian = heading / 180 * math.pi
@@ -67,10 +81,13 @@ class RobotCommander:
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
             while self.robot_heading < lower_bound or self.robot_heading > upper_bound:
+                self.spin_velocity_publisher.publish(angular_velocity)
                 rate.sleep()
         else:
             while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
+                self.spin_velocity_publisher.publish(angular_velocity)
                 rate.sleep()
+
         if brake_when_done:
             while self.robot_angular_speed > 0.02:
                 self.spin_velocity_publisher.publish(0)
@@ -98,6 +115,9 @@ class RobotCommander:
 
         self.desired_speed_publisher.publish(0)
         self.stop_index_publisher.publish(999999)
+
+    def sleep(self, seconds):
+        time.sleep(seconds)
 
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -183,8 +203,8 @@ class Receptionist:
         if self.is_script_okay:
             try:
                 execfile(self.script_folder + self.filename)
-            except Exception as e:
-                print(e)
+            except Exception as error:
+                print(error)
 
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
