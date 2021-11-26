@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 	pnh.param("topic_prefix", topic_prefix, std::string("an_device"));
 
 	// Subscribers
-	ros::Subscriber sub = nh.subscribe(topic_prefix + "/magnetic_calibration/calibrate", 1000, MagneticCalibrationCallback);
+	ros::Subscriber sub = nh.subscribe(topic_prefix + "/magnetic_calibration/calibrate", 10, MagneticCalibrationCallback);
 
 	// Initialise Publishers and Topics //
 	ros::Publisher nav_sat_fix_pub=nh.advertise<sensor_msgs::NavSatFix>(topic_prefix + "/NavSatFix",10);
