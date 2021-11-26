@@ -95,6 +95,7 @@ class RobotCommander:
 
 
     def decel_to_stop_at_index(self, stop_index):
+        print('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50

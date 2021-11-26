@@ -22,7 +22,7 @@ from glob import glob
 
 class PathFollower:
     def __init__(self):
-        self.look_ahead_points = 6
+        self.look_ahead_points = 10
 
         self.current_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
@@ -238,6 +238,9 @@ class PathFollower:
 
     def callback_3(self, msg):
         self.desired_speed = msg.data
+
+        # changing look_ahead_points based on desdired_speed
+        self.look_ahead_points = int(max(10, 4 * self.desired_speed))
 
     def callback_4(self, msg):
         self.stop_index = msg.data

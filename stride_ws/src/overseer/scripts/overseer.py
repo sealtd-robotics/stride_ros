@@ -37,7 +37,7 @@ class ErrorHandler:
         # Motor controllers
         for mc in self.mcs:
             error_word = mc.error_word
-            if error_word != 0:
+            if error_word != 0 and error_word != 64:
                 errors = errors + "{} error_word: {}\n".format(mc.name, error_word)
                 has_error = True
             
