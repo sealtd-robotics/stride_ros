@@ -338,10 +338,12 @@ class MotorControllerNetwork:
     def drive(self):
         while True:
             time.sleep(0.02)
-            if self.overseer_state == 5: # STOPPED state
+            if self.overseer_state == 5: # 5: STOPPED
                 while self.is_any_measured_wheel_rpm_above_this(400):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
+                self.quick_stop_all_motors()
+            elif self.overseer_state == 3:
                 self.quick_stop_all_motors()
             elif self.overseer_state == 1: # MANUAL state
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
