@@ -139,10 +139,19 @@ class Gui:
 class Handheld:
     def __init__(self):
         self.is_estop_pressed = False
-        rospy.Subscriber('/handheld/is_estop_pressed', Bool, self.estop_callback)
 
-    def estop_callback(self, msg):
-        self.is_estop_pressed = msg.data
+        self.is_estop_pressed_1 = False
+        self.is_estop_pressed_2 = False
+        rospy.Subscriber('/handheld/direct/is_estop_pressed', Bool, self.estop_callback_1)
+        rospy.Subscriber('/handheld/through_xboard/is_estop_pressed', Bool, self.estop_callback_2)
+
+    def estop_callback_1(self, msg):
+        self.is_estop_pressed_1 = msg.data
+        self.is_estop_pressed = self.is_estop_pressed_1 or self.is_estop_pressed_2
+
+    def estop_callback_2(self, msg):
+        self.is_estop_pressed_2 = msg.data
+        self.is_estop_pressed = self.is_estop_pressed_1 or self.is_estop_pressed_2
 
 class RobotCommander:
     def __init__(self):
