@@ -10,7 +10,7 @@ script_dir = os.path.dirname(__file__)
 proto_dir = os.path.join(script_dir, '..')
 sys.path.append(proto_dir)
 
-from proto_src.ext_interface_pb2 import PubMsg
+from proto_src import PubMsg
 import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from geometry_msgs.msg import TwistWithCovarianceStamped
@@ -55,7 +55,7 @@ class VehicleDataSet():
 class VehicleDataOutput():
     def __init__(self):
         rospy.init_node('vehicle_output')
-
+        self._ip = rospy.get_param("self_ip")
         output_msg = PubMsg()
         self.data = VehicleDataSet()
         self.mutex = threading.Lock()
@@ -64,7 +64,7 @@ class VehicleDataOutput():
 
         ctx = zmq.Context()
         s = ctx.socket(zmq.PUB)
-        s.bind("tcp://127.0.0.1:50008")
+        s.bind("tcp://%s:50008" % self._ip)
 
         rospy.Subscriber('gps/time_ref', TimeReference, self.time_reference_cb)
         rospy.Subscriber('gps/fix', NavSatFix, self.global_pos_cb)

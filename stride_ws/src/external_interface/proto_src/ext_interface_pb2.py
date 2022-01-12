@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x13\x65xt-interface.proto\"\xea\x01\n\x06PubMsg\x12\x13\n\x0bheading_deg\x18\x01 \x01(\x01\x12\x15\n\rlongitude_deg\x18\x02 \x01(\x01\x12\x14\n\x0clatitude_deg\x18\x03 \x01(\x01\x12\x13\n\x0bvelocity_ms\x18\x04 \x01(\x01\x12\x11\n\tgps_ready\x18\x05 \x01(\x08\x12-\n\x0egps_correction\x18\x06 \x01(\x0e\x32\x15.PubMsg.GpsCorrection\"G\n\rGpsCorrection\x12\x0b\n\x07GPS_FIX\x10\x00\x12\x12\n\x0e\x44GPS_RTK_FLOAT\x10\x01\x12\x15\n\x11\x44GPS_RTK_INTERGER\x10\x02\x62\x06proto3')
+  serialized_pb=_b('\n\x13\x65xt-interface.proto\"\xeb\x01\n\x06PubMsg\x12\x13\n\x0bheading_deg\x18\x01 \x01(\x01\x12\x15\n\rlongitude_deg\x18\x02 \x01(\x01\x12\x14\n\x0clatitude_deg\x18\x03 \x01(\x01\x12\x14\n\x0cvelocity_mps\x18\x04 \x01(\x01\x12\x11\n\tgps_ready\x18\x05 \x01(\x08\x12-\n\x0egps_correction\x18\x06 \x01(\x0e\x32\x15.PubMsg.GpsCorrection\"G\n\rGpsCorrection\x12\x0b\n\x07GPS_FIX\x10\x00\x12\x12\n\x0e\x44GPS_RTK_FLOAT\x10\x01\x12\x15\n\x11\x44GPS_RTK_INTERGER\x10\x02\x62\x06proto3')
 )
 
 
@@ -46,8 +46,8 @@ _PUBMSG_GPSCORRECTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=187,
-  serialized_end=258,
+  serialized_start=188,
+  serialized_end=259,
 )
 _sym_db.RegisterEnumDescriptor(_PUBMSG_GPSCORRECTION)
 
@@ -81,7 +81,7 @@ _PUBMSG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='velocity_ms', full_name='PubMsg.velocity_ms', index=3,
+      name='velocity_mps', full_name='PubMsg.velocity_mps', index=3,
       number=4, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
@@ -115,7 +115,7 @@ _PUBMSG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=258,
+  serialized_end=259,
 )
 
 _PUBMSG.fields_by_name['gps_correction'].enum_type = _PUBMSG_GPSCORRECTION

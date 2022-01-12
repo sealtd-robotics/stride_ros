@@ -10,7 +10,7 @@ script_dir = os.path.dirname(__file__)
 proto_dir = os.path.join(script_dir, '..')
 sys.path.append(proto_dir)
 
-from proto_src.ext_interface_pb2 import PubMsg
+from proto_src import PubMsg
 import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from geometry_msgs.msg import TwistWithCovarianceStamped
@@ -28,14 +28,14 @@ def _shutdown():
 def main():
     rospy.init_node('get_vehicle_input')
     rospy.on_shutdown(_shutdown)
-
+    target_ip = rospy.get_param("target_ip")
     pub = rospy.Publisher('/target', TargetVehicle, queue_size=1)
 
     output_msg = PubMsg()
 
     ctx = zmq.Context()
     s = ctx.socket(zmq.SUB)
-    s.connect("tcp://127.0.0.1:50008")
+    s.connect("tcp://%s:50008" % target_ip)
     s.setsockopt(zmq.SUBSCRIBE, b'')
 
     rate = rospy.Rate(100)

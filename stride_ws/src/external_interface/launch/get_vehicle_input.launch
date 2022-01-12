@@ -1,3 +1,4 @@
 <launch>
+  <param name="target_ip" type="str" value="195.0.0.61" />
   <node pkg="external_interface" type="get_vehicle_input.py" name="get_vehicle_input" output="screen" />
 </launch>

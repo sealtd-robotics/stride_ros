@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find oxford_gps_eth)/launch/gps.launch" />
+  <include file="$(find external_interface)/launch/send_vehicle_output.launch" />
+</launch>
