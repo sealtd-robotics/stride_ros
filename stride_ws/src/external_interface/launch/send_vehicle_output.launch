@@ -1,0 +1,4 @@
+<launch>
+  <param name="self_ip" type="str" value="195.0.0.61" />
+  <node pkg="external_interface" type="vehicle_output.py" name="send_vehicle_output" output="screen" />
+</launch>

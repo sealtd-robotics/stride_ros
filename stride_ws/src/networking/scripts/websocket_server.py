@@ -8,6 +8,7 @@ import canopen
 import rospy
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
+from external_interface.msg import TargetVehicle
 from geometry_msgs.msg import Pose2D, Vector3, Twist
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
@@ -114,6 +115,14 @@ class RosInterface:
                 "pathName": "",
                 "scriptName": "",
             },
+            "targetVehicle": {
+                "latitude": 0,
+                "longitude": 0,
+                "heading": 0,
+                "velocity": 0,
+                "gps_ready": False,
+                "gps_correction_type": 0,
+            }
         }
         
         # Subscribers
@@ -124,6 +133,7 @@ class RosInterface:
         rospy.Subscriber('/robot_temperature', Int32, self.subscriber_callback_5, queue_size=1)
         rospy.Subscriber('/battery_temperature', Int32, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
+        rospy.Subscriber('/target', TargetVehicle, self.subscriber_callback_8, queue_size=1)
 
 
         # GPS Subcribers
@@ -210,6 +220,15 @@ class RosInterface:
 
     def subscriber_callback_7(self, msg):
         self.robotState['batteryVoltage'] = msg.data
+
+    def subscriber_callback_8(self, msg):
+        self.robotState['targetVehicle']['latitude'] = msg.latitude
+        self.robotState['targetVehicle']['longitude'] = msg.longitude
+        self.robotState['targetVehicle']['heading'] = msg.heading
+        self.robotState['targetVehicle']['velocity'] = msg.velocity
+        self.robotState['targetVehicle']['gps_ready'] = msg.gps_ready
+        self.robotState['targetVehicle']['gps_correction_type'] = msg.gps_correction_type
+
 
     # Motor Controller Callbacks
     # Left Front

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message PubMsg {
+
+	double heading_deg = 1;
+	double longitude_deg = 2;
+	double latitude_deg = 3;
+	double velocity_mps = 4;
+	bool gps_ready = 5;
+	enum GpsCorrection {
+		GPS_FIX = 0;
+		DGPS_RTK_FLOAT = 1;
+		DGPS_RTK_INTERGER = 2;
+	}
+	GpsCorrection gps_correction = 6;
+}

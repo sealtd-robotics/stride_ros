@@ -7,10 +7,14 @@ import threading
 import os
 import sys
 import math
+import numpy as np
 from glob import glob
+from libcal import LL_NE, CheckBoundariesEnter
+
 
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist
+from external_interface.msg import TargetVehicle
 from datetime import datetime
 
 class RobotCommander:
@@ -34,6 +38,7 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
+        rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
         # blocking until these attributes have been updated by subscriber callbacks
         while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1):
@@ -165,6 +170,56 @@ class RobotCommander:
 
     def gps_heading_callback(self, msg):
         self.robot_heading = msg.data # in radian
+
+    def target_callback(self, msg):
+        self.target_heading = msg.heading
+        self.target_velocity = msg.velocity
+        self.target_gps_ready = msg.gps_ready
+        self.target_longitude = msg.longitude
+        self.target_latitude = msg.latitude
+        self.target_gps_correction_type = msg.gps_correction_type
+
+    def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
+        """
+        Spin until the target passes the trigger location.
+
+        Parameters:
+            trigger_lat - latitude in degrees of trigger location
+            trigger_long - longitude in degrees of trigger location
+            trigger_heading - heading in degrees of trigger location
+        Return:
+            n/a
+        """
+        llne = LL_NE(trigger_lat, trigger_long)
+        boundary_checker = CheckBoundariesEnter(trigger_heading)
+
+        rate = rospy.Rate(50)
+
+        while self.target_gps_ready:
+            py, px = llne.LL2NE(self.target_latitude, self.target_longitude)
+            if boundary_checker.in_boundaries(np.array([px,py])):
+                if abs((trigger_heading - self.target_heading) < 45):
+                    break
+                else:
+                    #TO-DO: target vehicle is not at the correct direction
+                    print("Vehicle approaches at wrong direction, handle this error. End test.")
+                    break
+            rate.sleep()
+
+        if not self.target_gps_ready:
+            #TO-DO: test failed due to target gps not valid, implement proper safety measure
+            print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
+
+    def wait_for_target_velocity(self, velocity):
+        rate = rospy.Rate(20)
+        while (self.target_velocity < velocity 
+            and self.target_gps_ready):
+            rate.sleep()
+        
+        if not self.target_gps_ready:
+            #TO-DO: test failed due to target gps not valid, implement proper safety measure
+            print("ERROR: Something wrong. Target GPS not ready, handle this error.End test.")
+
 
 class Receptionist:
     def __init__(self):
