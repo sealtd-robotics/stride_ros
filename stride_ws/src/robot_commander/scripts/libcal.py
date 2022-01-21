@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from math import cos, sin, sqrt, pi
+from math import cos, sin, sqrt, pi, radians
 import numpy as np
 
 _e = 0.0818191908426
@@ -39,7 +39,7 @@ class CheckBoundariesEnter(object):
         self.trigger_heading = trigger_heading
         self.generate_boundaries(trigger_heading)
 
-    def generate_boundaries(self, double trigger_heading, double dist=2.0):
+    def generate_boundaries(self, trigger_heading, dist=2.0):
         """
         Generate triangle vertices from origin (0,0) with assigned heading
 

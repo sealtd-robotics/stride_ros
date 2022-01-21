@@ -77,8 +77,9 @@ class VehicleDataOutput():
         while not rospy.is_shutdown():
             output_msg.Clear()
             self.current_time = self.gps_time_msecs + int(1e-6 * (rospy.Time.now() - self.last_get_time).to_nsec())
-            if (self.current_time - self.gps_time_msecs) > 50:
+            if (self.current_time - self.gps_time_msecs) > 250:
                 output_msg.gps_ready = False
+                print("GPS Connection timeout (>250ms)")
             else:
                 output_msg.heading_deg = degrees(self.data.heading)
                 output_msg.longitude_deg = self.data.longitude

@@ -1,6 +1,11 @@
 README
 ---
 This package uses `protobuf` to serialize data and communicate through zeroMQ.
+```
+pip install protobuf==3.17.3
+sudo apt install ros-<DISTRO>-tf
+pip install pyzmq
+```
 
 ### Install Protobuf
 For developer if need to rebuild protobuf message
