@@ -141,6 +141,8 @@ int main(int argc, char *argv[]) {
 	// Initialise Publishers and Topics //
 	ros::Publisher nav_sat_fix_pub=nh.advertise<sensor_msgs::NavSatFix>(topic_prefix + "/NavSatFix",10);
 	ros::Publisher heading_pub = nh.advertise<std_msgs::Float32>(topic_prefix + "/heading", 10);
+	ros::Publisher pitch_pub = nh.advertise<std_msgs::Float32>(topic_prefix + "/pitch", 10);
+	ros::Publisher roll_pub = nh.advertise<std_msgs::Float32>(topic_prefix + "/roll", 10);
 	ros::Publisher twist_pub = nh.advertise<geometry_msgs::Twist>(topic_prefix + "/Twist",10);
 	ros::Publisher imu_pub = nh.advertise<sensor_msgs::Imu>(topic_prefix + "/Imu",10);
 	ros::Publisher system_status_pub = nh.advertise<std_msgs::UInt16>(topic_prefix + "/system_status",10);
@@ -165,6 +167,12 @@ int main(int argc, char *argv[]) {
 
 	std_msgs::Float32 heading;
 	heading.data = 0;
+
+	std_msgs::Float32 pitch;
+	pitch.data = 0;
+
+	std_msgs::Float32 roll;
+	roll.data = 0;
 
 	geometry_msgs::Twist twist_msg;
 	twist_msg.linear.x=0.0;
@@ -298,6 +306,11 @@ int main(int argc, char *argv[]) {
 						// Heading
 						heading.data = system_state_packet.orientation[2];
 
+						// Pitch and Roll
+						pitch.data = system_state_packet.orientation[1];
+						roll.data = system_state_packet.orientation[0];
+						
+
 						// Twist
 						twist_msg.linear.x=system_state_packet.velocity[0];
 						twist_msg.linear.y=system_state_packet.velocity[1];
@@ -427,6 +440,8 @@ int main(int argc, char *argv[]) {
 						system_status_pub.publish(system_status);
 						filter_status_pub.publish(filter_status);
 						heading_pub.publish(heading);
+						pitch_pub.publish(pitch);
+						roll_pub.publish(roll);
 					}
 				}
 

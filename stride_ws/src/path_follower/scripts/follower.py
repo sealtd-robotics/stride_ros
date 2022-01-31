@@ -11,6 +11,7 @@ import rospy
 import math
 import os
 import time
+import threading
 from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
@@ -202,11 +203,18 @@ class PathFollower:
         # angle from robot to look-ahead point
         look_ahead_angle = atan2(y2-y1, x2-x1)
 
-        # prevent sudden rotation when arriving at the last path index and the stop index
-        if (self.current_path_index >= max_index - 1 or self.current_path_index >= self.stop_index - 1):
-            self.turning_radius = 999999
-        else:
+        # only update turning radius when distance is large enough
+        # needed to prevent sudden steering when arriving at the last path index or the stop index
+        threshold = 0.75
+        if self.current_path_index >= max_index:
+            self.turning_radius = 9999
+        elif distance > threshold and self.current_path_index <= self.stop_index:
+            # angle from robot to look-ahead point
+            look_ahead_angle = atan2(y2-y1, x2-x1)
+
             self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
+
+        # print('r: ', self.turning_radius, 'd: ', distance)
 
     def publish_path_following_velocity(self):
         max_index = len(self.path_easts) - 1
@@ -217,6 +225,7 @@ class PathFollower:
             pose2d.theta = 0
             self.robot_velocity_publisher.publish(pose2d)
             return
+
         pose2d = Pose2D()
         pose2d.x = self.desired_speed
         pose2d.theta = self.desired_speed / self.turning_radius

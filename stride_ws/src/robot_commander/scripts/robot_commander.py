@@ -46,10 +46,11 @@ class RobotCommander:
 
     def move_till_end_of_path(self, speed):
         print('Executing move_till_end_of_path')
-        rate = rospy.Rate(50)
+        rate1 = rospy.Rate(50)
+        rate2 = rospy.Rate(50)
         while (self.current_path_index < self.max_path_index):
             self.desired_speed_publisher.publish(speed)
-            rate.sleep()
+            rate1.sleep()
 
     def brake_to_stop(self):
         print('Executing brake_to_stop')
@@ -119,10 +120,13 @@ class RobotCommander:
 
             rate.sleep()
 
-        self.desired_speed_publisher.publish(0)
+        while self.robot_speed > 0.1:
+            self.desired_speed_publisher.publish(0)
+            
         self.stop_index_publisher.publish(999999)
 
     def sleep(self, seconds):
+        print('Executing sleep')
         time.sleep(seconds)
 
     def get_time_now_in_ms(self):
