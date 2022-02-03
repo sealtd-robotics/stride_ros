@@ -23,35 +23,13 @@ class DifferentialDrive:
         
         self.overseer_state = 0
 
-        self.desired_robot_v = 0
-        self.limited_robot_v = 0
-        self.desired_robot_w = 0
-        self.limited_robot_w = 0
-        self.turning_radius = 999999
-        
-        self.path_acceleration = ACCEL_DEFAULT 
-        self.path_deceleration = DECEL_DEFAULT
-        self.previous_time = time.time()
+        self.commanded_robot_v = 0
+        self.commanded_robot_w = 0
 
         self.wheel_rpm_publisher = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
-        rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)
-        rospy.Subscriber('/robot_acceleration_command_for_path_following', Float32, self.acceleration_callback, queue_size=1)
-        rospy.Subscriber('/robot_deceleration_command_for_path_following', Float32, self.deceleration_callback, queue_size=1)
-        
+        rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
-
-    def set_limited_velocity(self, acceleration, deceleration):
-        time_now = time.time()
-        dt = time_now - self.previous_time
-        self.previous_time = time_now
-
-        if self.desired_robot_v > self.limited_robot_v:
-            self.limited_robot_v = min(self.desired_robot_v, self.limited_robot_v + acceleration * dt)
-            self.limited_robot_w = self.limited_robot_v / self.turning_radius
-        else:
-            self.limited_robot_v = max(self.desired_robot_v, self.limited_robot_v - deceleration * dt)
-            self.limited_robot_w = self.limited_robot_v / self.turning_radius
 
     def publish_wheel_rpm(self, robot_v, robot_w):
         # # if not in manual, auto, or decent, don't publish
@@ -77,23 +55,8 @@ class DifferentialDrive:
         self.overseer_state = new_state.data
 
     def velocity_command_callback(self, pose2d):
-        self.desired_robot_v = pose2d.x
-        self.desired_robot_w = pose2d.theta
-
-        # needed for calculating the limited_robot_w after taking acceleration or deceleration into consideration
-        if pose2d.theta == 0:
-            self.turning_radius = 999999
-        else:
-            self.turning_radius = pose2d.x / pose2d.theta
-            
-
-    def acceleration_callback(self, msg):
-        self.path_acceleration = abs(msg.data)
-
-    def deceleration_callback(self, msg):
-        self.path_deceleration = abs(msg.data)
-
-
+        self.commanded_robot_v = pose2d.x
+        self.commanded_robot_w = pose2d.theta
 
 if __name__ ==  '__main__':
     node = rospy.init_node('drive_mechanism')
@@ -102,43 +65,14 @@ if __name__ ==  '__main__':
 
     rate = rospy.Rate(50)
 
-    previous_state = 0
-    state = 0
     while not rospy.is_shutdown():
         state = df.overseer_state
 
-        # if not either manual, auto, or decent, publish zero rpm
-        # needed because the above states don't always publish zero before transitioning out. 
-        if not (state == 1 or state == 2 or state == 6):
+        if state == 1 or state == 2 or state == 6: # 1:manual 2:auto 6:decending
+            df.publish_wheel_rpm(df.commanded_robot_v, df.commanded_robot_w)
+        else: 
+            df.commanded_robot_v = 0
+            df.commanded_robot_w = 0
             df.publish_wheel_rpm(0,0)
-        elif state == 1:
-            # On entering this state
-            if state != previous_state:
-                df.desired_robot_v = 0
-                df.desired_robot_w = 0
 
-            df.publish_wheel_rpm(df.desired_robot_v, df.desired_robot_w)
-        elif state == 2:
-            # On entering this state
-            if state != previous_state:
-                df.limited_robot_v = 0
-                df.previous_time = time.time()
-            
-            df.set_limited_velocity(df.path_acceleration, df.path_deceleration)
-            df.publish_wheel_rpm(df.limited_robot_v, df.limited_robot_w)
-        elif state == 6:
-            # On entering this state
-            if state != previous_state:
-                df.limited_robot_v = 0
-                df.previous_time = time.time()
-
-            df.set_limited_velocity(0.05, 0.05)
-            df.publish_wheel_rpm(df.limited_robot_v, df.limited_robot_w)
-
-        # Reset accel and decel for path following
-        if state != 2:
-            df.path_deceleration = ACCEL_DEFAULT
-            df.path_deceleration = DECEL_DEFAULT
-
-        previous_state = state
         rate.sleep()

@@ -198,6 +198,7 @@ class RosInterface:
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
         self.stop_clicked_publisher = rospy.Publisher('/gui/stop_clicked', Empty, queue_size=1)
         self.enable_manual_publisher = rospy.Publisher('/gui/enable_manual_clicked', Empty, queue_size=1)
+        self.idle_clicked_publisher = rospy.Publisher('/gui/idle_clicked', Empty, queue_size=1)
         self.heartbeat_publisher = rospy.Publisher('/gui/heartbeat', Empty, queue_size=1)
         self.toggle_brake_publisher = rospy.Publisher('/gui/brake_when_stopped_toggled', Empty, queue_size=1)
         self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
@@ -419,6 +420,8 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.stop_clicked_publisher.publish()
         elif message['type'] == '/gui/enable_manual_clicked':
             MyServerProtocol.ros_interface.enable_manual_publisher.publish()
+        elif message['type'] == '/gui/idle_clicked':
+            MyServerProtocol.ros_interface.idle_clicked_publisher.publish()
         elif message['type'] == '/gui/heartbeat':
             MyServerProtocol.ros_interface.heartbeat_publisher.publish()
         elif message['type'] == '/gui/brake_when_stopped_toggled':

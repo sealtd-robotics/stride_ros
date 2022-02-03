@@ -186,7 +186,7 @@ class MotorControllerNode:
 class MotorControllerNetwork:
     def __init__(self):
         self.overseer_state = 0
-        self.does_brake_when_stopped = True
+        self.does_brake_when_stopped = False
         self.ambient_temperature_F = 72
 
         self.left_front_rpm = 0
@@ -293,8 +293,6 @@ class MotorControllerNetwork:
 
     def publish_does_brake_when_stopped(self):
         while True:
-            if self.overseer_state == 5:
-                self.does_brake_when_stopped = True
             self.does_brake_when_stopped_publisher.publish(self.does_brake_when_stopped)
             time.sleep(0.1)
     
@@ -354,7 +352,6 @@ class MotorControllerNetwork:
     def drive(self):
         while True:
             time.sleep(0.02)
-            # Add IDLE state !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             if self.overseer_state == 5: # 5: STOPPED
                 self.enable_power_for_all_motors()
                 self.send_zero_rpm_to_all_motors()
@@ -366,8 +363,7 @@ class MotorControllerNetwork:
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
             elif self.overseer_state == 3: # 3: ESTOPPED
-                self.enable_power_for_all_motors()
-                self.send_zero_rpm_to_all_motors()
+                self.quick_stop_all_motors()
             elif self.overseer_state == 1: # MANUAL state
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
                     if self.does_brake_when_stopped:
@@ -393,6 +389,12 @@ class MotorControllerNetwork:
                 self.mc_lb_node.spin(self.left_back_rpm)
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
+            elif self.overseer_state == 7: # IDLE state
+                if self.is_any_measured_wheel_rpm_above_this(450):
+                    self.enable_power_for_all_motors()
+                    self.send_zero_rpm_to_all_motors()
+                else:
+                    self.quick_stop_all_motors()
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')

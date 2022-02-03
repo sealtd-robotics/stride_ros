@@ -38,26 +38,24 @@ class PathFollower:
         self.path_norths = []
         self.robot_east = 1
         self.robot_north = 1
-        self.turning_radius = 99999
-        self.desired_speed = 0
+        self.turning_radius = 999
         self.path_intervals = []
         self.stop_index = 999999
-        self.spin_in_place_velocity = 0
+        self.max_index = 9999999
 
         # Publishers
-        self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1, latch=True)
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
+        self.turning_radius_publisher = rospy.Publisher('/path_follower/turning_radius', Float32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
         rospy.Subscriber('/gui/upload_path_clicked', Empty, self.callback_2)
-        rospy.Subscriber('/robot_commander/desired_speed', Float32, self.callback_3)
+        rospy.Subscriber('/robot_velocity_command', Pose2D, self.callback_3)
         rospy.Subscriber('/robot_commander/stop_index', Int32, self.callback_4)
-        rospy.Subscriber('/robot_commander/spin_in_place_velocity', Float32, self.callback_5)
         rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
 
         # GPS Subscribers
@@ -66,8 +64,6 @@ class PathFollower:
 
         # Load path at startup
         self.load_path()
-
-        # rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_3, queue_size=1)
     
     def assign_reference_point(self, latitude, longitude):
         self.lat_ref = latitude
@@ -137,7 +133,8 @@ class PathFollower:
         latlong.longitudes = self.longitudes
         self.path_to_follow_publisher.publish(latlong)
 
-        self.max_index_publisher.publish(len(self.path_easts) - 1)
+        self.max_index = len(self.path_easts) - 1
+        self.max_index_publisher.publish(self.max_index)
 
         # path_intervals[3] gives the distance between index 3 and 4
         for i in range(0, len(self.path_easts) - 1):
@@ -150,17 +147,15 @@ class PathFollower:
         self.path_intervals_publisher.publish(msg)
 
     def update_current_path_index(self):
-        max_index = len(self.path_easts) - 1
-
-        if self.current_path_index == max_index:
+        if self.current_path_index == self.max_index:
             return
 
         # Find slope of line (m) connecting current index and the next index
         x_cur = self.path_easts[self.current_path_index]
         y_cur = self.path_norths[self.current_path_index]
 
-        x_next = self.path_easts[min(self.current_path_index + 1, max_index)]
-        y_next = self.path_norths[min(self.current_path_index + 1, max_index)]
+        x_next = self.path_easts[min(self.current_path_index + 1, self.max_index)]
+        y_next = self.path_norths[min(self.current_path_index + 1, self.max_index)]
         m = (y_next - y_cur) / (x_next - x_cur)
 
         # Slope of the perpendicular line to the original line
@@ -183,16 +178,14 @@ class PathFollower:
 
     def update_turning_radius(self):
         # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
-        
-        max_index = len(self.path_easts) - 1
-        
+                
         # robot point
         x1 = self.robot_east
         y1 = self.robot_north
 
         # look-ahead point
-        x2 = self.path_easts[min(max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
-        y2 = self.path_norths[min(max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
+        x2 = self.path_easts[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
+        y2 = self.path_norths[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
 
         # make heading begin on the x-axis (east axis) and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
@@ -205,38 +198,14 @@ class PathFollower:
 
         # only update turning radius when distance is large enough
         # needed to prevent sudden steering when arriving at the last path index or the stop index
-        threshold = 0.75
-        if self.current_path_index >= max_index:
-            self.turning_radius = 9999
-        elif distance > threshold and self.current_path_index <= self.stop_index:
+        if distance > 0.75:
             # angle from robot to look-ahead point
             look_ahead_angle = atan2(y2-y1, x2-x1)
 
             self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
 
+        # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
         # print('r: ', self.turning_radius, 'd: ', distance)
-
-    def publish_path_following_velocity(self):
-        max_index = len(self.path_easts) - 1
-
-        if self.current_path_index == max_index:
-            pose2d = Pose2D()
-            pose2d.x = 0
-            pose2d.theta = 0
-            self.robot_velocity_publisher.publish(pose2d)
-            return
-
-        pose2d = Pose2D()
-        pose2d.x = self.desired_speed
-        pose2d.theta = self.desired_speed / self.turning_radius
-
-        self.robot_velocity_publisher.publish(pose2d)
-
-    def publish_spin_velocity(self):
-        pose2d = Pose2D()
-        pose2d.x = 0
-        pose2d.theta = self.spin_in_place_velocity
-        self.robot_velocity_publisher.publish(pose2d)
 
     # Subscriber callbacks
     def callback_1(self, msg):
@@ -246,16 +215,11 @@ class PathFollower:
         self.load_path()
 
     def callback_3(self, msg):
-        self.desired_speed = msg.data
-
-        # changing look_ahead_points based on desdired_speed
-        self.look_ahead_points = int(max(10, 4 * self.desired_speed))
+        # changing look_ahead_points based on commanded speed
+        self.look_ahead_points = int(max(10, 4 * msg.x))
 
     def callback_4(self, msg):
         self.stop_index = msg.data
-
-    def callback_5(self, msg):
-        self.spin_in_place_velocity = msg.data
 
     def callback_6(self, msg):
         self.current_path_index = msg.data
@@ -281,15 +245,10 @@ if __name__ ==  '__main__':
         if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
             pf.update_current_path_index()
             pf.update_turning_radius()
-            if pf.spin_in_place_velocity != 0:
-                pf.publish_spin_velocity()
-            else:
-                pf.publish_path_following_velocity()
-
+            pf.turning_radius_publisher.publish(pf.turning_radius)
         else:
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
-            pf.desired_speed = 0
-            pf.spin_in_place_velocity = 0
+            pf.turning_radius = 999
 
         rate.sleep() 

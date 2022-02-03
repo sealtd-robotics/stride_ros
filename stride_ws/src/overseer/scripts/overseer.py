@@ -107,11 +107,13 @@ class Gui:
         self.is_enable_manual_clicked = False
         self.is_heartbeat_timeout = False
         self.is_start_following_clicked = False
+        self.is_idle_clicked = False
 
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
         rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
         rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback, queue_size=1)
         rospy.Subscriber('/gui/start_path_following_clicked', Empty, self.start_following_callback)
+        rospy.Subscriber('/gui/idle_clicked', Empty, self.idle_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -131,6 +133,7 @@ class Gui:
         self.is_stop_clicked = False
         self.is_enable_manual_clicked = False
         self.is_start_following_clicked = False
+        self.is_idle_clicked = False
 
     def stop_callback(self, msg):
         self.is_stop_clicked = True
@@ -149,6 +152,9 @@ class Gui:
 
     def start_following_callback(self, msg):
         self.is_start_following_clicked = True
+
+    def idle_callback(self, msg):
+        self.is_idle_clicked = True
 
 class Handheld:
     def __init__(self):
@@ -187,7 +193,7 @@ class Gps:
 def should_decent(mcs, pitch):
     hot = False
     for mc in mcs:
-        if mc.winding_temperature >= 25: # Set to less than 115C, which is the warning temperature. 
+        if mc.winding_temperature >= 30: # Set to less than 115C, which is the warning temperature. 
             hot = True
 
     should_decent = hot and abs(pitch) > 6 /180*math.pi
@@ -255,21 +261,28 @@ if __name__ ==  '__main__':
                 state = MANUAL
             elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
                 state = AUTO
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # elif handheld.is_estop_pressed:
-            #     state = E_STOPPED
+            elif handheld.is_estop_pressed:
+                state = E_STOPPED
             elif should_decent(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50:
                 state = DECENDING
+            elif gui.is_idle_clicked:
+                state = IDLE
 
         # Decending
         elif state == DECENDING:
-            if abs(gps.pitch) < 4/180*math.pi:
-                state = STOPPED
-            # implement going to IDLE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            if gui.is_idle_clicked or abs(gps.pitch) < 3/180*math.pi:
+                state = IDLE
 
+        # Idle
         elif state == IDLE:
-            # implement IDLE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            pass
+            if gui.is_stop_clicked:
+                state = STOPPED
+            elif gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
+                state = MANUAL
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
+                state = AUTO
+            elif handheld.is_estop_pressed:
+                state = E_STOPPED
 
         gui.reset_button_clicks()
         state_publisher.publish( state )
