@@ -193,7 +193,7 @@ class Gps:
 def should_decent(mcs, pitch):
     hot = False
     for mc in mcs:
-        if mc.winding_temperature >= 30: # Set to less than 115C, which is the warning temperature. 
+        if mc.winding_temperature >= 105: # Set to less than 115C, which is the warning temperature. 
             hot = True
 
     should_decent = hot and abs(pitch) > 6 /180*math.pi

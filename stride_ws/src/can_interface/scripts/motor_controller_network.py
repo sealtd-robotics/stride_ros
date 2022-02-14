@@ -363,7 +363,9 @@ class MotorControllerNetwork:
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
             elif self.overseer_state == 3: # 3: ESTOPPED
-                self.quick_stop_all_motors()
+                # self.quick_stop_all_motors()
+                self.enable_power_for_all_motors()
+                self.send_zero_rpm_to_all_motors()
             elif self.overseer_state == 1: # MANUAL state
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
                     if self.does_brake_when_stopped:
