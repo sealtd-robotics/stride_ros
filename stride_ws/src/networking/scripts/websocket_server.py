@@ -209,11 +209,11 @@ class RosInterface:
     
     # Callbacks
     def subscriber_callback_1(self, msg):
-        self.robotState['robotVelocityCommand']['v'] = msg.x
-        self.robotState['robotVelocityCommand']['w'] = msg.theta
+        self.robotState['robotVelocityCommand']['v'] = round(msg.x, 3)
+        self.robotState['robotVelocityCommand']['w'] = round(msg.theta, 3)
 
     def subscriber_callback_2(self, msg):
-        self.robotState['robotTurningRadius'] = msg.data
+        self.robotState['robotTurningRadius'] = round(msg.data, 2)
 
     def subscriber_callback_3(self, msg):
         self.robotState['overseerState'] = msg.data
@@ -228,13 +228,13 @@ class RosInterface:
         self.robotState['batteryTemperature'] = msg.data
 
     def subscriber_callback_7(self, msg):
-        self.robotState['batteryVoltage'] = msg.data
+        self.robotState['batteryVoltage'] = round(msg.data, 2)
 
     def subscriber_callback_8(self, msg):
         self.robotState['targetVehicle']['latitude'] = msg.latitude
         self.robotState['targetVehicle']['longitude'] = msg.longitude
-        self.robotState['targetVehicle']['heading'] = msg.heading
-        self.robotState['targetVehicle']['velocity'] = msg.velocity
+        self.robotState['targetVehicle']['heading'] = round(msg.heading, 1)
+        self.robotState['targetVehicle']['velocity'] = round(msg.velocity, 3)
         self.robotState['targetVehicle']['gps_ready'] = msg.gps_ready
         self.robotState['targetVehicle']['gps_correction_type'] = msg.gps_correction_type
 
@@ -246,9 +246,9 @@ class RosInterface:
     def left_front_mc_callback_2(self, msg):
         self.robotState['motorControllers']['leftFront']['heartbeatNmt'] = msg.data
     def left_front_mc_callback_3(self, msg):
-        self.robotState['motorControllers']['leftFront']['motorCurrentDraw'] = msg.data
+        self.robotState['motorControllers']['leftFront']['motorCurrentDraw'] = round(msg.data, 3)
     def left_front_mc_callback_4(self, msg):
-        self.robotState['motorControllers']['leftFront']['wheelRpmActual'] = msg.data
+        self.robotState['motorControllers']['leftFront']['wheelRpmActual'] = round(msg.data, 2)
     def left_front_mc_callback_5(self, msg):
         self.robotState['motorControllers']['leftFront']['errorWord'] = msg.data
     def left_front_mc_callback_6(self, msg):
@@ -262,9 +262,9 @@ class RosInterface:
     def left_back_mc_callback_2(self, msg):
         self.robotState['motorControllers']['leftBack']['heartbeatNmt'] = msg.data
     def left_back_mc_callback_3(self, msg):
-        self.robotState['motorControllers']['leftBack']['motorCurrentDraw'] = msg.data
+        self.robotState['motorControllers']['leftBack']['motorCurrentDraw'] = round(msg.data ,3)
     def left_back_mc_callback_4(self, msg):
-        self.robotState['motorControllers']['leftBack']['wheelRpmActual'] = msg.data
+        self.robotState['motorControllers']['leftBack']['wheelRpmActual'] = round(msg.data, 2)
     def left_back_mc_callback_5(self, msg):
         self.robotState['motorControllers']['leftBack']['errorWord'] = msg.data
     def left_back_mc_callback_6(self, msg):
@@ -278,9 +278,9 @@ class RosInterface:
     def right_front_mc_callback_2(self, msg):
         self.robotState['motorControllers']['rightFront']['heartbeatNmt'] = msg.data
     def right_front_mc_callback_3(self, msg):
-        self.robotState['motorControllers']['rightFront']['motorCurrentDraw'] = msg.data
+        self.robotState['motorControllers']['rightFront']['motorCurrentDraw'] = round(msg.data, 3)
     def right_front_mc_callback_4(self, msg):
-        self.robotState['motorControllers']['rightFront']['wheelRpmActual'] = msg.data
+        self.robotState['motorControllers']['rightFront']['wheelRpmActual'] = round(msg.data, 2)
     def right_front_mc_callback_5(self, msg):
         self.robotState['motorControllers']['rightFront']['errorWord'] = msg.data
     def right_front_mc_callback_6(self, msg):
@@ -294,9 +294,9 @@ class RosInterface:
     def right_back_mc_callback_2(self, msg):
         self.robotState['motorControllers']['rightBack']['heartbeatNmt'] = msg.data
     def right_back_mc_callback_3(self, msg):
-        self.robotState['motorControllers']['rightBack']['motorCurrentDraw'] = msg.data
+        self.robotState['motorControllers']['rightBack']['motorCurrentDraw'] = round(msg.data, 3)
     def right_back_mc_callback_4(self, msg):
-        self.robotState['motorControllers']['rightBack']['wheelRpmActual'] = msg.data
+        self.robotState['motorControllers']['rightBack']['wheelRpmActual'] = round(msg.data, 2)
     def right_back_mc_callback_5(self, msg):
         self.robotState['motorControllers']['rightBack']['errorWord'] = msg.data
     def right_back_mc_callback_6(self, msg):
@@ -309,20 +309,20 @@ class RosInterface:
         self.robotState['gps']['status'] = msg.status.status
         self.robotState['gps']['latitude'] = msg.latitude
         self.robotState['gps']['longitude'] = msg.longitude
-        self.robotState['gps']['latitudeVariance'] = msg.position_covariance[0]
-        self.robotState['gps']['longitudeVariance'] = msg.position_covariance[4]
+        self.robotState['gps']['latitudeVariance'] = round(msg.position_covariance[0], 9)
+        self.robotState['gps']['longitudeVariance'] = round(msg.position_covariance[4], 9)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_2(self, msg):
-        self.robotState['gps']['northVelocity'] = msg.linear.x
-        self.robotState['gps']['eastVelocity'] = msg.linear.y
-        self.robotState['gps']['zAngularVelocity'] = msg.angular.z
+        self.robotState['gps']['northVelocity'] = round(msg.linear.x, 3)
+        self.robotState['gps']['eastVelocity'] = round(msg.linear.y, 3)
+        self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_3(self, msg):
-        self.robotState['gps']['xAcceleration'] = msg.linear_acceleration.x
-        self.robotState['gps']['yAcceleration'] = msg.linear_acceleration.y
-        self.robotState['gps']['zAcceleration'] = msg.linear_acceleration.z
+        self.robotState['gps']['xAcceleration'] = round(msg.linear_acceleration.x, 3)
+        self.robotState['gps']['yAcceleration'] = round(msg.linear_acceleration.y, 3)
+        self.robotState['gps']['zAcceleration'] = round(msg.linear_acceleration.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_4(self, msg):
@@ -334,13 +334,13 @@ class RosInterface:
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_6(self, msg):
-        self.robotState['gps']['heading'] = msg.data
+        self.robotState['gps']['heading'] = round(msg.data, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_7(self, msg):
-        self.robotState['gps']['xMagnetometer'] = msg.x
-        self.robotState['gps']['yMagnetometer'] = msg.y
-        self.robotState['gps']['zMagnetometer'] = msg.z
+        self.robotState['gps']['xMagnetometer'] = round(msg.x, 3)
+        self.robotState['gps']['yMagnetometer'] = round(msg.y, 3)
+        self.robotState['gps']['zMagnetometer'] = round(msg.z, 3)
 
     def gps_subscriber_callback_8(self, msg):
         self.robotState['gps']['magneticCalibrationStatus'] = msg.data
