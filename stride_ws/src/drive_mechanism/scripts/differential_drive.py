@@ -5,10 +5,14 @@
 # w: angular velocity
 
 from __future__ import division
-import rospy
+import queue
+import rospy, time
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Float32
 from geometry_msgs.msg import Pose2D
+
+ACCEL_DEFAULT = 3.5 # m/s2
+DECEL_DEFAULT = 3.5 # m/s2
 
 class DifferentialDrive:
     radian_per_sec_to_rpm = 9.54929658551
@@ -19,20 +23,20 @@ class DifferentialDrive:
         
         self.overseer_state = 0
 
+        self.commanded_robot_v = 0
+        self.commanded_robot_w = 0
+
         self.wheel_rpm_publisher = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
-        rospy.Subscriber('/robot_velocity_command', Pose2D, self.publish_wheel_rpm, queue_size=1)
-        
+        rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
-    def publish_wheel_rpm(self, pose2d):
-        # if not in either manual or auto, don't publish
-        if not (self.overseer_state == 1 or self.overseer_state == 2):
-            return
+    def publish_wheel_rpm(self, robot_v, robot_w):
+        # # if not in manual, auto, or decent, don't publish
+        # if not (self.overseer_state == 1 or self.overseer_state == 2 or self.overseer_state == 6 ):
+        #     return
 
-        robot_v = pose2d.x
-        robot_w = pose2d.theta
-
+        # Differential drive formulas
         left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / self.wheel_radius
         left_wheel_rpm = left_wheel_w * self.radian_per_sec_to_rpm
 
@@ -50,21 +54,25 @@ class DifferentialDrive:
     def overseer_state_callback(self, new_state):
         self.overseer_state = new_state.data
 
+    def velocity_command_callback(self, pose2d):
+        self.commanded_robot_v = pose2d.x
+        self.commanded_robot_w = pose2d.theta
 
 if __name__ ==  '__main__':
     node = rospy.init_node('drive_mechanism')
 
     df = DifferentialDrive()
 
-    zero_rpm = WheelRPM()
-    zero_rpm.left_front = 0
-    zero_rpm.left_back = 0
-    zero_rpm.right_front = 0
-    zero_rpm.right_back = 0
+    rate = rospy.Rate(50)
 
-    rate = rospy.Rate(10)
     while not rospy.is_shutdown():
-        # if not in either manual or auto, publish zero rpm
-        if not (df.overseer_state == 1 or df.overseer_state == 2):
-            df.wheel_rpm_publisher.publish(zero_rpm)
+        state = df.overseer_state
+
+        if state == 1 or state == 2 or state == 6: # 1:manual 2:auto 6:decending
+            df.publish_wheel_rpm(df.commanded_robot_v, df.commanded_robot_w)
+        else: 
+            df.commanded_robot_v = 0
+            df.commanded_robot_w = 0
+            df.publish_wheel_rpm(0,0)
+
         rate.sleep()

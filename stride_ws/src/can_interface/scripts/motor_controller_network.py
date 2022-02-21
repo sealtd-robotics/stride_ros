@@ -22,6 +22,7 @@ class MotorControllerNode:
         self.gear_ratio = rospy.get_param('~gear_ratio')
         self.rated_current = rospy.get_param('~rated_current')
         self.error_word = 0
+        self.winding_temperature = 0
         self.state = 0
         self.wheel_rpm_actual = 0
 
@@ -53,6 +54,7 @@ class MotorControllerNode:
         self.motor_current_publisher = rospy.Publisher('/motor_controller/{}/motor_current_draw'.format(self.topic_name), Float32, queue_size=10)
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
+        self.winding_temperature_publisher = rospy.Publisher('/motor_controller/{}/winding_temperature'.format(self.topic_name), Int32, queue_size=10)
 
         # Subscribers
         # rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
@@ -102,10 +104,11 @@ class MotorControllerNode:
     #     self.node.rpdo[2].transmit()
     #     time.sleep(0.02)
 
-    def enable_power(self):
-        # If power is already enabled, this function will switch off and on the power, relaxing the motor.
+    def disable_enable_power(self):
+        # disable and then re-enable power
+        # can also be used for simply enabling power
 
-        # Send a "shut down" command to go to "Ready to Switch On" state
+        # Send a "shut down" command to go to "Ready to Switch On" state, from either "Operation Enabled" or "Switch on Disabled"
         self.node.rpdo[2][0].raw = int('0110',2)
         self.node.rpdo[2].transmit()
         time.sleep(0.02)
@@ -115,6 +118,14 @@ class MotorControllerNode:
         self.node.rpdo[2][0].raw = int('1111',2)
         self.node.rpdo[2].transmit()
         time.sleep(0.02)
+
+    def enable_power_if_disabled(self):
+        # return when there is power already
+        if self.state == 39 or self.state == 55: # Operation Enabled can be 39 or 55 
+            return
+        
+        # The commands inside this function are same for enabling power
+        self.disable_enable_power()
 
     def quick_stop_controlword(self):
         self.node.rpdo[2][0].raw = int('10',2)
@@ -153,6 +164,11 @@ class MotorControllerNode:
         self.error_word_publisher.publish(error_word)
         self.error_word = error_word
 
+        # 1
+        winding_temperature = tpdo2[1].raw
+        self.winding_temperature_publisher.publish(winding_temperature)
+        self.winding_temperature = winding_temperature
+
     def get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
         now = datetime.utcnow()
@@ -171,7 +187,6 @@ class MotorControllerNetwork:
     def __init__(self):
         self.overseer_state = 0
         self.does_brake_when_stopped = False
-        self.has_quick_stop_been_applied = False
         self.ambient_temperature_F = 72
 
         self.left_front_rpm = 0
@@ -248,28 +263,27 @@ class MotorControllerNetwork:
         self.mcn_thread_4.start()
 
     def can_relax(self):
-        return self.overseer_state == 1 and self.does_brake_when_stopped and \
-                self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0
+        return (self.overseer_state == 1 or self.overseer_state == 3 or self.overseer_state == 5) and \
+                self.are_all_measured_wheel_rpm_below_this(10)
 
     def relax_motors(self):
-        interval = 5
+        interval = 3
         while True:
             time.sleep(interval)
             if self.can_relax():
-                # enable_power() actually disables and then re-enables power 
-                self.mc_lf_node.enable_power()
+                self.mc_lf_node.disable_enable_power()
 
             time.sleep(interval)
             if self.can_relax():
-                self.mc_lb_node.enable_power()
+                self.mc_lb_node.disable_enable_power()
 
             time.sleep(interval)
             if self.can_relax():
-                self.mc_rf_node.enable_power()
+                self.mc_rf_node.disable_enable_power()
 
             time.sleep(interval)
             if self.can_relax():
-                self.mc_rb_node.enable_power()
+                self.mc_rb_node.disable_enable_power()
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
@@ -279,8 +293,6 @@ class MotorControllerNetwork:
 
     def publish_does_brake_when_stopped(self):
         while True:
-            if self.overseer_state == 5:
-                self.does_brake_when_stopped = False
             self.does_brake_when_stopped_publisher.publish(self.does_brake_when_stopped)
             time.sleep(0.1)
     
@@ -304,14 +316,10 @@ class MotorControllerNetwork:
         self.right_back_rpm = msg.right_back
 
     def enable_power_for_all_motors(self):
-        # this condition is to prevent the error of enabling power when the main battery is unplugged
-        if self.has_quick_stop_been_applied:
-            self.mc_lf_node.enable_power()
-            self.mc_lb_node.enable_power()
-            self.mc_rf_node.enable_power()
-            self.mc_rb_node.enable_power()
-
-            self.has_quick_stop_been_applied = False
+        self.mc_lf_node.enable_power_if_disabled()
+        self.mc_lb_node.enable_power_if_disabled()
+        self.mc_rf_node.enable_power_if_disabled()
+        self.mc_rb_node.enable_power_if_disabled()
 
     def send_zero_rpm_to_all_motors(self):
         self.mc_lf_node.spin(0)
@@ -325,7 +333,13 @@ class MotorControllerNetwork:
         self.mc_rf_node.quick_stop_controlword()
         self.mc_rb_node.quick_stop_controlword()
 
-        self.has_quick_stop_been_applied = True
+    def are_all_measured_wheel_rpm_below_this(self, rpm):
+        return (
+            abs(self.mc_lb_node.wheel_rpm_actual) < rpm and
+            abs(self.mc_lf_node.wheel_rpm_actual) < rpm and
+            abs(self.mc_rf_node.wheel_rpm_actual) < rpm and
+            abs(self.mc_rb_node.wheel_rpm_actual) < rpm
+        )
 
     def is_any_measured_wheel_rpm_above_this(self, rpm):
         return (
@@ -339,23 +353,30 @@ class MotorControllerNetwork:
         while True:
             time.sleep(0.02)
             if self.overseer_state == 5: # 5: STOPPED
-                while self.is_any_measured_wheel_rpm_above_this(400):
-                    self.enable_power_for_all_motors()
-                    self.send_zero_rpm_to_all_motors()
-                self.quick_stop_all_motors()
-            elif self.overseer_state == 3:
-                self.quick_stop_all_motors()
+                self.enable_power_for_all_motors()
+                self.send_zero_rpm_to_all_motors()
+            elif self.overseer_state == 6: # 6: DECENDING
+                self.enable_power_for_all_motors()
+
+                self.mc_lf_node.spin(self.left_front_rpm)
+                self.mc_lb_node.spin(self.left_back_rpm)
+                self.mc_rf_node.spin(self.right_front_rpm)
+                self.mc_rb_node.spin(self.right_back_rpm)
+            elif self.overseer_state == 3: # 3: ESTOPPED
+                # self.quick_stop_all_motors()
+                self.enable_power_for_all_motors()
+                self.send_zero_rpm_to_all_motors()
             elif self.overseer_state == 1: # MANUAL state
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
                     if self.does_brake_when_stopped:
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
-
-                        while self.is_any_measured_wheel_rpm_above_this(400):
+                        if self.is_any_measured_wheel_rpm_above_this(450):
                             self.enable_power_for_all_motors()
                             self.send_zero_rpm_to_all_motors()
-                        self.quick_stop_all_motors()
+                        else:
+                            self.quick_stop_all_motors()
                 else:
                     self.enable_power_for_all_motors()
 
@@ -370,6 +391,12 @@ class MotorControllerNetwork:
                 self.mc_lb_node.spin(self.left_back_rpm)
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
+            elif self.overseer_state == 7: # IDLE state
+                if self.is_any_measured_wheel_rpm_above_this(450):
+                    self.enable_power_for_all_motors()
+                    self.send_zero_rpm_to_all_motors()
+                else:
+                    self.quick_stop_all_motors()
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')

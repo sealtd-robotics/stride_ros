@@ -16,6 +16,9 @@ from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist
 from external_interface.msg import TargetVehicle
 from datetime import datetime
+from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
+
+
 
 class RobotCommander:
     def __init__(self):
@@ -24,10 +27,12 @@ class RobotCommander:
         self.path_intervals = []
         self.robot_speed = -1
         self.robot_heading = -1
+        self.turning_radius = 999
+
+        self.limiter_initial_speed = 0
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
-        self.desired_speed_publisher = rospy.Publisher('/robot_commander/desired_speed', Float32, queue_size=1)
         self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
@@ -36,33 +41,57 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
+        rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
+
         # blocking until these attributes have been updated by subscriber callbacks
-        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1):
+        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
             time.sleep(0.1)
 
-    def move_till_end_of_path(self, speed):
-        print('Executing move_till_end_of_path')
+
+    def _send_velocity_command_using_radius(self, speed):
+        self.limiter_initial_speed = speed
+
+        pose2d = Pose2D()
+        pose2d.x = speed
+        pose2d.theta = speed / self.turning_radius
+
+        self.velocity_command_publisher.publish(pose2d)
+
+    def move_until_end_of_path(self, speed_goal, speed_rate):
+        print('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
+
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
         while (self.current_path_index < self.max_path_index):
-            self.desired_speed_publisher.publish(speed)
+            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def brake_to_stop(self):
+    def brake_to_stop(self, speed_rate):
         print('Executing brake_to_stop')
         rate = rospy.Rate(50)
-        while self.robot_speed > 0.1:
-            self.desired_speed_publisher.publish(0)
+        speed_goal = 0
+
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
+        while (self.robot_speed > 0.1 and self.current_path_index < self.max_path_index):
+            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def move_till_index(self, speed, index):
-        print('Executing move_till_index')
+    def move_until_index(self, speed_goal, speed_rate, index):
+        print('Executing move_until_index')
         rate = rospy.Rate(50)
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
         while (self.current_path_index < index):
-            self.desired_speed_publisher.publish(speed)
+            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
     def set_index(self, index):
@@ -73,8 +102,8 @@ class RobotCommander:
             rate.sleep()
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
-    def rotate_till_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
-        print('Executing rotate_till_heading')
+    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
+        print('Executing rotate_until_heading')
         heading = heading % 360
 
         heading_radian = heading / 180 * math.pi
@@ -83,19 +112,24 @@ class RobotCommander:
         lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
         upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
 
+        pose2d = Pose2D()
+        pose2d.x = 0
+        pose2d.theta = angular_velocity
+
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
             while self.robot_heading < lower_bound or self.robot_heading > upper_bound:
-                self.spin_velocity_publisher.publish(angular_velocity)
+                self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
         else:
             while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
-                self.spin_velocity_publisher.publish(angular_velocity)
+                self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
         if brake_when_done:
             while self.robot_angular_speed > 0.02:
-                self.spin_velocity_publisher.publish(0)
+                pose2d.theta = 0
+                self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
 
@@ -115,14 +149,18 @@ class RobotCommander:
         while (self.current_path_index < stop_index):
             vi = vi + a*period # a is negative
             vi = max(vi, 0.3) # prevent zero velocity before reaching the stop_index
-            self.desired_speed_publisher.publish(vi)
-
+            self._send_velocity_command_using_radius(vi)
             rate.sleep()
 
-        self.desired_speed_publisher.publish(0)
+
+        while self.robot_speed > 0.1:
+            self._send_velocity_command_using_radius(0)
+            rate.sleep()
+            
         self.stop_index_publisher.publish(999999)
 
     def sleep(self, seconds):
+        print('Executing sleep')
         time.sleep(seconds)
 
     def get_time_now_in_ms(self):
@@ -178,6 +216,9 @@ class RobotCommander:
         self.target_longitude = msg.longitude
         self.target_latitude = msg.latitude
         self.target_gps_correction_type = msg.gps_correction_type
+
+    def turning_radius_callback(self, msg):
+        self.turning_radius = msg.data
 
     def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
         """

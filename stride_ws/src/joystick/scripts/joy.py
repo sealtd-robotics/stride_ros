@@ -31,8 +31,8 @@ class Joystick:
         self.overseer_state = new_state.data
 
     def publish_velocity(self, stick):
-        # if not in either manual or auto, don't publish
-        if not (self.overseer_state == 1 or self.overseer_state == 2):
+        # if not in manual, don't publish
+        if not self.overseer_state == 1:
             return
 
         v, w, r = self.joystick_to_velocities(stick.travel, stick.angle)
