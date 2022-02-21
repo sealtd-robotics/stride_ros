@@ -11,6 +11,7 @@ import rospy
 from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float32, Int32
 from joystick.msg import Stick
+from shared_tools.overseer_states_constants import *
 
 class Joystick:
     def __init__(self):
@@ -32,7 +33,7 @@ class Joystick:
 
     def publish_velocity(self, stick):
         # if not in manual, don't publish
-        if not self.overseer_state == 1:
+        if not self.overseer_state == MANUAL:
             return
 
         v, w, r = self.joystick_to_velocities(stick.travel, stick.angle)

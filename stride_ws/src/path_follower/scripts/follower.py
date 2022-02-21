@@ -16,6 +16,7 @@ from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
 from geometry_msgs.msg import Pose2D
 from sensor_msgs.msg import NavSatFix
 from path_follower.msg import Latlong
+from shared_tools.overseer_states_constants import *
 
 from math import cos, sin, sqrt, pi, atan2
 from glob import glob
@@ -244,7 +245,7 @@ if __name__ ==  '__main__':
 
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
-        if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
+        if pf.overseer_state == AUTO:
             pf.update_current_path_index()
             pf.update_turning_radius()
             pf.turning_radius_publisher.publish(pf.turning_radius)

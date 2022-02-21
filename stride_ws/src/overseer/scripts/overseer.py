@@ -16,14 +16,8 @@ import time
 import enum
 import threading
 from datetime import datetime
+from shared_tools.overseer_states_constants import *
 
-# States
-MANUAL = 1
-AUTO = 2
-E_STOPPED = 3
-STOPPED = 5
-DECENDING = 6
-IDLE = 7
 
 class ErrorHandler:
     def __init__(self, mcs, gui, handheld):
@@ -190,14 +184,14 @@ class Gps:
         self.pitch = msg.data
 
 
-def should_decent(mcs, pitch):
+def should_descend(mcs, pitch):
     hot = False
     for mc in mcs:
         if mc.winding_temperature >= 105: # Set to less than 115C, which is the warning temperature. 
             hot = True
 
-    should_decent = hot and abs(pitch) > 6 /180*math.pi
-    return should_decent
+    should_descend = hot and abs(pitch) > 6 /180*math.pi
+    return should_descend
 
 def abs_max_wheel_rpm_actual(mcs):
     max_rpm = 0
@@ -235,14 +229,14 @@ if __name__ ==  '__main__':
                 state = E_STOPPED
             elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
                 state = AUTO
-            elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_decent(mcs, gps.pitch):
+            elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_descend(mcs, gps.pitch):
                 state = STOPPED
         
         # Auto
         elif state == AUTO:
             if handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_decent(mcs, gps.pitch):
+            elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_descend(mcs, gps.pitch):
                 state = STOPPED
             elif not rc.is_script_running:
                 # Making sure the rc.is_script_running has time to update
@@ -263,13 +257,13 @@ if __name__ ==  '__main__':
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif should_decent(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50:
-                state = DECENDING
+            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50:
+                state = DESCENDING
             elif gui.is_idle_clicked:
                 state = IDLE
 
         # Decending
-        elif state == DECENDING:
+        elif state == DESCENDING:
             if gui.is_idle_clicked or abs(gps.pitch) < 3/180*math.pi:
                 state = IDLE
 

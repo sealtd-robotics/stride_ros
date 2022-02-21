@@ -10,6 +10,7 @@ import rospy, time
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Int32, Float32
 from geometry_msgs.msg import Pose2D
+from shared_tools.overseer_states_constants import *
 
 ACCEL_DEFAULT = 3.5 # m/s2
 DECEL_DEFAULT = 3.5 # m/s2
@@ -32,7 +33,7 @@ class DifferentialDrive:
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
     def publish_wheel_rpm(self, robot_v, robot_w):
-        # # if not in manual, auto, or decent, don't publish
+        # # if not in manual, auto, or descending, don't publish
         # if not (self.overseer_state == 1 or self.overseer_state == 2 or self.overseer_state == 6 ):
         #     return
 
@@ -68,7 +69,7 @@ if __name__ ==  '__main__':
     while not rospy.is_shutdown():
         state = df.overseer_state
 
-        if state == 1 or state == 2 or state == 6: # 1:manual 2:auto 6:decending
+        if state == MANUAL or state == AUTO or state == DESCENDING:
             df.publish_wheel_rpm(df.commanded_robot_v, df.commanded_robot_w)
         else: 
             df.commanded_robot_v = 0

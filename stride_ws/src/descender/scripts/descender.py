@@ -7,12 +7,13 @@ from std_msgs.msg import Int32, Float32
 from geometry_msgs.msg import Pose2D
 import time
 from shared_tools.utils import find_rate_limited_speed
+from shared_tools.overseer_states_constants import *
 
 
 
 class Decender:
     def __init__(self):
-        self.overseer_state = 5 # 5: Stopped state
+        self.overseer_state = STOPPED
         self.pitch = 0
 
         # Publishers
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         state = d.overseer_state
 
-        if state == 6: # 6: Decending state
+        if state == DESCENDING:
             # On entering this state
             if state != previous_state:
                 initial_time = time.time()

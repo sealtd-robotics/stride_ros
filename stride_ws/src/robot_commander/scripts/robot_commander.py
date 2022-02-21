@@ -17,8 +17,7 @@ from geometry_msgs.msg import Pose2D, Twist
 from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
-
-
+from shared_tools.overseer_states_constants import *
 
 class RobotCommander:
     def __init__(self):
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         # if there is a state change
         if recept.previous_state != recept.overseer_state:
-            if recept.overseer_state == 2 and not recept.is_script_running:  # overseer state 2 is AUTO mode
+            if recept.overseer_state == AUTO and not recept.is_script_running:
                 recept.is_script_running = True
                 recept.is_script_running_publisher.publish(True)
 
@@ -334,7 +333,7 @@ if __name__ == '__main__':
             
             # If the STOP button is clicked when the custom script is still running, kill this ROS node by breaking out of the while loop.
             # This ROS node will respawn after being killed
-            elif recept.overseer_state != 2 and recept.is_script_running:
+            elif recept.overseer_state != AUTO and recept.is_script_running:
                 recept.is_script_running_publisher.publish(False)
                 break
 

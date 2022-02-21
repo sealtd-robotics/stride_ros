@@ -1,0 +1,8 @@
+# Overseer States
+MANUAL = 1
+AUTO = 2
+E_STOPPED = 3
+STOPPED = 5
+DESCENDING = 6
+IDLE = 7
+

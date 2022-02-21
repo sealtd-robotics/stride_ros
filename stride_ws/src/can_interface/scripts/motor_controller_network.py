@@ -16,6 +16,7 @@ from std_msgs.msg import Float32, Int32, Bool, Empty
 import time
 import threading
 from datetime import datetime
+from shared_tools.overseer_states_constants import *
 
 class MotorControllerNode:
     def __init__(self, node, topic_name):
@@ -263,7 +264,7 @@ class MotorControllerNetwork:
         self.mcn_thread_4.start()
 
     def can_relax(self):
-        return (self.overseer_state == 1 or self.overseer_state == 3 or self.overseer_state == 5) and \
+        return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
                 self.are_all_measured_wheel_rpm_below_this(10)
 
     def relax_motors(self):
@@ -352,21 +353,21 @@ class MotorControllerNetwork:
     def drive(self):
         while True:
             time.sleep(0.02)
-            if self.overseer_state == 5: # 5: STOPPED
+            if self.overseer_state == STOPPED:
                 self.enable_power_for_all_motors()
                 self.send_zero_rpm_to_all_motors()
-            elif self.overseer_state == 6: # 6: DECENDING
+            elif self.overseer_state == DESCENDING:
                 self.enable_power_for_all_motors()
 
                 self.mc_lf_node.spin(self.left_front_rpm)
                 self.mc_lb_node.spin(self.left_back_rpm)
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == 3: # 3: ESTOPPED
+            elif self.overseer_state == E_STOPPED:
                 # self.quick_stop_all_motors()
                 self.enable_power_for_all_motors()
                 self.send_zero_rpm_to_all_motors()
-            elif self.overseer_state == 1: # MANUAL state
+            elif self.overseer_state == MANUAL:
                 if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
                     if self.does_brake_when_stopped:
                         self.enable_power_for_all_motors()
@@ -384,14 +385,14 @@ class MotorControllerNetwork:
                     self.mc_lb_node.spin(self.left_back_rpm)
                     self.mc_rf_node.spin(self.right_front_rpm)
                     self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == 2: # AUTO state
+            elif self.overseer_state == AUTO:
                 self.enable_power_for_all_motors()
 
                 self.mc_lf_node.spin(self.left_front_rpm)
                 self.mc_lb_node.spin(self.left_back_rpm)
                 self.mc_rf_node.spin(self.right_front_rpm)
                 self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == 7: # IDLE state
+            elif self.overseer_state == IDLE:
                 if self.is_any_measured_wheel_rpm_above_this(450):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
