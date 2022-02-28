@@ -12,11 +12,13 @@ from __future__ import division
 import math
 import rospy
 from std_msgs.msg import Int32, Float32, Empty, Bool
+from nav_msgs.msg import Odometry
 import time
 import enum
 import threading
 from datetime import datetime
 from shared_tools.overseer_states_constants import *
+from tf.transformations import euler_from_quaternion
 
 
 class ErrorHandler:
@@ -178,10 +180,17 @@ class RobotCommander:
 class Gps:
     def __init__(self):
         self.pitch = 0
-        rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
+        self.sleep_time = 0.1
+        rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1) # radian
 
     def gps_callback_1(self, msg):
-        self.pitch = msg.data
+        # Conceptually, 'rzyx' is equivalent to 'sxyz', according to Wikipedia about Euler Angles
+        yaw, pitch, roll = euler_from_quaternion([msg.pose.pose.orientation.x,
+                                                    msg.pose.pose.orientation.y,
+                                                    msg.pose.pose.orientation.z,
+                                                    msg.pose.pose.orientation.w], 'rzyx')
+        self.pitch = pitch
+        time.sleep(self.sleep_time)
 
 
 def should_descend(mcs, pitch):

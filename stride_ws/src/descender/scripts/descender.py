@@ -5,11 +5,11 @@ import rospy
 import numpy
 from std_msgs.msg import Int32, Float32
 from geometry_msgs.msg import Pose2D
+from nav_msgs.msg import Odometry
 import time
 from shared_tools.utils import find_rate_limited_speed
 from shared_tools.overseer_states_constants import *
-
-
+from tf.transformations import euler_from_quaternion
 
 class Decender:
     def __init__(self):
@@ -21,13 +21,19 @@ class Decender:
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
-        rospy.Subscriber('/an_device/pitch', Float32, self.callback_2)
+        rospy.Subscriber('/nav/odom', Odometry, self.callback_2)
 
     def callback_1(self, msg):
         self.overseer_state = msg.data
 
     def callback_2(self, msg):
-        self.pitch = msg.data
+        # Conceptually, 'rzyx' is equivalent to 'sxyz', according to Wikipedia about Euler Angles
+        yaw, pitch, roll = euler_from_quaternion([msg.pose.pose.orientation.x,
+                                                    msg.pose.pose.orientation.y,
+                                                    msg.pose.pose.orientation.z,
+                                                    msg.pose.pose.orientation.w], 'rzyx')
+        self.pitch = pitch
+        time.sleep(self.sleep_time)
 
 if __name__ == '__main__':
     node = rospy.init_node('decender')
