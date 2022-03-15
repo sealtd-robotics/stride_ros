@@ -180,7 +180,6 @@ class RobotCommander:
 class Gps:
     def __init__(self):
         self.pitch = 0
-        self.sleep_time = 0.1
         rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1) # radian
 
     def gps_callback_1(self, msg):
@@ -190,7 +189,7 @@ class Gps:
                                                     msg.pose.pose.orientation.z,
                                                     msg.pose.pose.orientation.w], 'rzyx')
         self.pitch = pitch
-        time.sleep(self.sleep_time)
+        time.sleep(0.1)
 
 
 def should_descend(mcs, pitch):

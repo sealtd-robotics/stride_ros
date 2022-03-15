@@ -33,7 +33,7 @@ class Decender:
                                                     msg.pose.pose.orientation.z,
                                                     msg.pose.pose.orientation.w], 'rzyx')
         self.pitch = pitch
-        time.sleep(self.sleep_time)
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     node = rospy.init_node('decender')

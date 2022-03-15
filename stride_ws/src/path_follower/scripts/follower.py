@@ -13,8 +13,9 @@ import os
 import time
 import threading
 from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
+from nav_msgs.msg import Odometry
+from microstrain_inertial_msgs.msg import FilterHeading
 from geometry_msgs.msg import Pose2D
-from sensor_msgs.msg import NavSatFix
 from path_follower.msg import Latlong
 from shared_tools.overseer_states_constants import *
 
@@ -60,8 +61,8 @@ class PathFollower:
         rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
 
         # GPS Subscribers
-        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/nav/heading', FilterHeading, self.gps_callback_2, queue_size=1)
 
         # Load path at startup
         self.load_path()
@@ -188,7 +189,7 @@ class PathFollower:
         x2 = self.path_easts[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
         y2 = self.path_norths[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
 
-        # make heading begin on the x-axis (east axis) and go counter-clockwise as positive
+        # make heading zero on the x-axis (east axis) and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
 
         # distance from robot to look-ahead point
@@ -217,9 +218,10 @@ class PathFollower:
 
     def callback_3(self, msg):
         # changing look_ahead_points based on commanded speed
-        # self.look_ahead_points = int(max(10, 4 * msg.x))
-        self.look_ahead_points = int(max(3, 1.5 * msg.x))
-        # self.look_ahead_points = 16
+        self.look_ahead_points = int(max(10, 3 * msg.x))
+
+        # Second Waymo demo settings
+        # self.look_ahead_points = int(max(3, 1.5 * msg.x))
 
     def callback_4(self, msg):
         self.stop_index = msg.data
@@ -229,10 +231,11 @@ class PathFollower:
 
     # GPS subscriber callbacks
     def gps_callback_1(self, msg):
-        (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
+        # In the message, pose.pose.position.x is latitude and pose.pose.position.y is longitude 
+        (self.robot_north, self.robot_east)  = self.LL2NE(msg.pose.pose.position.x, msg.pose.pose.position.y)
 
     def gps_callback_2(self, msg):
-        self.robot_heading = msg.data    # radian
+        self.robot_heading = msg.heading_rad    # radian
 
     # def gps_callback_3(self, msg):
     #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5

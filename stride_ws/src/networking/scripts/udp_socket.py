@@ -58,7 +58,7 @@ if __name__ == "__main__":
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
-        # read_sockets gives a list of sockets that have data available to be read. This prevents recvfrom() from blocking indefinitel if no data coming.
+        # read_sockets gives a list of sockets that have data available to be read. This prevents recvfrom() from blocking indefinitely if no data coming.
         read_sockets, write_sockets, error_sockets = select.select(socket_list, [], [])
 
         for sock in read_sockets:
