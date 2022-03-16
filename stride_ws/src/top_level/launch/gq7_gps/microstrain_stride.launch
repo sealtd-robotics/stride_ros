@@ -35,7 +35,7 @@
   <node name="$(arg node_name)" pkg="microstrain_inertial_driver" type="microstrain_inertial_driver_node" output="screen" ns="$(arg namespace)">
 
     <!-- Load the default params file. -->
-    <rosparam file="$(find microstrain_inertial_driver)/microstrain_inertial_driver_common/config/params.yml" command="load" />
+    <rosparam file="$(find top_level)/config/gq7_gps_params.yml" command="load" />
 
     <!-- NOTE: These parameters are deprecated and will be removed in a future release. It is strongly recommended to use the new params_file option instead -->
     <param name="port"                  value="$(arg port)"                  type="str"  unless="$(eval arg('port') == '')" />
