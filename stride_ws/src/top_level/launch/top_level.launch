@@ -14,5 +14,6 @@
     <include file="$(find robot_commander)/launch/robot_commander.launch" />
     <include file="$(find descender)/launch/descender.launch" />
     <!-- <include file="$(find external_interface)/launch/get_vehicle_input.launch" /> -->
+    <include file="$(find overseer)/launch/data_record.launch" />
 
 </launch>
