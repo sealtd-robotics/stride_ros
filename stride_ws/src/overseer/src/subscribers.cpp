@@ -20,6 +20,9 @@ void DataRecorderSub::InitializeSubscribers() {
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
     record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
     motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
+    gnss1_info_sub_      = nh_.subscribe("/gnss1/fix_info", 1, &DataRecorderSub::Gnss1InfoCallback, this);
+    gnss2_info_sub_      = nh_.subscribe("/gnss2/fix_info", 1, &DataRecorderSub::Gnss2InfoCallback, this);
+    dual_antenna_info_sub_ = nh_.subscribe("/nav/dual_antenna_status", 1, &DataRecorderSub::DualAntennaInfoCallback, this);
 
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -87,7 +90,7 @@ void DataRecorderSub::RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg)
     int ret = 0;
     if (record_command_on && !recording) {
         ret = SetupRecording();
-        ROS_INFO("Record command is ON. Stop recording.");
+        ROS_INFO("Record command is ON. Start recording.");
         return;
     } 
 
@@ -104,9 +107,19 @@ void DataRecorderSub::MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstP
     df_.desired_motor_velocity_FR_rpm = msg->right_front;
 }
 
-// void DataRecorderSub::MotorCurrentCallback(const std_msgs::Float32::ConstPtr& msg) {
+void DataRecorderSub::Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
+    df_.gnss1_info = msg->fix_type;
+}
 
-// }
+void DataRecorderSub::Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
+    df_.gnss2_info = msg->fix_type;
+}
+
+void DataRecorderSub::DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg) {
+    df_.dual_antenna_info = msg->fix_type;
+    df_.heading_uncertainty = msg->heading_uncertainty;
+}
+
 
 int DataRecorderSub::SetupRecording() {
     wf.open(export_path + "/data.bin", std::ios::out | std::ios::binary);
@@ -135,6 +148,14 @@ void DataRecorderSub::UpdateConvertToCsvStatus(bool status) {
 void DataRecorderSub::WriteBinary() {
     if (wf.is_open())
         df_.utc_time_millisec = ros::Time::now().toNSec() * 1E-6;
+        df_.motor_velocity_RL_rpm = motor_RL->GetRpm();
+        df_.motor_velocity_RR_rpm = motor_RR->GetRpm();
+        df_.motor_velocity_FL_rpm = motor_FL->GetRpm();
+        df_.motor_velocity_FR_rpm = motor_FR->GetRpm();
+        df_.motor_current_RL_raw = motor_RL->GetCurrent();
+        df_.motor_current_RR_raw = motor_RR->GetCurrent();
+        df_.motor_current_FL_raw = motor_FL->GetCurrent();
+        df_.motor_current_FR_raw = motor_FR->GetCurrent();
         wf.write( (char *) &df_, sizeof(DataFrame));
 }
 
@@ -165,6 +186,10 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.utc_time_millisec << dem;
                 outFile << temp.status << dem;
                 outFile << temp.drive_status << dem;
+                outFile << unsigned(temp.gnss1_info) << dem;
+                outFile << unsigned(temp.gnss2_info) << dem;
+                outFile << unsigned(temp.dual_antenna_info) << dem;
+                outFile << temp.heading_uncertainty << dem;
                 outFile << temp.latitude_deg << dem;
                 outFile << temp.longitude_deg << dem;
                 outFile << temp.altitude_m << dem;
@@ -187,18 +212,18 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << unsigned(temp.lookahead_m) << dem;
                 outFile << temp.desired_steering_deg << dem;
                 outFile << temp.desired_velocity_ms << dem;
-                outFile << int(motor_RL->GetRpm()) << dem;
+                outFile << int(temp.motor_velocity_RL_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_RL_rpm) << dem;
-                outFile << int(motor_RR->GetRpm()) << dem;
+                outFile << int(temp.motor_velocity_RR_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_RR_rpm) << dem;
-                outFile << int(motor_FL->GetRpm()) << dem;
+                outFile << int(temp.motor_velocity_FL_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_FL_rpm) << dem;
-                outFile << int(motor_FR->GetRpm()) << dem;
+                outFile << int(temp.motor_velocity_FR_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_FR_rpm) << dem;
-                outFile << motor_RL->GetCurrent() << dem;
-                outFile << motor_RR->GetCurrent() << dem;
-                outFile << motor_FL->GetCurrent() << dem;
-                outFile << motor_FR->GetCurrent() << dem;
+                outFile << temp.motor_current_RL_raw << dem;
+                outFile << temp.motor_current_RR_raw << dem;
+                outFile << temp.motor_current_FL_raw << dem;
+                outFile << temp.motor_current_FR_raw << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_amp << dem;
                 outFile << unsigned(temp.batt_soc) << dem;

@@ -11,6 +11,8 @@
 #include <std_msgs/Bool.h>
 #include <nav_msgs/Odometry.h>
 #include <microstrain_inertial_msgs/FilterHeading.h>
+#include <microstrain_inertial_msgs/GNSSFixInfo.h>
+#include <microstrain_inertial_msgs/GNSSDualAntennaStatus.h>
 #include <can_interface/WheelRPM.h>
 #include <tf/tf.h>
 
@@ -32,6 +34,10 @@ typedef struct
     int64_t utc_time_millisec;
     uint32_t status;
     uint32_t drive_status;
+    uint8_t gnss1_info;
+    uint8_t gnss2_info;
+    uint8_t dual_antenna_info;
+    float heading_uncertainty;
     double latitude_deg;
     double longitude_deg;
     double altitude_m;
@@ -102,6 +108,9 @@ private:
     ros::Subscriber overseer_states_sub_;
     ros::Subscriber record_cmd_sub_;
     ros::Subscriber motors_rpm_cmd_sub_;
+    ros::Subscriber gnss1_info_sub_;
+    ros::Subscriber gnss2_info_sub_;
+    ros::Subscriber dual_antenna_info_sub_;
     std::shared_ptr<MotorInfoSub> motor_RL;
     std::shared_ptr<MotorInfoSub> motor_RR;
     std::shared_ptr<MotorInfoSub> motor_FL;
@@ -115,7 +124,7 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[43] = {"utc_time(millisec)", "general_status", "drive_status",
+    std::string csv_header[47] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
@@ -150,6 +159,9 @@ public:
     void OverseerCallback(const std_msgs::Int32::ConstPtr& msg);
     void RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg);
     void MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstPtr& msg);
+    void Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
+    void Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
+    void DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();
