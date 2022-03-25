@@ -4,7 +4,8 @@ Table of Content
 ---
 I. What is Stride ROS?
 II. How to run?
-III. Directory Structure
+III. Collect data
+IV. Directory Structure
 
 ---
 I. What is Stride ROS?
@@ -30,8 +31,21 @@ Step 2: Start/Stop Robot
 Step 3: Scripting Rules
 
 
+III. Collect Data
+---
+When test is trigged with state AUTO (value 2) in `overseer/state` topic, `data_record_node` starts recording until the state is out of AUTO. 
 
-III. Directory Structure
+Other way to manually starts recording is by publish 
+`rostopic pub /cmd/record std_msgs/Bool true -1` 
+
+To stop manual recording: 
+`rostopic pub /cmd/record std_msgs/Bool false -1` 
+
+Manual record has higher priority than state mode previously. Once `/cmd/record` is published `true`, no other mode can turn it off until `/cmd/record` is published `false`. **Use carefully and don't forget to turn it off**
+
+Data is saved in `stride_ws/test_log/data.csv`. Make sure to grab the data at each recording, or it will be overwritten in the next recording.
+
+IV. Directory Structure
 ----
 ```
 .

@@ -141,7 +141,7 @@ publish_nmea: False
 # ******************************************************************
 
 publish_filter: True
-filter_data_rate: 25
+filter_data_rate: 50
 
 # Sensor2vehicle frame transformation selector
 #     0 = None, 1 = Euler Angles, 2 - matrix, 3 - quaternion

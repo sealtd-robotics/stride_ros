@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<launch>
+    <!-- <rosparam command="load" file="$(find data_logger)../../config/parameters.yml" /> -->
+	<!-- Data logging Node -->
+    <arg name="export_file" default="$(find overseer)/../../test_log"/>
+    <arg name="record_rate" default="50"/>
+
+	<node pkg="overseer" type="data_record_node" name="data_record_node" output="screen">
+        <param name="export_file" value="$(arg export_file)" />
+        <param name="record_rate" value="$(arg record_rate" />
+    </node>
+</launch>
