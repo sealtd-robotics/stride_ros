@@ -13,10 +13,12 @@ import canopen
 import rospy
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, Int32, Bool, Empty
+from nav_msgs.msg import Odometry
 import time
 import threading
 from datetime import datetime
 from shared_tools.overseer_states_constants import *
+from tf.transformations import euler_from_quaternion
 
 class MotorControllerNode:
     def __init__(self, node, topic_name):
@@ -56,9 +58,6 @@ class MotorControllerNode:
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
         self.winding_temperature_publisher = rospy.Publisher('/motor_controller/{}/winding_temperature'.format(self.topic_name), Int32, queue_size=10)
-
-        # Subscribers
-        # rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -133,8 +132,9 @@ class MotorControllerNode:
         self.node.rpdo[2].transmit()
         time.sleep(0.02)
 
-    def spin(self, wheel_rpm):
+    def spin(self, wheel_rpm, peak_current):
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm
+        self.node.rpdo[1][1].raw = peak_current
         self.node.rpdo[1].transmit()
     
     def tpdo1_callback(self, tpdo1):
@@ -205,6 +205,12 @@ class MotorControllerNetwork:
         mc_eds_path = rospy.get_param('~mc_eds_path')
         local_eds_path = rospy.get_param('~local_eds_path')
 
+        # peak current
+        self.normal_peak_current = 12
+        self.front_peak_current = 12
+        self.back_peak_current = 12
+        self.current_per_pitch = 13.79 # 13.79 = 4amps / 0.29rad
+
         # Get CAN parameters
         channel = rospy.get_param('~channel')
         bustype = rospy.get_param('~bustype')
@@ -242,6 +248,7 @@ class MotorControllerNetwork:
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
         rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
+        rospy.Subscriber('/nav/odom', Odometry, self.an_gps_subscriber_callback_1, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -323,10 +330,10 @@ class MotorControllerNetwork:
         self.mc_rb_node.enable_power_if_disabled()
 
     def send_zero_rpm_to_all_motors(self):
-        self.mc_lf_node.spin(0)
-        self.mc_lb_node.spin(0)
-        self.mc_rf_node.spin(0)
-        self.mc_rb_node.spin(0)
+        self.mc_lf_node.spin(0, self.front_peak_current)
+        self.mc_lb_node.spin(0, self.back_peak_current)
+        self.mc_rf_node.spin(0, self.front_peak_current)
+        self.mc_rb_node.spin(0, self.back_peak_current)
 
     def quick_stop_all_motors(self):
         self.mc_lf_node.quick_stop_controlword()
@@ -359,10 +366,10 @@ class MotorControllerNetwork:
             elif self.overseer_state == DESCENDING:
                 self.enable_power_for_all_motors()
 
-                self.mc_lf_node.spin(self.left_front_rpm)
-                self.mc_lb_node.spin(self.left_back_rpm)
-                self.mc_rf_node.spin(self.right_front_rpm)
-                self.mc_rb_node.spin(self.right_back_rpm)
+                self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
+                self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
+                self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
+                self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
             elif self.overseer_state == E_STOPPED:
                 # self.quick_stop_all_motors()
                 self.enable_power_for_all_motors()
@@ -381,23 +388,35 @@ class MotorControllerNetwork:
                 else:
                     self.enable_power_for_all_motors()
 
-                    self.mc_lf_node.spin(self.left_front_rpm)
-                    self.mc_lb_node.spin(self.left_back_rpm)
-                    self.mc_rf_node.spin(self.right_front_rpm)
-                    self.mc_rb_node.spin(self.right_back_rpm)
+                    self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
+                    self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
+                    self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
+                    self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
             elif self.overseer_state == AUTO:
                 self.enable_power_for_all_motors()
 
-                self.mc_lf_node.spin(self.left_front_rpm)
-                self.mc_lb_node.spin(self.left_back_rpm)
-                self.mc_rf_node.spin(self.right_front_rpm)
-                self.mc_rb_node.spin(self.right_back_rpm)
+                self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
+                self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
+                self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
+                self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
             elif self.overseer_state == IDLE:
                 if self.is_any_measured_wheel_rpm_above_this(450):
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
                 else:
                     self.quick_stop_all_motors()
+    
+    def an_gps_subscriber_callback_1(self, msg):
+        # Conceptually, 'rzyx' is equivalent to 'sxyz', according to Wikipedia about Euler Angles
+        yaw, pitch, roll = euler_from_quaternion([msg.pose.pose.orientation.x,
+                                                    msg.pose.pose.orientation.y,
+                                                    msg.pose.pose.orientation.z,
+                                                    msg.pose.pose.orientation.w], 'rzyx')
+
+        self.back_peak_current = self.normal_peak_current + self.current_per_pitch * pitch
+        self.front_peak_current = self.normal_peak_current - self.current_per_pitch * pitch
+        time.sleep(0.02) # prevent frequent update from high publishing rate
+
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')
