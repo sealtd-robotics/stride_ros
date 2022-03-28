@@ -217,8 +217,10 @@ class PathFollower:
     def callback_3(self, msg):
         # changing look_ahead_points based on commanded speed
         # self.look_ahead_points = int(max(10, 4 * msg.x))
-        self.look_ahead_points = int(max(3, 1.5 * msg.x))
-        # self.look_ahead_points = 16
+        self.look_ahead_points = int(max(5, 2 * msg.x))
+
+        # Second Waymo demo setting
+        # self.look_ahead_points = int(max(3, 1.5 * msg.x))
 
     def callback_4(self, msg):
         self.stop_index = msg.data
