@@ -132,9 +132,10 @@ class MotorControllerNode:
         self.node.rpdo[2].transmit()
         time.sleep(0.02)
 
-    def spin(self, wheel_rpm, peak_current):
+    def spin(self, wheel_rpm, torque_limit):
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm
-        self.node.rpdo[1][1].raw = peak_current
+        self.node.rpdo[1][1].raw = torque_limit
+        self.node.rpdo[1][2].raw = torque_limit
         self.node.rpdo[1].transmit()
     
     def tpdo1_callback(self, tpdo1):
@@ -205,11 +206,18 @@ class MotorControllerNetwork:
         mc_eds_path = rospy.get_param('~mc_eds_path')
         local_eds_path = rospy.get_param('~local_eds_path')
 
-        # peak current
-        self.normal_peak_current = 12
-        self.front_peak_current = 12
-        self.back_peak_current = 12
-        self.current_per_pitch = 13.79 # 13.79 = 4amps / 0.29rad
+        # Torque Limit (0x60E0 and 0x60E1 in Motor Controller)
+        # Electric current = Torque Limit * Rated Current (12000 mA = 2000 * 6)
+        self.rated_current = 6 # Ampere
+        self.max_current_redistribution = 4 # Ampere
+        self.current_on_flat = 12 # Ampere
+        self.ampere_to_torque_limit = 1000 / self.rated_current
+
+        self.normal_torque_limit = self.current_on_flat * self.ampere_to_torque_limit
+        self.front_torque_limit = self.normal_torque_limit
+        self.back_torque_limit = self.normal_torque_limit
+        self.max_torque_redistribution = self.max_current_redistribution * self.ampere_to_torque_limit
+        self.torque_limit_per_pitch = 13.79 * self.ampere_to_torque_limit # 13.79 = 4amps / 0.29rad
 
         # Get CAN parameters
         channel = rospy.get_param('~channel')
@@ -330,10 +338,10 @@ class MotorControllerNetwork:
         self.mc_rb_node.enable_power_if_disabled()
 
     def send_zero_rpm_to_all_motors(self):
-        self.mc_lf_node.spin(0, self.front_peak_current)
-        self.mc_lb_node.spin(0, self.back_peak_current)
-        self.mc_rf_node.spin(0, self.front_peak_current)
-        self.mc_rb_node.spin(0, self.back_peak_current)
+        self.mc_lf_node.spin(0, self.front_torque_limit)
+        self.mc_lb_node.spin(0, self.back_torque_limit)
+        self.mc_rf_node.spin(0, self.front_torque_limit)
+        self.mc_rb_node.spin(0, self.back_torque_limit)
 
     def quick_stop_all_motors(self):
         self.mc_lf_node.quick_stop_controlword()
@@ -366,10 +374,10 @@ class MotorControllerNetwork:
             elif self.overseer_state == DESCENDING:
                 self.enable_power_for_all_motors()
 
-                self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
-                self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
-                self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
-                self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
+                self.mc_lf_node.spin(self.left_front_rpm, self.front_torque_limit)
+                self.mc_lb_node.spin(self.left_back_rpm, self.back_torque_limit)
+                self.mc_rf_node.spin(self.right_front_rpm, self.front_torque_limit)
+                self.mc_rb_node.spin(self.right_back_rpm, self.back_torque_limit)
             elif self.overseer_state == E_STOPPED:
                 # self.quick_stop_all_motors()
                 self.enable_power_for_all_motors()
@@ -388,17 +396,17 @@ class MotorControllerNetwork:
                 else:
                     self.enable_power_for_all_motors()
 
-                    self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
-                    self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
-                    self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
-                    self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
+                    self.mc_lf_node.spin(self.left_front_rpm, self.front_torque_limit)
+                    self.mc_lb_node.spin(self.left_back_rpm, self.back_torque_limit)
+                    self.mc_rf_node.spin(self.right_front_rpm, self.front_torque_limit)
+                    self.mc_rb_node.spin(self.right_back_rpm, self.back_torque_limit)
             elif self.overseer_state == AUTO:
                 self.enable_power_for_all_motors()
 
-                self.mc_lf_node.spin(self.left_front_rpm, self.front_peak_current)
-                self.mc_lb_node.spin(self.left_back_rpm, self.back_peak_current)
-                self.mc_rf_node.spin(self.right_front_rpm, self.front_peak_current)
-                self.mc_rb_node.spin(self.right_back_rpm, self.back_peak_current)
+                self.mc_lf_node.spin(self.left_front_rpm, self.front_torque_limit)
+                self.mc_lb_node.spin(self.left_back_rpm, self.back_torque_limit)
+                self.mc_rf_node.spin(self.right_front_rpm, self.front_torque_limit)
+                self.mc_rb_node.spin(self.right_back_rpm, self.back_torque_limit)
             elif self.overseer_state == IDLE:
                 if self.is_any_measured_wheel_rpm_above_this(450):
                     self.enable_power_for_all_motors()
@@ -413,9 +421,14 @@ class MotorControllerNetwork:
                                                     msg.pose.pose.orientation.z,
                                                     msg.pose.pose.orientation.w], 'rzyx')
 
-        self.back_peak_current = self.normal_peak_current + self.current_per_pitch * pitch
-        self.front_peak_current = self.normal_peak_current - self.current_per_pitch * pitch
-        time.sleep(0.02) # prevent frequent update from high publishing rate
+        if pitch > 0:
+            torque_redistribution = min(self.max_torque_redistribution, self.torque_limit_per_pitch * pitch)
+        else:
+            torque_redistribution = max(-self.max_torque_redistribution, self.torque_limit_per_pitch * pitch)
+
+        self.back_torque_limit = self.normal_torque_limit + torque_redistribution
+        self.front_torque_limit = self.normal_torque_limit - torque_redistribution
+        time.sleep(0.02)
 
 
 if __name__ ==  '__main__':
