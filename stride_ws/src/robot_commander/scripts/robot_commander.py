@@ -13,9 +13,8 @@ from libcal import LL_NE, CheckBoundariesEnter
 
 
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import Pose2D, Twist
 from nav_msgs.msg import Odometry
-from microstrain_inertial_msgs.msg import FilterHeading
 from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
@@ -43,8 +42,8 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
         rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
-        rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/nav/heading', FilterHeading, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
 
@@ -182,7 +181,7 @@ class RobotCommander:
             rate.sleep()
 
 
-    def turn_for_milliseconds(self, angle, milliseconds):
+    def turn_for_milliseconds(self, speed, milliseconds):
         start_time = self.get_time_now_in_ms()
         pose2d = Pose2D()
         pose2d.x = speed
@@ -204,12 +203,11 @@ class RobotCommander:
         self.path_intervals = msg.data
 
     def gps_callback_1(self, msg):
-        self.robot_speed = math.sqrt(msg.twist.twist.linear.x**2 + msg.twist.twist.linear.y**2)
-        self.robot_angular_speed = abs(msg.twist.twist.angular.z)
-        time.sleep(0.05)
+        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
+        self.robot_angular_speed = abs(msg.angular.z)
 
     def gps_callback_2(self, msg):
-        self.robot_heading = msg.heading_rad
+        self.robot_heading = msg.data # in radian
 
     def target_callback(self, msg):
         self.target_heading = msg.heading

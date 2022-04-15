@@ -180,15 +180,10 @@ class RobotCommander:
 class Gps:
     def __init__(self):
         self.pitch = 0
-        rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1) # radian
+        rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
 
     def gps_callback_1(self, msg):
-        # Conceptually, 'rzyx' is equivalent to 'sxyz', according to Wikipedia about Euler Angles
-        yaw, pitch, roll = euler_from_quaternion([msg.pose.pose.orientation.x,
-                                                    msg.pose.pose.orientation.y,
-                                                    msg.pose.pose.orientation.z,
-                                                    msg.pose.pose.orientation.w], 'rzyx')
-        self.pitch = pitch
+        self.pitch = msg.data
         time.sleep(0.1)
 
 

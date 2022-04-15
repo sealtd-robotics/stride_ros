@@ -256,7 +256,7 @@ class MotorControllerNetwork:
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
         rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
-        rospy.Subscriber('/nav/odom', Odometry, self.an_gps_subscriber_callback_1, queue_size=1)
+        rospy.Subscriber('/an_device/pitch', Float32, self.an_gps_subscriber_callback_1, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -415,11 +415,7 @@ class MotorControllerNetwork:
                     self.quick_stop_all_motors()
     
     def an_gps_subscriber_callback_1(self, msg):
-        # Conceptually, 'rzyx' is equivalent to 'sxyz', according to Wikipedia about Euler Angles
-        yaw, pitch, roll = euler_from_quaternion([msg.pose.pose.orientation.x,
-                                                    msg.pose.pose.orientation.y,
-                                                    msg.pose.pose.orientation.z,
-                                                    msg.pose.pose.orientation.w], 'rzyx')
+        pitch = msg.data # radian
 
         if pitch > 0:
             torque_redistribution = min(self.max_torque_redistribution, self.torque_limit_per_pitch * pitch)
@@ -428,6 +424,11 @@ class MotorControllerNetwork:
 
         self.back_torque_limit = self.normal_torque_limit + torque_redistribution
         self.front_torque_limit = self.normal_torque_limit - torque_redistribution
+
+        # t = self.torque_limit_per_pitch * 0.291 / 4 * 6
+        # self.back_torque_limit = self.normal_torque_limit + t
+        # self.front_torque_limit = self.normal_torque_limit - t
+        
         time.sleep(0.02)
 
 

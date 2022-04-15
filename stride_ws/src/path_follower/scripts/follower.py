@@ -14,7 +14,7 @@ import time
 import threading
 from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
 from nav_msgs.msg import Odometry
-from microstrain_inertial_msgs.msg import FilterHeading
+from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Pose2D
 from path_follower.msg import Latlong
 from shared_tools.overseer_states_constants import *
@@ -61,8 +61,8 @@ class PathFollower:
         rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
 
         # GPS Subscribers
-        rospy.Subscriber('/nav/odom', Odometry, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/nav/heading', FilterHeading, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
 
         # Load path at startup
         self.load_path()
@@ -232,10 +232,10 @@ class PathFollower:
     # GPS subscriber callbacks
     def gps_callback_1(self, msg):
         # In the message, pose.pose.position.x is latitude and pose.pose.position.y is longitude 
-        (self.robot_north, self.robot_east)  = self.LL2NE(msg.pose.pose.position.x, msg.pose.pose.position.y)
+        (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
 
     def gps_callback_2(self, msg):
-        self.robot_heading = msg.heading_rad    # radian
+        self.robot_heading = msg.data    # radian
 
     # def gps_callback_3(self, msg):
     #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5
