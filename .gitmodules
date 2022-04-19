@@ -1,3 +1,0 @@
-[submodule "stride_ws/src/microstrain_inertial"]
-	path = stride_ws/src/microstrain_inertial
-	url = https://github.com/LORD-MicroStrain/microstrain_inertial
