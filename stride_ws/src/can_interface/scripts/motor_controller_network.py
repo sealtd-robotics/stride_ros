@@ -28,6 +28,7 @@ class MotorControllerNode:
         self.winding_temperature = 0
         self.state = 0
         self.wheel_rpm_actual = 0
+        self.current = 0
 
         self.node = node
         self.topic_name = topic_name
@@ -151,7 +152,8 @@ class MotorControllerNode:
         self.state = state
 
         # 1
-        self.motor_current_publisher.publish(abs( tpdo1[1].raw / 1000 * self.rated_current) )
+        self.current = abs( tpdo1[1].raw / 1000 * self.rated_current )
+        self.motor_current_publisher.publish(self.current)
 
         # 2
         self.wheel_rpm_actual_publisher.publish( tpdo1[2].raw / self.gear_ratio )
@@ -283,23 +285,18 @@ class MotorControllerNetwork:
                 self.are_all_measured_wheel_rpm_below_this(10)
 
     def relax_motors(self):
+        nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
         interval = 3
+
+        # relax the motor that draws the most current
         while True:
             time.sleep(interval)
             if self.can_relax():
-                self.mc_lf_node.disable_enable_power()
-
-            time.sleep(interval)
-            if self.can_relax():
-                self.mc_lb_node.disable_enable_power()
-
-            time.sleep(interval)
-            if self.can_relax():
-                self.mc_rf_node.disable_enable_power()
-
-            time.sleep(interval)
-            if self.can_relax():
-                self.mc_rb_node.disable_enable_power()
+                max_current_node = nodes[0]
+                for i in range(1,4):
+                    if max_current_node.current < nodes[i].current:
+                        max_current_node = nodes[i]
+                max_current_node.disable_enable_power()
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
@@ -425,10 +422,11 @@ class MotorControllerNetwork:
         self.back_torque_limit = self.normal_torque_limit + torque_redistribution
         self.front_torque_limit = self.normal_torque_limit - torque_redistribution
 
+        # Hard code current distribution for testing
         # t = self.torque_limit_per_pitch * 0.291 / 4 * 6
         # self.back_torque_limit = self.normal_torque_limit + t
         # self.front_torque_limit = self.normal_torque_limit - t
-        
+
         time.sleep(0.02)
 
 
