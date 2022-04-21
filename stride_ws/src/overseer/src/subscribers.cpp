@@ -14,16 +14,25 @@ DataRecorderSub::DataRecorderSub(ros::NodeHandle* nh): nh_(*nh) {
 DataRecorderSub::~DataRecorderSub() {}
 
 void DataRecorderSub::InitializeSubscribers() {
-    gps_odom_sub_        = nh_.subscribe("/nav/odom", 1, &DataRecorderSub::GpsOdomCallback, this);
-    gps_heading_sub_     = nh_.subscribe("/nav/heading", 1, &DataRecorderSub::GpsHeadingCallback, this);
-    gps_imu_sub_         = nh_.subscribe("/nav/filtered_imu/data", 1, &DataRecorderSub::GpsImuCallback, this);
+    // MicroStrain GPS
+    // gps_odom_sub_        = nh_.subscribe("/nav/odom", 1, &DataRecorderSub::GpsOdomCallback, this);
+    // gps_heading_sub_     = nh_.subscribe("/nav/heading", 1, &DataRecorderSub::GpsHeadingCallback, this);
+    // gps_imu_sub_         = nh_.subscribe("/nav/filtered_imu/data", 1, &DataRecorderSub::GpsImuCallback, this); // temp disable
+    // gnss1_info_sub_      = nh_.subscribe("/gnss1/fix_info", 1, &DataRecorderSub::Gnss1InfoCallback, this);
+    // gnss2_info_sub_      = nh_.subscribe("/gnss2/fix_info", 1, &DataRecorderSub::Gnss2InfoCallback, this);
+    // dual_antenna_info_sub_ = nh_.subscribe("/nav/dual_antenna_status", 1, &DataRecorderSub::DualAntennaInfoCallback, this);
+
+    // AN GPS
+    an_gps_position_sub_ = nh_.subscribe("/an_device/NavSatFix", 1, &DataRecorderSub::ANGpsPositionCallback, this);
+    an_gps_velocity_sub_ = nh_.subscribe("/an_device/Twist", 1, &DataRecorderSub::ANGpsVelocityCallback, this);
+    gps_imu_sub_         = nh_.subscribe("/an_device/Imu", 1, &DataRecorderSub::GpsImuCallback, this);
+
+    // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
     record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
     motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
-    gnss1_info_sub_      = nh_.subscribe("/gnss1/fix_info", 1, &DataRecorderSub::Gnss1InfoCallback, this);
-    gnss2_info_sub_      = nh_.subscribe("/gnss2/fix_info", 1, &DataRecorderSub::Gnss2InfoCallback, this);
-    dual_antenna_info_sub_ = nh_.subscribe("/nav/dual_antenna_status", 1, &DataRecorderSub::DualAntennaInfoCallback, this);
-
+    desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
+    
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
     motor_RR = std::make_shared<MotorInfoSub>(&nh_, "right_back");
@@ -59,6 +68,17 @@ void DataRecorderSub::GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     //     WriteBinary();
 }
 
+void DataRecorderSub::ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
+    df_.latitude_deg = msg->latitude;
+    df_.longitude_deg = msg->longitude;
+    df_.altitude_m = msg->altitude;
+}
+
+void DataRecorderSub::ANGpsVelocityCallback(const geometry_msgs::Twist::ConstPtr& msg) {
+    df_.vel_east_ms = msg->linear.y;
+    df_.vel_north_ms = msg->linear.x;
+}
+
 void DataRecorderSub::GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
     df_.acc_x_mss = msg->linear_acceleration.x;
     df_.acc_y_mss = msg->linear_acceleration.y;
@@ -66,9 +86,9 @@ void DataRecorderSub::GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
     df_.yaw_rate_rads = msg->angular_velocity.z;
 }
 
-void DataRecorderSub::GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg) {
-    df_.heading_deg = msg->heading_deg;
-}
+// void DataRecorderSub::GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg) {
+//     df_.heading_deg = msg->heading_deg;
+// }
 
 void DataRecorderSub::OverseerCallback(const std_msgs::Int32::ConstPtr& msg) {
     if (!record_command_on) {
@@ -83,6 +103,10 @@ void DataRecorderSub::OverseerCallback(const std_msgs::Int32::ConstPtr& msg) {
             ROS_INFO("AUTO mode is OFF. Stop recording.");
         }
     }
+}
+
+void DataRecorderSub::DesiredVelocityCallback(const geometry_msgs::Pose2D::ConstPtr& msg) {
+    df_.desired_velocity_ms = msg->x;
 }
 
 void DataRecorderSub::RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -107,18 +131,18 @@ void DataRecorderSub::MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstP
     df_.desired_motor_velocity_FR_rpm = msg->right_front;
 }
 
-void DataRecorderSub::Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
-    df_.gnss1_info = msg->fix_type;
-}
+// void DataRecorderSub::Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
+//     df_.gnss1_info = msg->fix_type;
+// }
 
-void DataRecorderSub::Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
-    df_.gnss2_info = msg->fix_type;
-}
+// void DataRecorderSub::Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
+//     df_.gnss2_info = msg->fix_type;
+// }
 
-void DataRecorderSub::DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg) {
-    df_.dual_antenna_info = msg->fix_type;
-    df_.heading_uncertainty = msg->heading_uncertainty;
-}
+// void DataRecorderSub::DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg) {
+//     df_.dual_antenna_info = msg->fix_type;
+//     df_.heading_uncertainty = msg->heading_uncertainty;
+// }
 
 
 int DataRecorderSub::SetupRecording() {
@@ -147,7 +171,7 @@ void DataRecorderSub::UpdateConvertToCsvStatus(bool status) {
 
 void DataRecorderSub::WriteBinary() {
     if (wf.is_open())
-        df_.utc_time_millisec = ros::Time::now().toNSec() * 1E-6;
+        df_.utc_time_millisec = ros::Time::now().toNSec() * 0.000001;
         df_.motor_velocity_RL_rpm = motor_RL->GetRpm();
         df_.motor_velocity_RR_rpm = motor_RR->GetRpm();
         df_.motor_velocity_FL_rpm = motor_FL->GetRpm();

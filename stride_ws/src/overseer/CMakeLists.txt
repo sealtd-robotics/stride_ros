@@ -12,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     nav_msgs
     std_msgs
-    microstrain_inertial_msgs
     can_interface
 )
 
@@ -110,7 +109,7 @@ find_package(can_interface REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES overseer
- CATKIN_DEPENDS roscpp nav_msgs std_msgs sensor_msgs microstrain_inertial_msgs can_interface
+ CATKIN_DEPENDS roscpp nav_msgs std_msgs sensor_msgs can_interface
 #  DEPENDS system_lib
 )
 

@@ -10,9 +10,8 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Bool.h>
 #include <nav_msgs/Odometry.h>
-#include <microstrain_inertial_msgs/FilterHeading.h>
-#include <microstrain_inertial_msgs/GNSSFixInfo.h>
-#include <microstrain_inertial_msgs/GNSSDualAntennaStatus.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Pose2D.h>
 #include <can_interface/WheelRPM.h>
 #include <tf/tf.h>
 
@@ -110,7 +109,13 @@ private:
     ros::Subscriber motors_rpm_cmd_sub_;
     ros::Subscriber gnss1_info_sub_;
     ros::Subscriber gnss2_info_sub_;
+
+    // Advanced Navigation
+    ros::Subscriber an_gps_position_sub_;
+    ros::Subscriber an_gps_velocity_sub_;
+
     ros::Subscriber dual_antenna_info_sub_;
+    ros::Subscriber desired_velocity_sub_;
     std::shared_ptr<MotorInfoSub> motor_RL;
     std::shared_ptr<MotorInfoSub> motor_RR;
     std::shared_ptr<MotorInfoSub> motor_FL;
@@ -155,13 +160,18 @@ public:
     // Subscribing functions
     void GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
-    void GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg);
+    // void GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg);
     void OverseerCallback(const std_msgs::Int32::ConstPtr& msg);
     void RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg);
     void MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstPtr& msg);
-    void Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
-    void Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
-    void DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg);
+    // void Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
+    // void Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
+    // void DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg);
+    void DesiredVelocityCallback(const geometry_msgs::Pose2D::ConstPtr& msg);
+
+    // Advanced Navigation
+    void ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
+    void ANGpsVelocityCallback(const geometry_msgs::Twist::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();
