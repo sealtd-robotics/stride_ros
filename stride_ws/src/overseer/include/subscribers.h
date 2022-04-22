@@ -71,6 +71,10 @@ typedef struct
     float desired_motor_velocity_RR_rpm;
     float desired_motor_velocity_FL_rpm;
     float desired_motor_velocity_FR_rpm;
+    int motor_winding_temp_RL;
+    int motor_winding_temp_RR;
+    int motor_winding_temp_FL;
+    int motor_winding_temp_FR;
     uint16_t batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
@@ -84,16 +88,20 @@ private:
     ros::NodeHandle nh_;
     ros::Subscriber motor_current_sub_;
     ros::Subscriber motor_rpm_sub_;
+    ros::Subscriber motor_temp_sub_;
     float current_;
     float rpm_;
+    int temperature_;
 
 public:
     MotorInfoSub(ros::NodeHandle* nh, std::string name);
     ~MotorInfoSub();
     void MotorCurrentCallback(const std_msgs::Float32::ConstPtr& msg);
     void MotorRpmCallback(const std_msgs::Float32::ConstPtr& msg);
+    void MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg);
     float GetCurrent();
     float GetRpm();
+    int GetTemperature();
 };
 
 
@@ -129,7 +137,7 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[47] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
+    std::string csv_header[51] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
@@ -143,6 +151,8 @@ private:
                                 "actual_rpm_FR", "desired_rpm_FR",
                                 "actual_current_RL(A)", "actual_current_RR(A)",
                                 "actual_current_FL(A)", "actual_current_FR(A)",
+                                "winding_temp_RL(C)", "winding_temp_RR(C)",
+                                "winding_temp_FL(C)", "winding_temp_FR(C)",
                                 "battery_voltage(V)", "battery_amp(A)", "battery_soc(%)", "battery_temp(C)", "robot_temp(C)"};
 
 public:    

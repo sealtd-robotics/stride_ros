@@ -453,9 +453,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     pub_vel.publish(msg_vel);
 
     geometry_msgs::Vector3 msg_ori_euler;
-    msg_ori_euler.x = (double)packet->roll;
-    msg_ori_euler.y = (double)packet->pitch;
-    msg_ori_euler.z = enu_heading;
+    msg_ori_euler.x = (double)packet->roll * 1e-6;
+    msg_ori_euler.y = (double)packet->pitch * 1e-6;
+    msg_ori_euler.z = (double)packet->heading * 1e-6;
     pub_ori_euler.publish(msg_ori_euler);
 
     tf::Quaternion q;
@@ -660,13 +660,13 @@ int main(int argc, char **argv)
           buf_pos -= (begin - 1); 
           begin = 1;
           i = 0;
-          printf("No end\n");
+          // printf("No end\n");
         } else if (buf_pos >= buf_size) { // hit limit of the buffer, reset everything
           buf_pos = 0;
           begin = 0;
           end = 0;
           i = 0;
-          printf("Reset\n");
+          // printf("Reset\n");
         }
       }
 

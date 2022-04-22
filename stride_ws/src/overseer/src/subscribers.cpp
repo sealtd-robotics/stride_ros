@@ -180,6 +180,10 @@ void DataRecorderSub::WriteBinary() {
         df_.motor_current_RR_raw = motor_RR->GetCurrent();
         df_.motor_current_FL_raw = motor_FL->GetCurrent();
         df_.motor_current_FR_raw = motor_FR->GetCurrent();
+        df_.motor_winding_temp_RL = motor_RL->GetTemperature();
+        df_.motor_winding_temp_RR = motor_RR->GetTemperature();
+        df_.motor_winding_temp_FL = motor_FL->GetTemperature();
+        df_.motor_winding_temp_FR = motor_FR->GetTemperature();
         wf.write( (char *) &df_, sizeof(DataFrame));
 }
 
@@ -248,6 +252,10 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_current_RR_raw << dem;
                 outFile << temp.motor_current_FL_raw << dem;
                 outFile << temp.motor_current_FR_raw << dem;
+                outFile << temp.motor_winding_temp_RL << dem;
+                outFile << temp.motor_winding_temp_RR << dem;
+                outFile << temp.motor_winding_temp_FL << dem;
+                outFile << temp.motor_winding_temp_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_amp << dem;
                 outFile << unsigned(temp.batt_soc) << dem;
@@ -268,6 +276,9 @@ MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) :
 
     sprintf(c_name, "/motor_controller/%s/wheel_rpm_actual", motor_name_.c_str());
     motor_rpm_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorRpmCallback, this);
+
+    sprintf(c_name, "/motor_controller/%s/winding_temperature", motor_name_.c_str());
+    motor_temp_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorWindingTempCallback, this);
 }
 
 MotorInfoSub::~MotorInfoSub() {
@@ -282,10 +293,18 @@ void MotorInfoSub::MotorRpmCallback(const std_msgs::Float32::ConstPtr& msg) {
     rpm_ = msg->data;
 }
 
+void MotorInfoSub::MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg) {
+    temperature_ = msg->data;
+}
+
 float MotorInfoSub::GetCurrent() {
     return current_;
 }
 
 float MotorInfoSub::GetRpm() {
     return rpm_;
+}
+
+int MotorInfoSub::GetTemperature() {
+    return temperature_;
 }
