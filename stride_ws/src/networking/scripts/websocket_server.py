@@ -29,8 +29,9 @@ from twisted.internet import reactor
 
 
 class RosInterface:
-    def __init__(self):
+    def __init__(self, websocket):
         self.gps_callback_sleep_time = 0.1
+        self.websocket = websocket
 
         # Does not get transmitted continuously
         self.path_to_follow = {
@@ -130,6 +131,7 @@ class RosInterface:
         rospy.Subscriber('/battery_temperature', Int32, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.subscriber_callback_8, queue_size=1)
+        rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
 
 
         # GPS Subcribers
@@ -227,6 +229,10 @@ class RosInterface:
         self.robotState['targetVehicle']['velocity'] = round(msg.velocity, 3)
         self.robotState['targetVehicle']['gps_ready'] = msg.gps_ready
         self.robotState['targetVehicle']['gps_correction_type'] = msg.gps_correction_type
+
+    def subscriber_callback_9(self, msg):
+        csvCreatedMsg = json.dumps({'type': 'createdCSV',}, ensure_ascii = False).encode('utf8')
+        reactor.callFromThread(self.websocket.sendMessage, csvCreatedMsg, False)
 
 
     # Motor Controller Callbacks
@@ -342,9 +348,11 @@ class RosInterface:
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
     websocket_client_count = 0
-    ros_interface = RosInterface()
+    ros_interface = 0
     shared_path = {'type': '', 'latitudes':[], 'longitudes':[]}
 
+    def __init__(self):
+        MyServerProtocol.ros_interface = RosInterface(self)
     # Side note: The init function of this class is called before each connection and is only relevent to that connection
 
     # Each connection will have its own onConnect, onOpen, onMessage, and onClose 

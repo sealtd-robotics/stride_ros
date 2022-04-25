@@ -9,6 +9,7 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Empty.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose2D.h>
@@ -75,10 +76,10 @@ typedef struct
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
     int motor_winding_temp_FR;
-    uint16_t batt_voltage;
+    float batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
-    uint8_t batt_temp;
+    int batt_temp;
     uint8_t robot_temp;
 } DataFrame;
 
@@ -109,14 +110,17 @@ class DataRecorderSub {
 private:
 // Subscribers
     ros::NodeHandle nh_;
+    ros::Publisher csv_converted_;
+
     ros::Subscriber gps_odom_sub_;
     ros::Subscriber gps_heading_sub_;
     ros::Subscriber gps_imu_sub_;
     ros::Subscriber overseer_states_sub_;
     ros::Subscriber record_cmd_sub_;
     ros::Subscriber motors_rpm_cmd_sub_;
-    ros::Subscriber gnss1_info_sub_;
-    ros::Subscriber gnss2_info_sub_;
+    ros::Subscriber robot_temperature_sub_;
+    ros::Subscriber battery_voltage_sub_;
+    ros::Subscriber battery_temperature_sub_;
 
     // Advanced Navigation
     ros::Subscriber an_gps_position_sub_;
@@ -153,7 +157,7 @@ private:
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
                                 "winding_temp_FL(C)", "winding_temp_FR(C)",
-                                "battery_voltage(V)", "battery_amp(A)", "battery_soc(%)", "battery_temp(C)", "robot_temp(C)"};
+                                "battery_voltage(V)", "battery_temp(C)", "robot_temp(C)"};
 
 public:    
     std::string export_path = "";
@@ -170,14 +174,13 @@ public:
     // Subscribing functions
     void GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
-    // void GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg);
     void OverseerCallback(const std_msgs::Int32::ConstPtr& msg);
     void RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg);
     void MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstPtr& msg);
-    // void Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
-    // void Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg);
-    // void DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg);
     void DesiredVelocityCallback(const geometry_msgs::Pose2D::ConstPtr& msg);
+    void RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
+    void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
+    void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
 
     // Advanced Navigation
     void ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);

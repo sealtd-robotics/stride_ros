@@ -14,13 +14,7 @@ DataRecorderSub::DataRecorderSub(ros::NodeHandle* nh): nh_(*nh) {
 DataRecorderSub::~DataRecorderSub() {}
 
 void DataRecorderSub::InitializeSubscribers() {
-    // MicroStrain GPS
-    // gps_odom_sub_        = nh_.subscribe("/nav/odom", 1, &DataRecorderSub::GpsOdomCallback, this);
-    // gps_heading_sub_     = nh_.subscribe("/nav/heading", 1, &DataRecorderSub::GpsHeadingCallback, this);
-    // gps_imu_sub_         = nh_.subscribe("/nav/filtered_imu/data", 1, &DataRecorderSub::GpsImuCallback, this); // temp disable
-    // gnss1_info_sub_      = nh_.subscribe("/gnss1/fix_info", 1, &DataRecorderSub::Gnss1InfoCallback, this);
-    // gnss2_info_sub_      = nh_.subscribe("/gnss2/fix_info", 1, &DataRecorderSub::Gnss2InfoCallback, this);
-    // dual_antenna_info_sub_ = nh_.subscribe("/nav/dual_antenna_status", 1, &DataRecorderSub::DualAntennaInfoCallback, this);
+    csv_converted_ = nh_.advertise<std_msgs::Empty>("/csv_converted", 1);
 
     // AN GPS
     an_gps_position_sub_ = nh_.subscribe("/an_device/NavSatFix", 1, &DataRecorderSub::ANGpsPositionCallback, this);
@@ -31,7 +25,10 @@ void DataRecorderSub::InitializeSubscribers() {
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
     record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
     motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
+    robot_temperature_sub_  = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
     desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
+    battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
+    battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -62,10 +59,6 @@ void DataRecorderSub::GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     df_.roll_deg = radToDeg(roll);
     df_.pitch_deg = radToDeg(pitch);
     df_.yaw_deg = radToDeg(yaw);
-
-    // // Let Odom drive data recording rate
-    // if (recording)
-    //     WriteBinary();
 }
 
 void DataRecorderSub::ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
@@ -86,9 +79,9 @@ void DataRecorderSub::GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
     df_.yaw_rate_rads = msg->angular_velocity.z;
 }
 
-// void DataRecorderSub::GpsHeadingCallback(const microstrain_inertial_msgs::FilterHeading::ConstPtr& msg) {
-//     df_.heading_deg = msg->heading_deg;
-// }
+void DataRecorderSub::RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.robot_temp = msg->data;
+}
 
 void DataRecorderSub::OverseerCallback(const std_msgs::Int32::ConstPtr& msg) {
     if (!record_command_on) {
@@ -131,18 +124,13 @@ void DataRecorderSub::MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstP
     df_.desired_motor_velocity_FR_rpm = msg->right_front;
 }
 
-// void DataRecorderSub::Gnss1InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
-//     df_.gnss1_info = msg->fix_type;
-// }
+void DataRecorderSub::BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg) {
+    df_.batt_voltage = msg->data;
+}
 
-// void DataRecorderSub::Gnss2InfoCallback(const microstrain_inertial_msgs::GNSSFixInfo::ConstPtr& msg) {
-//     df_.gnss2_info = msg->fix_type;
-// }
-
-// void DataRecorderSub::DualAntennaInfoCallback(const microstrain_inertial_msgs::GNSSDualAntennaStatus::ConstPtr& msg) {
-//     df_.dual_antenna_info = msg->fix_type;
-//     df_.heading_uncertainty = msg->heading_uncertainty;
-// }
+void DataRecorderSub::BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.batt_temp = msg->data;
+}
 
 
 int DataRecorderSub::SetupRecording() {
@@ -257,14 +245,14 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_FL << dem;
                 outFile << temp.motor_winding_temp_FR << dem;
                 outFile << temp.batt_voltage << dem;
-                outFile << temp.batt_amp << dem;
-                outFile << unsigned(temp.batt_soc) << dem;
-                outFile << unsigned(temp.batt_temp) << dem;
+                outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem << "\n";
             }
         }
         outFile.close();
         ROS_INFO("Finished export bin to csv");
+        std_msgs::Empty msg;
+        csv_converted_.publish(msg);
     }
 }
 
