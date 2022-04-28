@@ -1,6 +1,7 @@
 # Motors
 gear_ratio: 6.6 # input revolutions divided by output revolutions
 rated_current: 6 # ampere
+peak_current: 18000 # mA
 
 # Motor Controllers
 mc_lf_node_id: 1 # Motor Controller at Left Front
@@ -9,10 +10,10 @@ mc_rf_node_id: 3 # Motor Controller Right Front
 mc_rb_node_id: 4 # Motor Controller Right Back
 local_node_id: 10 # Jetson
 
-mc_eds_path: '605.0101.01-L.eds'
-local_eds_path: 'empty.eds'
+mc_eds_path: "605.0101.01-L.eds"
+local_eds_path: "empty.eds"
 
 # CAN
-channel: 'can0'
-bustype: 'socketcan'
+channel: "can0"
+bustype: "socketcan"
 bitrate: 1000000
