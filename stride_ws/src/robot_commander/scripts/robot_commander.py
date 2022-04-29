@@ -169,7 +169,7 @@ class RobotCommander:
         delta = now - epoch
         return delta.total_seconds() * 1000
 
-    def go_straight_for_milliseconds(self, speed, milliseconds):
+    def go_straight_for_ms(self, speed, milliseconds):
         start_time = self.get_time_now_in_ms()
         pose2d = Pose2D()
         pose2d.x = speed
@@ -181,44 +181,21 @@ class RobotCommander:
             rate.sleep()
 
 
-    def turn_for_milliseconds(self, speed, milliseconds):
+    def rotate_for_ms(self, angular_speed, milliseconds):
+        print('Executing rotate_for_ms')
         start_time = self.get_time_now_in_ms()
         pose2d = Pose2D()
-        pose2d.x = speed
-        pose2d.theta = 0
+        pose2d.x = 0
+        pose2d.theta = angular_speed
 
         rate = rospy.Rate(10)
         while self.get_time_now_in_ms() - start_time < milliseconds:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
 
-    # Subscriber Callbacks
-    def current_path_index_callback(self, msg):
-        self.current_path_index = msg.data
-
-    def max_path_index_callback(self, msg):
-        self.max_path_index = msg.data
-
-    def path_intervals_callback(self, msg):
-        self.path_intervals = msg.data
-
-    def gps_callback_1(self, msg):
-        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
-        self.robot_angular_speed = abs(msg.angular.z)
-
-    def gps_callback_2(self, msg):
-        self.robot_heading = msg.data # in radian
-
-    def target_callback(self, msg):
-        self.target_heading = msg.heading
-        self.target_velocity = msg.velocity
-        self.target_gps_ready = msg.gps_ready
-        self.target_longitude = msg.longitude
-        self.target_latitude = msg.latitude
-        self.target_gps_correction_type = msg.gps_correction_type
-
-    def turning_radius_callback(self, msg):
-        self.turning_radius = msg.data
+        pose2d.x = 0
+        pose2d.theta = 0
+        self.velocity_command_publisher.publish(pose2d)
 
     def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
         """
@@ -261,6 +238,33 @@ class RobotCommander:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
             print("ERROR: Something wrong. Target GPS not ready, handle this error.End test.")
 
+    # Subscriber Callbacks
+    def current_path_index_callback(self, msg):
+        self.current_path_index = msg.data
+
+    def max_path_index_callback(self, msg):
+        self.max_path_index = msg.data
+
+    def path_intervals_callback(self, msg):
+        self.path_intervals = msg.data
+
+    def gps_callback_1(self, msg):
+        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
+        self.robot_angular_speed = abs(msg.angular.z)
+
+    def gps_callback_2(self, msg):
+        self.robot_heading = msg.data # in radian
+
+    def target_callback(self, msg):
+        self.target_heading = msg.heading
+        self.target_velocity = msg.velocity
+        self.target_gps_ready = msg.gps_ready
+        self.target_longitude = msg.longitude
+        self.target_latitude = msg.latitude
+        self.target_gps_correction_type = msg.gps_correction_type
+
+    def turning_radius_callback(self, msg):
+        self.turning_radius = msg.data
 
 class Receptionist:
     def __init__(self):
