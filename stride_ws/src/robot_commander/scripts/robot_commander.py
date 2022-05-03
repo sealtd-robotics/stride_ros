@@ -13,7 +13,7 @@ from libcal import LL_NE, CheckBoundariesEnter
 
 
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
-from geometry_msgs.msg import Pose2D, Twist
+from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
 from nav_msgs.msg import Odometry
 from external_interface.msg import TargetVehicle
 from datetime import datetime
@@ -44,6 +44,8 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
         rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_1, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
+        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_velocity_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
 
@@ -254,6 +256,12 @@ class RobotCommander:
 
     def gps_callback_2(self, msg):
         self.robot_heading = msg.data # in radian
+
+    def gps_velocity_callback(self, msg):
+        self.robot_speed = math.sqrt(msg.twist.twist.linear.x**2 + msg.twist.twist.linear.y**2)
+
+    def gps_orientation_callback(self, msg):
+        self.robot_heading = msg.z
 
     def target_callback(self, msg):
         self.target_heading = msg.heading

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 from __future__ import division
+import queue
 import rospy
 import numpy
 from std_msgs.msg import Int32, Float32
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import Pose2D, Vector3
 from nav_msgs.msg import Odometry
 import time
 from shared_tools.utils import find_rate_limited_speed
@@ -22,12 +23,17 @@ class Decender:
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
         rospy.Subscriber('/an_device/pitch', Float32, self.callback_2)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.callback_3, queue_size=1)
 
     def callback_1(self, msg):
         self.overseer_state = msg.data
 
     def callback_2(self, msg):
         self.pitch = msg.data
+        time.sleep(0.1)
+
+    def callback_3(self, msg):
+        self.pitch = msg.y
         time.sleep(0.1)
 
 if __name__ == '__main__':

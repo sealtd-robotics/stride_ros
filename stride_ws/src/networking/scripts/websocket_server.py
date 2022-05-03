@@ -9,7 +9,7 @@ import rospy
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
 from external_interface.msg import TargetVehicle
-from geometry_msgs.msg import Pose2D, Vector3, Twist
+from geometry_msgs.msg import Pose2D, Vector3, Twist, TwistWithCovarianceStamped
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
 from path_follower.msg import Latlong
@@ -144,6 +144,8 @@ class RosInterface:
         rospy.Subscriber('/an_device/magnetic_calibration/progress', UInt8, self.gps_subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/an_device/magnetic_calibration/error', UInt8, self.gps_subscriber_callback_10, queue_size=1)
 
+        rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
+        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
         # Motor Controller Subscribers
         # Left Front
         rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
@@ -310,6 +312,12 @@ class RosInterface:
     def gps_subscriber_callback_2(self, msg):
         self.robotState['gps']['northVelocity'] = round(msg.linear.x, 3)
         self.robotState['gps']['eastVelocity'] = round(msg.linear.y, 3)
+        self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
+
+    def gps_subscriber_callback_3(self, msg):
+        self.robotState['gps']['northVelocity'] = round(msg.twist.twist.linear.y, 3)
+        self.robotState['gps']['eastVelocity'] = round(msg.twist.twist.linear.x, 3)
         self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 

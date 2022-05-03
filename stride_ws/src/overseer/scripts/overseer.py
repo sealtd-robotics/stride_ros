@@ -13,7 +13,11 @@ import math
 import rospy
 from std_msgs.msg import Int32, Float32, Empty, Bool
 from nav_msgs.msg import Odometry
+<<<<<<< HEAD
 from geometry_msgs.msg import Pose2D
+=======
+from geometry_msgs.msg import Vector3
+>>>>>>> add subscribers for oxts
 import time
 import enum
 import threading
@@ -182,9 +186,14 @@ class Gps:
     def __init__(self):
         self.pitch = 0
         rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.callback_2, queue_size=1)
 
     def gps_callback_1(self, msg):
         self.pitch = msg.data
+        time.sleep(0.1)
+
+    def gps_callback_2(self, msg):
+        self.pitch = msg.y
         time.sleep(0.1)
 
 # For Meredith's descend condition:
@@ -196,6 +205,7 @@ class Gps:
 
 #     def velocity_command_callback(self, pose2d):
 #         self.commanded_v = pose2d.x
+
 
 def should_descend(mcs, pitch):
     hot = False

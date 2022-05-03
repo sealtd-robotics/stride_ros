@@ -12,6 +12,7 @@
 #include <std_msgs/Empty.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <geometry_msgs/Pose2D.h>
 #include <can_interface/WheelRPM.h>
 #include <tf/tf.h>
@@ -126,6 +127,11 @@ private:
     ros::Subscriber an_gps_position_sub_;
     ros::Subscriber an_gps_velocity_sub_;
 
+    // Oxts
+    ros::Subscriber oxts_gps_position_sub_;
+    ros::Subscriber oxts_gps_velocity_sub_;
+    ros::Subscriber oxts_gps_imu_sub_;
+
     ros::Subscriber dual_antenna_info_sub_;
     ros::Subscriber desired_velocity_sub_;
     std::shared_ptr<MotorInfoSub> motor_RL;
@@ -185,6 +191,11 @@ public:
     // Advanced Navigation
     void ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
     void ANGpsVelocityCallback(const geometry_msgs::Twist::ConstPtr& msg);
+
+    // Oxts
+    void OxtsGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
+    void OxtsGpsVelocityCallback(const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg);
+    void OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();
