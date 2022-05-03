@@ -60,6 +60,9 @@
 // RS 232
 #include "rs232/rs232.h"
 
+#include <thread>
+#include <fstream>
+
 // UINT16_MAX is not defined by default in Ubuntu Saucy
 #ifndef UINT16_MAX
 #define UINT16_MAX (65535)
@@ -585,98 +588,154 @@ int main(int argc, char **argv)
     int begin = 0;
     int end = 0;
     int i = 0;
-    int buf_size = 1024;
+    int buf_size = 2600;
     uint8_t buf[buf_size];
     an_decoder_t an_decoder;
 
     an_decoder.buffer_length = 0;
 
-    // ros::Rate loop_rate(100);
+    ros::Rate loop_rate(150);
+
+    int fd1;
+    sockaddr_in sock2;
+    std::thread correction;
+    int correction_buffer[1024];
+    sockaddr source2;
+
+    // Correction portion
+    if (openSocket(interface, ip_addr, 54000, &fd1, &sock)) {
+      readSocket(fd1, 10, &correction_buffer, sizeof(correction_buffer), &source2);
+      std::thread t1(spin_correction, fd1, 10, &correction_buffer, sizeof(correction_buffer), &source2);
+      correction = std::move(t1);
+    }
 
     setvbuf(stdout, nullptr, _IONBF, BUFSIZ); // flush 
     // Loop until shutdown
+    // std::ofstream wf;
+    // wf.open("/home/user0/data.bin", std::ios::out | std::ios::binary);
+
     while (ros::ok()) {
       // if (readSocket(fd, 10, &packet, sizeof(packet), &source) >= sizeof(packet)) {
-        // printf("Received data\n");
       int s = buf_size - buf_pos;
-      // if ((bytes_received = PollComport(&(an_decoder.buffer[0]), 2600)) > 0) {
       if ( (bytes_received = PollComport(&(buf[buf_pos]), s) ) > 0) {
-      // if ( (bytes_received = PollComport(&(buf[0]), 1024) ) > 0) {
-        // printf("%d %d\n", bytes_received, buf_pos);
+        // printf("Byte received: %d\n", bytes_received);
+        // wf.write( (char*) &(buf[buf_pos]), bytes_received);
+
         buf_pos += bytes_received;
-        
-        // i = 0;
+
+      }
+
+      if (i < buf_pos) {
         while (i < buf_pos) {
           if (buf[i] == 0xE7) {
+            // printf("Sync!\n");
             if (!begin) {                       
               begin = i + 1; // start from 1 to avoid empty begin
-              // printf("===> begin %d \n", buf[i]);
             } else {
               end = i + 1;
-              // printf("end %d\n", buf[i]);
+              i++;
               break;
             }
-            // printf("!!!! Sync %d %d\n", i, (int)buf[i]);
           }
-          // else {
-            // printf("Strea %d\n", (int)buf[i]);
-          // }
           i++;
         }
-
-        // if (buf_pos >= buf_size) {
-        //   buf_pos = 0;
-        //   i=0;
-        //   printf("Reset\n");
-        // }
 
         int dif = end - begin;
         // printf("pass1 %d %d %d\n", dif, (int)buf[begin-1], (int)buf[end]);
 
-        if (dif == 72) {
-          memcpy(&packet, &buf[begin - 1], dif);
-          // printf("Found\n");
+        if (dif == sizeof(packet)) {
+        // if (dif > 0) {
+          memcpy(&packet, &buf[begin - 1], sizeof(packet));
           if (validatePacket(&packet)) {
-            // printf("valid\n");
             if (first) {
               first = false;
               ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
             }
+            // printf("connected\n");
             handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_ori_euler, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, pub_gga, frame_id_gps, frame_id_vel, frame_id_odom);
+          } else {
+            printf("INVALID\n");
           }
-          // else {
-          //   printf("invalid\n");
-          // }
+        }
+#if(0)
+        else if (dif > 0) {
+          printf("Diff %d: ", dif);
+          for (unsigned int i = begin-1; i < (begin - 1 + dif); i++) {
+            printf("%d ", (int)buf[i]);
+          }
+          printf("\n");
         }
 
-        if (dif > 0) { // already found both begin and end
-          mempcpy(&buf[0], &buf[end-1], buf_pos - end);
-          buf_pos += (1 - end);
-          begin = 0;
-          end = 0;
-          i = 0;
-        } else if (begin > 1) { // found begin but no end, shift to beginning of array
-          memcpy(&buf[0], &buf[begin-1], buf_pos - begin + 1);
-          buf_pos -= (begin - 1); 
-          begin = 1;
-          i = 0;
-          // printf("No end\n");
-        } else if (buf_pos >= buf_size) { // hit limit of the buffer, reset everything
+        printf("All: %d %d %d %d %d\n", dif, begin, end, buf_pos, i);
+#endif
+
+        if( first && dif > 0)  { // Didn't find first valid frame, discard current found buffer offset
+          // printf("%d %d %d\n", dif, begin, end);
+          // printf("first times\n");
+          // mempcpy(&buf[0], &buf[end-1], buf_pos - end);
+          // buf_pos += (1 - end);
+          // begin = 0;
+          // end = 0;
+          // i = 0;
+
+          if ((buf_size - buf_pos) < 300) {
+            mempcpy(&buf[0], &buf[end-1], buf_pos - end);
+            buf_pos += (1 - end);
+            begin = 0;
+            end = 0;
+            i = 0;
+          }
+
+          begin = end;
+        } else if (dif >= 72) {
+          // printf("Full size: %d %d %d\n", dif, begin, end);
+          // printf("Full size\n");
+          // mempcpy(&buf[0], &buf[end-1], buf_pos - end);
+          // buf_pos += (1 - end);
+          // begin = 0;
+          // end = 0;
+          // i = 0;
+
+          if ((buf_size - buf_pos) < 300) {
+            mempcpy(&buf[0], &buf[end-1], buf_pos - end);
+            buf_pos += (1 - end);
+            begin = 0;
+            end = 0;
+            i = 0;
+          }
+
+          begin = end;
+        }
+        // else if (begin > 1) { // found begin but no end, shift to beginning of array
+        //   // printf("No end: %d %d %d\n", dif, begin, end);
+        //   memcpy(&buf[0], &buf[begin-1], buf_pos - begin + 1);
+        //   buf_pos -= (begin - 1); 
+        //   begin = 1;
+        //   i = 1;
+        //   printf("No end\n");
+        // } 
+        else if (buf_pos >= buf_size) { // hit limit of the buffer, reset everything
           buf_pos = 0;
           begin = 0;
           end = 0;
           i = 0;
-          // printf("Reset\n");
+          printf("Reset\n");
         }
       }
 
       // Handle callbacks
       ros::spinOnce();
-      // loop_rate.sleep();
+      loop_rate.sleep();
     }
 
+    correction.join();
+    CloseComport();
+
+    // wf.close();
+    // printf("Close write binary\n");
+
     // Close socket
-    close(fd);
+    // close(fd);
   } else {
     ROS_FATAL("Failed to open socket");
     ros::WallDuration(1.0).sleep();

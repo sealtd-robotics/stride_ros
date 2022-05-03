@@ -35,9 +35,7 @@
 #ifndef _DISPATCH_H
 #define _DISPATCH_H
 #include <stdint.h>
-
-#define an_decoder_pointer(an_decoder) &(an_decoder)->buffer[(an_decoder)->buffer_length]
-#define an_decoder_size(an_decoder) (sizeof((an_decoder)->buffer) - (an_decoder)->buffer_length)
+#include <arpa/inet.h>
 
 typedef struct
 {
@@ -173,26 +171,28 @@ static bool validatePacket(const Packet *packet) {
     for (unsigned int i = 1; i < sizeof(Packet) - 1; i++) {
       chksum += ptr[i];
     }
+
+#if(0)
+    if (!(chksum == packet->chksum3)) {
+      printf("Miss: ");
+      for (unsigned int i = 0; i < sizeof(Packet); i++) {
+        printf("%u ", (unsigned int)ptr[i]);
+    }
+      printf("\n");
+    } else {
+      // printf("Good: ");
+      // for (unsigned int i = 0; i < sizeof(Packet); i++) {
+      //   printf("%u ", (unsigned int)ptr[i]);
+      // }
+      // printf("\n");
+    }
+#endif
     return chksum == packet->chksum3;
   }
   return false;
 }
 
-// static bool validatePacket(const Packet *packet) {
-//   if (packet->sync == 0xE7) {
-//     const uint8_t *ptr = (uint8_t*)packet;
-//     uint8_t chksum = 0;
-//     for (unsigned int i = 1; i < sizeof(Packet) - 1; i++) {
-//       chksum += ptr[i];
-//     }
-//     printf("Cal %d Actual %d\n", (int)chksum, (int)packet->chksum3);
-//     std::cout << (chksum == packet->chksum3) << std::endl;
-//     return chksum == packet->chksum3;
-//   } else {
-//     printf("No sync byte\n");
-//   }
-//   return false;
-// }
+void spin_correction(int fd, unsigned int timeout, void *data, size_t size, sockaddr *source_ptr);
 
 static_assert(8 == sizeof(Channel), "");
 static_assert(72 == sizeof(Packet), "");

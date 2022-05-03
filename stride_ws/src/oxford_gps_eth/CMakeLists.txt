@@ -32,7 +32,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME}_gps_node src/node.cpp src/rs232/rs232.c)
+add_executable(${PROJECT_NAME}_gps_node src/node.cpp src/rs232/rs232.c src/correction_udp.cpp)
 target_link_libraries(${PROJECT_NAME}_gps_node ${catkin_LIBRARIES})
 set_target_properties(${PROJECT_NAME}_gps_node PROPERTIES OUTPUT_NAME gps_node PREFIX "")
 
