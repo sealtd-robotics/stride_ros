@@ -114,7 +114,7 @@ class RobotCommander:
 
         pose2d = Pose2D()
         pose2d.x = 0
-        pose2d.theta = angular_velocity
+        pose2d.theta = -angular_velocity
 
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
@@ -186,7 +186,7 @@ class RobotCommander:
         start_time = self.get_time_now_in_ms()
         pose2d = Pose2D()
         pose2d.x = 0
-        pose2d.theta = angular_speed
+        pose2d.theta = -angular_speed
 
         rate = rospy.Rate(10)
         while self.get_time_now_in_ms() - start_time < milliseconds:
