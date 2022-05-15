@@ -13,6 +13,7 @@ import math
 import rospy
 from std_msgs.msg import Int32, Float32, Empty, Bool
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Pose2D
 import time
 import enum
 import threading
@@ -186,6 +187,15 @@ class Gps:
         self.pitch = msg.data
         time.sleep(0.1)
 
+# For Meredith's descend condition:
+# Remember to Initialize this class in main!!!!!!!
+# class Robot:
+#     def __init__(self):
+#         self.commanded_v = 0
+#         rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
+
+#     def velocity_command_callback(self, pose2d):
+#         self.commanded_v = pose2d.x
 
 def should_descend(mcs, pitch):
     hot = False
@@ -195,6 +205,20 @@ def should_descend(mcs, pitch):
 
     should_descend = hot and abs(pitch) > 6 /180*math.pi
     return should_descend
+
+# For Meredith's descend condition:
+# Remember to change the arguments!!!!!!!!!
+# def should_descend(mcs, pitch, commanded_v):
+#     max_temp = 0
+#     for mc in mcs:
+#         max_temp = max(mc.winding_temperature, max_temp)
+    
+#     should_descend = False
+#     if abs(pitch) > 6 /180*math.pi:
+#         if max_temp > 115 or (max_temp > 105 and commanded_v == 0):
+#             should_descend = True
+    
+#     return should_descend
 
 def abs_max_wheel_rpm_actual(mcs):
     max_rpm = 0
@@ -217,6 +241,7 @@ if __name__ ==  '__main__':
     error_handler = ErrorHandler(mcs, gui, handheld)
     rc = RobotCommander()
     gps = Gps()
+    # robot = Robot()
 
     # initial state
     state = STOPPED
@@ -260,7 +285,7 @@ if __name__ ==  '__main__':
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50:
+            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50: # bring robot to stop before descending
                 state = DESCENDING
             elif gui.is_idle_clicked:
                 state = IDLE
