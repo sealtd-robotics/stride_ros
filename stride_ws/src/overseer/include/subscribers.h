@@ -48,6 +48,7 @@ typedef struct
     float vel_lat_ms;
     float vel_east_ms;
     float vel_north_ms;
+    float vel_z_ms;
     float heading_deg;
     float roll_deg;
     float pitch_deg;
@@ -91,9 +92,13 @@ private:
     ros::Subscriber motor_current_sub_;
     ros::Subscriber motor_rpm_sub_;
     ros::Subscriber motor_temp_sub_;
+    ros::Subscriber motor_error_sub_;
+    ros::Subscriber motor_heatbeat_sub_;
     float current_;
     float rpm_;
     int temperature_;
+    uint16_t error_;
+    uint8_t heart_beat_; 
 
 public:
     MotorInfoSub(ros::NodeHandle* nh, std::string name);
@@ -101,9 +106,11 @@ public:
     void MotorCurrentCallback(const std_msgs::Float32::ConstPtr& msg);
     void MotorRpmCallback(const std_msgs::Float32::ConstPtr& msg);
     void MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg);
+    void MotorErrorCallback(const std_msgs::Int32::ConstPtr& msg);
     float GetCurrent();
     float GetRpm();
     int GetTemperature();
+    uint16_t GetError();
 };
 
 
@@ -147,10 +154,10 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[51] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
+    std::string csv_header[52] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
-                                "vel_east(m/s)", "vel_north(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
+                                "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
                                 "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)",
                                 "goal_east(m)", "goal_north(m)", "lookahead(m)", 
                                 "desired_steering(deg)",

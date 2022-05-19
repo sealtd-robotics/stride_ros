@@ -90,8 +90,9 @@ void DataRecorderSub::OxtsGpsPositionCallback(const sensor_msgs::NavSatFix::Cons
 }
 
 void DataRecorderSub::OxtsGpsVelocityCallback(const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg) {
-    df_.vel_east_ms = msg->twist.twist.linear.x;
+    df_.vel_east_ms  = msg->twist.twist.linear.x;
     df_.vel_north_ms = msg->twist.twist.linear.y;
+    df_.vel_z_ms     = msg->twist.twist.linear.z;
 }
 
 void DataRecorderSub::OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
@@ -237,6 +238,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vel_lat_ms << dem;
                 outFile << temp.vel_east_ms << dem;
                 outFile << temp.vel_north_ms << dem;
+                outFile << temp.vel_z_ms << dem;
                 outFile << temp.heading_deg << dem;
                 outFile << temp.roll_deg << dem;
                 outFile << temp.pitch_deg << dem;
@@ -289,6 +291,9 @@ MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) :
 
     sprintf(c_name, "/motor_controller/%s/winding_temperature", motor_name_.c_str());
     motor_temp_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorWindingTempCallback, this);
+
+    sprintf(c_name, "/motor_controller/%s/error_word", motor_name_.c_str());
+    motor_temp_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorErrorCallback, this);
 }
 
 MotorInfoSub::~MotorInfoSub() {
@@ -307,6 +312,10 @@ void MotorInfoSub::MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg
     temperature_ = msg->data;
 }
 
+void MotorInfoSub::MotorErrorCallback(const std_msgs::Int32::ConstPtr& msg) {
+    error_ = msg->data;
+}
+
 float MotorInfoSub::GetCurrent() {
     return current_;
 }
@@ -317,4 +326,8 @@ float MotorInfoSub::GetRpm() {
 
 int MotorInfoSub::GetTemperature() {
     return temperature_;
+}
+
+uint16_t MotorInfoSub::GetError() {
+    return error_;
 }

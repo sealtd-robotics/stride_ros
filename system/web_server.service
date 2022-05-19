@@ -1,0 +1,12 @@
+[Unit]
+Description=Spin Web Server
+After=multi-user.target
+
+[Service]
+Type=idle
+Environment=PYTHONPATH=/home/%p/.local/lib/python3.6/site-packages
+WorkingDirectory=/home/%p
+ExecStart=/usr/bin/python2 /home/%p/stride_ros/system/web_server_for_gui.py > /home/%p/script.log 2>&1
+
+[Install]
+WantedBy=multi-user.target

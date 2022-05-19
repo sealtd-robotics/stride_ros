@@ -20,6 +20,10 @@ from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
 from shared_tools.overseer_states_constants import *
 
+# Global control robot commander across threads
+
+let_script_runs = False
+
 class RobotCommander:
     def __init__(self):
         self.current_path_index = 0
@@ -81,7 +85,7 @@ class RobotCommander:
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.robot_speed > 0.1 and self.current_path_index < self.max_path_index):
+        while (self.robot_speed > 0.1 and self.current_path_index < self.max_path_index) and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
@@ -91,7 +95,7 @@ class RobotCommander:
         rate = rospy.Rate(50)
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < index):
+        while (self.current_path_index < index) and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
@@ -318,7 +322,7 @@ class Receptionist:
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
-        print("Custom script completed execution")
+        print("INFO: Test ends. Custom script completed execution.")
 
     def overseer_state_callback(self, msg):
         self.overseer_state = msg.data
@@ -338,8 +342,10 @@ if __name__ == '__main__':
         if recept.previous_state != recept.overseer_state:
             if recept.overseer_state == AUTO and not recept.is_script_running:
                 recept.is_script_running = True
+                let_script_runs = True
                 recept.is_script_running_publisher.publish(True)
 
+                print("INFO: Test started!")
                 custom_script_thread = threading.Thread(target=recept.start_custom_script)
                 custom_script_thread.setDaemon(True)
                 custom_script_thread.start()
@@ -347,8 +353,9 @@ if __name__ == '__main__':
             # If the STOP button is clicked when the custom script is still running, kill this ROS node by breaking out of the while loop.
             # This ROS node will respawn after being killed
             elif recept.overseer_state != AUTO and recept.is_script_running:
+                let_script_runs = False
                 recept.is_script_running_publisher.publish(False)
-                break
+                # break
 
             recept.previous_state = recept.overseer_state
             
