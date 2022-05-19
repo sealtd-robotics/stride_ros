@@ -146,7 +146,7 @@ class RobotCommander:
         # kinemetic equation: vf^2 = vi^2 + 2*a*d
         vi = self.robot_speed
         d = sum(self.path_intervals[ self.current_path_index : stop_index ])
-        a = -vi**2 / 2 / d
+        a = -vi**2 / (2*d)
 
         while (self.current_path_index < stop_index):
             vi = vi + a*period # a is negative

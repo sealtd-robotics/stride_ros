@@ -70,7 +70,7 @@ if __name__ ==  '__main__':
     while not rospy.is_shutdown():
         state = df.overseer_state
 
-        if state == MANUAL or state == AUTO or state == DESCENDING:
+        if state == MANUAL or state == AUTO or state == DESCENDING or state == RETURN_TO_START:
             df.publish_wheel_rpm(df.commanded_robot_v, df.commanded_robot_w)
         else: 
             df.commanded_robot_v = 0

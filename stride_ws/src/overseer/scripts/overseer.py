@@ -13,11 +13,8 @@ import math
 import rospy
 from std_msgs.msg import Int32, Float32, Empty, Bool
 from nav_msgs.msg import Odometry
-<<<<<<< HEAD
 from geometry_msgs.msg import Pose2D
-=======
 from geometry_msgs.msg import Vector3
->>>>>>> add subscribers for oxts
 import time
 import enum
 import threading
@@ -109,12 +106,14 @@ class Gui:
         self.is_heartbeat_timeout = False
         self.is_start_following_clicked = False
         self.is_idle_clicked = False
+        self.is_return_to_start_clicked = False
 
         rospy.Subscriber('/gui/stop_clicked', Empty, self.stop_callback)
         rospy.Subscriber('/gui/enable_manual_clicked', Empty, self.enable_manual_callback)
         rospy.Subscriber('/gui/heartbeat', Empty, self.heartbeat_callback, queue_size=1)
         rospy.Subscriber('/gui/start_path_following_clicked', Empty, self.start_following_callback)
         rospy.Subscriber('/gui/idle_clicked', Empty, self.idle_callback)
+        rospy.Subscriber('/gui/return_to_start_clicked', Empty, self.return_to_start_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -135,6 +134,7 @@ class Gui:
         self.is_enable_manual_clicked = False
         self.is_start_following_clicked = False
         self.is_idle_clicked = False
+        self.is_return_to_start_clicked = False
 
     def stop_callback(self, msg):
         self.is_stop_clicked = True
@@ -156,6 +156,9 @@ class Gui:
 
     def idle_callback(self, msg):
         self.is_idle_clicked = True
+
+    def return_to_start_callback(self, msg):
+        self.is_return_to_start_clicked = True
 
 class Handheld:
     def __init__(self):
@@ -186,7 +189,7 @@ class Gps:
     def __init__(self):
         self.pitch = 0
         rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.callback_2, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_callback_2, queue_size=1)
 
     def gps_callback_1(self, msg):
         self.pitch = msg.data
@@ -269,6 +272,8 @@ if __name__ ==  '__main__':
                 state = AUTO
             elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_descend(mcs, gps.pitch):
                 state = STOPPED
+            elif gui.is_return_to_start_clicked:
+                state = RETURN_TO_START
         
         # Auto
         elif state == AUTO:
@@ -299,6 +304,8 @@ if __name__ ==  '__main__':
                 state = DESCENDING
             elif gui.is_idle_clicked:
                 state = IDLE
+            elif gui.is_return_to_start_clicked:
+                state = RETURN_TO_START
 
         # Decending
         elif state == DESCENDING:
@@ -315,6 +322,20 @@ if __name__ ==  '__main__':
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
+            elif gui.is_return_to_start_clicked:
+                state = RETURN_TO_START
+
+        # Return to start
+        elif state == RETURN_TO_START:
+            if handheld.is_estop_pressed:
+                state = E_STOPPED
+            elif gui.is_stop_clicked or error_handler.has_error(state, True) or should_descend(mcs, gps.pitch):
+                state = STOPPED
+            elif not rc.is_script_running:
+                # Making sure the rc.is_script_running has time to update
+                time.sleep(0.1)
+                if not rc.is_script_running:
+                    state = STOPPED
 
         gui.reset_button_clicks()
         state_publisher.publish( state )

@@ -72,7 +72,8 @@
 ros::Time g_gps_utc_time;
 #define GPS_LEAP_SECONDS 18         // Offset to account for UTC leap seconds (need to increment when UTC changes)
 #define GPS_EPOCH_OFFSET 315964800  // Offset to account for GPS / UTC epoch difference
-
+#define HALF_PI 3.141592653589793
+#define FULL_PI 2*HALF_PI
 
 static inline bool openSocket(const std::string &interface, const std::string &ip_addr, uint16_t port, int *fd_ptr, sockaddr_in *sock_ptr)
 {
@@ -459,6 +460,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     msg_ori_euler.x = (double)packet->roll * 1e-6;
     msg_ori_euler.y = (double)packet->pitch * 1e-6;
     msg_ori_euler.z = (double)packet->heading * 1e-6;
+    if (msg_ori_euler.z < 0) {
+      msg_ori_euler.z += FULL_PI;
+    }
     pub_ori_euler.publish(msg_ori_euler);
 
     tf::Quaternion q;
@@ -654,7 +658,7 @@ int main(int argc, char **argv)
             // printf("connected\n");
             handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_ori_euler, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, pub_gga, frame_id_gps, frame_id_vel, frame_id_odom);
           } else {
-            printf("INVALID\n");
+            // printf("INVALID\n");
           }
         }
 #if(0)
@@ -719,7 +723,7 @@ int main(int argc, char **argv)
           begin = 0;
           end = 0;
           i = 0;
-          printf("Reset\n");
+          // printf("Reset\n");
         }
       }
 

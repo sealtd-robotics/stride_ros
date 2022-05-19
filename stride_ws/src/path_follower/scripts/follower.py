@@ -28,6 +28,7 @@ class PathFollower:
         self.look_ahead_points = 5
 
         self.current_path_index = 0
+        self.last_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
         self.E_factor = 0
         self.N_factor = 0
@@ -180,6 +181,7 @@ class PathFollower:
             self.current_path_index += 1
         
         self.current_path_index_publisher.publish(self.current_path_index)
+        self.last_path_index = self.current_path_index
 
     def update_turning_radius(self):
         # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
@@ -211,6 +213,52 @@ class PathFollower:
 
         # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
         # print('r: ', self.turning_radius, 'd: ', distance)
+
+    def update_path_index_return_to_start(self):
+        if self.last_path_index == 0:
+            return
+
+        # Find slope of line (m) connecting current index and the next index
+        x_cur = self.path_easts[self.last_path_index]
+        y_cur = self.path_norths[self.last_path_index]
+
+        x_next = self.path_easts[max(self.last_path_index - 1, 0)]
+        y_next = self.path_norths[max(self.last_path_index - 1, 0)]
+        m = (y_next - y_cur) / (x_next - x_cur)
+
+        # Slope of the perpendicular line to the original line
+        m_perp = -1/m
+
+        # Notes: The point-slope form of the perpendicular line at point (x_next, y_next) is as follows:
+        # 0 = (y_cur - y_next) - m_perp * (x_cur - x_next)
+
+        # Determine which side of the line the current index point lies on, indicated by the sign of k_cur
+        k_cur = (y_cur - y_next) - m_perp * (x_cur - x_next)
+
+        # Determine which side of the line the robot lies on, indicated by the sign of k_robot
+        k_robot = (self.robot_north - y_next) - m_perp * (self.robot_east - x_next)
+
+        # If the two above points are on different sides of the line
+        if k_cur * k_robot < 0:
+            self.last_path_index += 1
+        
+        self.current_path_index_publisher.publish(self.last_path_index)
+
+    def update_turning_radius_return_to_start(self):
+        x1 = self.robot_east
+        y1 = self.robot_north
+
+        x2 = self.path_easts[max(0, self.current_path_index - 5)]
+        y2 = self.path_norths[max(0, self.current_path_index - 5)]
+
+        adjusted_heading = pi/2 - self.robot_heading # need to look into this one
+        distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+
+        if distance < 0.5:
+            self.turning_radius = 0
+        else:
+            look_ahead_angle = atan2(y2-y1, x2-x1)
+            self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
 
     # Subscriber callbacks
     def callback_1(self, msg):
@@ -257,6 +305,10 @@ if __name__ ==  '__main__':
         if pf.overseer_state == AUTO:
             pf.update_current_path_index()
             pf.update_turning_radius()
+            pf.turning_radius_publisher.publish(pf.turning_radius)
+        elif pf.overseer_state == RETURN_TO_START:
+            pf.update_path_index_return_to_start()
+            pf.update_turning_radius_return_to_start()
             pf.turning_radius_publisher.publish(pf.turning_radius)
         else:
             pf.current_path_index = 0

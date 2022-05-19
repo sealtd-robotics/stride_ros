@@ -146,6 +146,7 @@ class RosInterface:
 
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
         rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
         # Motor Controller Subscribers
         # Left Front
         rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
@@ -200,7 +201,8 @@ class RosInterface:
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
         self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
-    
+        self.return_to_start_publisher = rospy.Publisher('/gui/return_to_start_clicked', Empty, queue_size=1)
+        
     # Callbacks
     def subscriber_callback_1(self, msg):
         self.robotState['robotVelocityCommand']['v'] = round(msg.x, 3)
@@ -318,7 +320,7 @@ class RosInterface:
     def gps_subscriber_callback_3(self, msg):
         self.robotState['gps']['northVelocity'] = round(msg.twist.twist.linear.y, 3)
         self.robotState['gps']['eastVelocity'] = round(msg.twist.twist.linear.x, 3)
-        self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
+        self.robotState['gps']['zAngularVelocity'] = round(msg.twist.twist.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_4(self, msg):
@@ -341,6 +343,9 @@ class RosInterface:
 
     def gps_subscriber_callback_10(self, msg):
         self.robotState['gps']['magneticCalibrationError'] = msg.data
+
+    def gps_subscriber_callback_11(self, msg):
+        self.robotState['gps']['heading'] = round(msg.z, 3)
 
     # Path follower callbacks
     def path_follower_callback_1(self, msg):
@@ -430,6 +435,8 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.shared_path = {'type': 'sharedPath', 'latitudes': message['latitudes'], 'longitudes': message['longitudes']}
         elif message['type'] == '/gui/start_path_following_clicked':
             MyServerProtocol.ros_interface.start_following_publisher.publish()
+        elif message['type'] == '/gui/return_to_start_clicked':
+            MyServerProtocol.ros_interface.return_to_start_publisher.publish()
         elif message['type'] == '/gui/upload_path_clicked':
             folder = '../../../path/'
             
