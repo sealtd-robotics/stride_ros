@@ -240,7 +240,7 @@ class PathFollower:
 
         # If the two above points are on different sides of the line
         if k_cur * k_robot < 0:
-            self.last_path_index += 1
+            self.last_path_index -= 1
         
         self.current_path_index_publisher.publish(self.last_path_index)
 
@@ -251,11 +251,11 @@ class PathFollower:
         x2 = self.path_easts[max(0, self.current_path_index - 5)]
         y2 = self.path_norths[max(0, self.current_path_index - 5)]
 
-        adjusted_heading = pi/2 - self.robot_heading # need to look into this one
+        adjusted_heading = 3*pi/2 - self.robot_heading
         distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 
-        if distance < 0.5:
-            self.turning_radius = 0
+        if distance < 0.2:
+            self.turning_radius = 999999
         else:
             look_ahead_angle = atan2(y2-y1, x2-x1)
             self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))

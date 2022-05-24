@@ -337,7 +337,7 @@ class MotorControllerNetwork:
             if self.overseer_state == STOPPED:
                 self.enable_power_for_all_motors()
                 self.send_zero_rpm_to_all_motors()
-            elif self.overseer_state == DESCENDING:
+            elif self.overseer_state == DESCENDING or self.overseer_state == RETURN_TO_START:
                 self.enable_power_for_all_motors()
 
                 self.mc_lf_node.spin(self.left_front_rpm)

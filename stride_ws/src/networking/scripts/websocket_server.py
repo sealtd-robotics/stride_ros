@@ -32,6 +32,7 @@ class RosInterface:
     def __init__(self, websocket):
         self.gps_callback_sleep_time = 0.1
         self.websocket = websocket
+        self.gnss_pos_status = 0
 
         # Does not get transmitted continuously
         self.path_to_follow = {
@@ -147,6 +148,7 @@ class RosInterface:
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
         rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
+        rospy.Subscriber('/gps/pos_type', String, self.gps_oxford_pos_type_callback, queue_size=1)
         # Motor Controller Subscribers
         # Left Front
         rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
@@ -306,7 +308,8 @@ class RosInterface:
 
     # GPS callbacks
     def gps_subscriber_callback_1(self, msg):
-        self.robotState['gps']['status'] = msg.status.status
+        # self.robotState['gps']['status'] = msg.status.status
+        self.robotState['gps']['status'] = self.gnss_pos_status # temp patch
         self.robotState['gps']['latitude'] = msg.latitude
         self.robotState['gps']['longitude'] = msg.longitude
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
@@ -346,6 +349,19 @@ class RosInterface:
 
     def gps_subscriber_callback_11(self, msg):
         self.robotState['gps']['heading'] = round(msg.z, 3)
+        time.sleep(self.gps_callback_sleep_time)
+
+    def gps_oxford_pos_type_callback(self, msg):
+        pos_type = msg.data
+        if (pos_type == "RTK_INTEGER"):
+            self.gnss_pos_status = 7
+        elif (pos_type == "RTK_FLOAT"):
+            self.gnss_pos_status = 6
+        elif (pos_type == "DIFF_PSEUDORANGE"):
+            self.gnss_pos_status = 4
+        else:
+            self.gnss_pos_status = 3
+        time.sleep(self.gps_callback_sleep_time)
 
     # Path follower callbacks
     def path_follower_callback_1(self, msg):

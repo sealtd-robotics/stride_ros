@@ -63,7 +63,10 @@ class RobotCommander:
 
         pose2d = Pose2D()
         pose2d.x = speed
-        pose2d.theta = speed / self.turning_radius
+        w = speed / self.turning_radius
+        if (speed < 0):
+            w *= -1.0
+        pose2d.theta = w
 
         self.velocity_command_publisher.publish(pose2d)
 
@@ -73,7 +76,7 @@ class RobotCommander:
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < self.max_path_index):
+        while (self.current_path_index < self.max_path_index) and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
@@ -85,7 +88,9 @@ class RobotCommander:
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.robot_speed > 0.1 and self.current_path_index < self.max_path_index) and let_script_runs:
+        while (self.robot_speed > 0.1 \
+            and self.current_path_index < self.max_path_index) \
+            and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
@@ -124,16 +129,20 @@ class RobotCommander:
 
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
-            while self.robot_heading < lower_bound or self.robot_heading > upper_bound:
+            while (self.robot_heading < lower_bound \
+                    or self.robot_heading > upper_bound) \
+                    and let_script_runs:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
         else:
-            while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
+            while (self.robot_heading > lower_bound \
+                and self.robot_heading < upper_bound) \
+                and let_script_runs:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
         if brake_when_done:
-            while self.robot_angular_speed > 0.02:
+            while (self.robot_angular_speed > 0.02) and let_script_runs:
                 pose2d.theta = 0
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
@@ -152,18 +161,29 @@ class RobotCommander:
         d = sum(self.path_intervals[ self.current_path_index : stop_index ])
         a = -vi**2 / (2*d)
 
-        while (self.current_path_index < stop_index):
+        while (self.current_path_index < stop_index) and let_script_runs:
             vi = vi + a*period # a is negative
             vi = max(vi, 0.3) # prevent zero velocity before reaching the stop_index
             self._send_velocity_command_using_radius(vi)
             rate.sleep()
 
 
-        while self.robot_speed > 0.1:
+        while (self.robot_speed > 0.1) and let_script_runs:
             self._send_velocity_command_using_radius(0)
             rate.sleep()
             
         self.stop_index_publisher.publish(999999)
+
+    def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        print('Executing move_beginning_of_path')
+        rate = rospy.Rate(50)
+
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
+        while (self.current_path_index > 0) and let_script_runs:
+            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            self._send_velocity_command_using_radius(limited_speed)
+            rate.sleep()
 
     def sleep(self, seconds):
         print('Executing sleep')
@@ -324,6 +344,15 @@ class Receptionist:
         
         print("INFO: Test ends. Custom script completed execution.")
 
+    def return_to_start(self):
+        try:
+            execfile('./return_to_start.py')
+        except Exception as error:
+            print(error)
+
+        self.is_script_running = False
+        self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
+
     def overseer_state_callback(self, msg):
         self.overseer_state = msg.data
 
@@ -349,10 +378,19 @@ if __name__ == '__main__':
                 custom_script_thread = threading.Thread(target=recept.start_custom_script)
                 custom_script_thread.setDaemon(True)
                 custom_script_thread.start()
-            
+            elif recept.overseer_state == RETURN_TO_START and not recept.is_script_running:
+                recept.is_script_running = True
+                let_script_runs = True
+                recept.is_script_running_publisher.publish(True)
+
+                custom_script_thread = threading.Thread(target=recept.return_to_start)
+                custom_script_thread.setDaemon(True)
+                custom_script_thread.start()
+
             # If the STOP button is clicked when the custom script is still running, kill this ROS node by breaking out of the while loop.
             # This ROS node will respawn after being killed
-            elif recept.overseer_state != AUTO and recept.is_script_running:
+            elif (recept.overseer_state != AUTO and recept.overseer_state != RETURN_TO_START) \
+                                                and recept.is_script_running:
                 let_script_runs = False
                 recept.is_script_running_publisher.publish(False)
                 # break
