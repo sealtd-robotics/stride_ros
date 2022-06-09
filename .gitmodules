@@ -1,3 +1,7 @@
 [submodule "stride_gui_build"]
 	path = stride_gui_build
+	branch = main
 	url = https://github.com/sealtd-robotics/stride_gui_build.git
+[submodule "sbg_ros_driver"]
+	path = stride_ws/src/sbg_ros_driver
+	url = https://github.com/SBG-Systems/sbg_ros_driver.git

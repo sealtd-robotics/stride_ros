@@ -67,16 +67,16 @@ if __name__ == "__main__":
                 robot_temperature, battery_temperature, voltage_divider = struct.unpack('3h', dat[0:6])
 
                 # robot temperature - moving average
-                robot_temperature = robot_temperature * 5.0 / 1024 * 100   # convert from digital to voltage, then to degree F
+                robot_temperature = robot_temperature * 3.3 / 1024 * 100   # convert from digital to voltage, then to degree F
                 robot_temperature_history.pop(0)
                 robot_temperature_history.append(robot_temperature)
                 robot_temperature_averaged = sum(robot_temperature_history) / len(robot_temperature_history)
 
                 # battery temperature
-                battery_temperature = battery_temperature * 5.0 / 1024 * 100   # convert from digital to voltage, then to degree F
+                battery_temperature = battery_temperature * 3.3 / 1024 * 100   # convert from digital to voltage, then to degree F
 
                 # battery_voltage
-                battery_voltage = voltage_divider * 5.0 / 1024 * 7.7678    # convert from digital to voltage of voltage divider, then to battery voltage
+                battery_voltage = voltage_divider * 3.3 / 1024 * 8.745056384    # convert from digital to voltage of voltage divider, then to battery voltage
 
                 robot_temperature_publisher.publish(robot_temperature_averaged)
                 battery_temperature_publisher.publish(battery_temperature)
