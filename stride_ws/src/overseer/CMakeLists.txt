@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
     nav_msgs
     std_msgs
     can_interface
+    sbg_driver
 )
 
 find_package(can_interface REQUIRED)
@@ -109,7 +110,7 @@ find_package(can_interface REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES overseer
- CATKIN_DEPENDS roscpp nav_msgs std_msgs sensor_msgs can_interface
+ CATKIN_DEPENDS roscpp nav_msgs std_msgs sensor_msgs can_interface sbg_driver
 #  DEPENDS system_lib
 )
 

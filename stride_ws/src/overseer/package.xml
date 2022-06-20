@@ -38,6 +38,7 @@
     <depend>std_msgs</depend>
     <depend>sensor_msgs</depend>
     <depend>can_interface</depend>
+    <depend>sbg_driver</depend>
   <!--   Note that this is equivalent to the following: -->
   <!--   <build_depend>roscpp</build_depend> -->
   <!--   <exec_depend>roscpp</exec_depend> -->

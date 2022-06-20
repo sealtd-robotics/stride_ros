@@ -15,6 +15,7 @@ from std_msgs.msg import Int32, Float32, Empty, Bool
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Vector3
+from sbg_driver.msg import SbgEkfEuler
 import time
 import enum
 import threading
@@ -190,6 +191,7 @@ class Gps:
         self.pitch = 0
         rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_euler_callback, queue_size=1)
 
     def gps_callback_1(self, msg):
         self.pitch = msg.data
@@ -197,6 +199,10 @@ class Gps:
 
     def gps_callback_2(self, msg):
         self.pitch = msg.y
+        time.sleep(0.1)
+
+    def gps_euler_callback(self, msg):
+        self.pitch = msg.angle.z
         time.sleep(0.1)
 
 # For Meredith's descend condition:

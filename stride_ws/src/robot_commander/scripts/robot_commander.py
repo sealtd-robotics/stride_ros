@@ -15,6 +15,7 @@ from libcal import LL_NE, CheckBoundariesEnter
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
 from nav_msgs.msg import Odometry
+from sbg_driver.msg import SbgEkfEuler, SbgEkfNav
 from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
@@ -51,6 +52,9 @@ class RobotCommander:
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
         rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_velocity_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
+
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
 
         # blocking until these attributes have been updated by subscriber callbacks
@@ -286,6 +290,12 @@ class RobotCommander:
 
     def gps_orientation_callback(self, msg):
         self.robot_heading = msg.z
+
+    def gps_sbg_euler_callback(self, msg):
+        self.robot_heading = msg.angle.z
+
+    def gps_sbg_nav_callback(self, msg):
+        self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
 
     def target_callback(self, msg):
         self.target_heading = msg.heading

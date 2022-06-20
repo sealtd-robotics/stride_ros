@@ -15,6 +15,10 @@
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <geometry_msgs/Pose2D.h>
 #include <can_interface/WheelRPM.h>
+#include <sbg_driver/SbgEkfEuler.h>
+#include <sbg_driver/SbgEkfNav.h>
+#include <sbg_driver/SbgGpsPos.h>
+#include <sbg_driver/SbgImuData.h>
 #include <tf/tf.h>
 
 #include <ros/ros.h>
@@ -35,10 +39,9 @@ typedef struct
     int64_t utc_time_millisec;
     uint32_t status;
     uint32_t drive_status;
-    uint8_t gnss1_info;
-    uint8_t gnss2_info;
-    uint8_t dual_antenna_info;
-    float heading_uncertainty;
+    uint8_t gnss_no_satellites;
+    uint16_t diff_age;
+    uint8_t RTK_status;
     double latitude_deg;
     double longitude_deg;
     double altitude_m;
@@ -60,7 +63,7 @@ typedef struct
     float goal_east_m;
     float goal_north_m;
     uint8_t lookahead_m;
-    float desired_steering_deg;
+    float desired_omega_rads;
     float desired_velocity_ms;
     float motor_velocity_RL_rpm;
     float motor_velocity_RR_rpm;
@@ -139,6 +142,12 @@ private:
     ros::Subscriber oxts_gps_velocity_sub_;
     ros::Subscriber oxts_gps_imu_sub_;
 
+    // Sbg
+    ros::Subscriber sbg_gps_nav_sub_;
+    ros::Subscriber sbg_gps_euler_sub_;
+    ros::Subscriber sbg_gps_gnss_sub_;
+    ros::Subscriber sbg_gps_imu_sub_;
+
     ros::Subscriber dual_antenna_info_sub_;
     ros::Subscriber desired_velocity_sub_;
     std::shared_ptr<MotorInfoSub> motor_RL;
@@ -154,14 +163,14 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[52] = {"utc_time(millisec)", "general_status", "drive_status", "gnss1", "gnss2", "dual_gnss", "heading_unc",
+    std::string csv_header[52] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
                                 "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)",
                                 "goal_east(m)", "goal_north(m)", "lookahead(m)", 
-                                "desired_steering(deg)",
-                                "desired_velocity(ms)", 
+                                "desired_omega(rad/s)",
+                                "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
                                 "actual_rpm_RR", "desired_rpm_RR",
                                 "actual_rpm_FL", "desired_rpm_FL",
@@ -203,6 +212,12 @@ public:
     void OxtsGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
     void OxtsGpsVelocityCallback(const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg);
     void OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
+
+    // Sbg
+    void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);
+    void SbgGpsEulerCallback(const sbg_driver::SbgEkfEuler::ConstPtr& msg);
+    void SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& msg);
+    void SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();

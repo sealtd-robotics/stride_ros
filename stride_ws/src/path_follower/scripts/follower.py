@@ -17,6 +17,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Pose2D, Vector3
 from path_follower.msg import Latlong
+from sbg_driver.msg import SbgEkfNav, SbgEkfEuler
 from shared_tools.overseer_states_constants import *
 
 from math import cos, sin, sqrt, pi, atan2
@@ -67,6 +68,10 @@ class PathFollower:
 
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_callback_1, queue_size=1)
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
+
+        # topics for SBG
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_position_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_imu_callback, queue_size=1)
 
         # Load path at startup
         self.load_path()
@@ -285,11 +290,17 @@ class PathFollower:
         # In the message, pose.pose.position.x is latitude and pose.pose.position.y is longitude 
         (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
 
+    def gps_position_callback(self, msg):
+        (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
+
     def gps_callback_2(self, msg):
         self.robot_heading = msg.data    # radian
 
     def gps_orientation_callback(self, msg):
         self.robot_heading = msg.z
+
+    def gps_imu_callback(self, msg):
+        self.robot_heading = msg.angle.z
 
     # def gps_callback_3(self, msg):
     #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5

@@ -22,6 +22,8 @@ class DifferentialDrive:
         self.wheel_sep = rospy.get_param('~wheel_sep')
         self.left_wheel_radius = rospy.get_param('~left_wheel_radius')
         self.right_wheel_radius = rospy.get_param('~right_wheel_radius')
+        self.k_l = rospy.get_param('~k_l')
+        self.k_r = rospy.get_param('~k_r')
         
         self.overseer_state = 0
 
@@ -39,10 +41,10 @@ class DifferentialDrive:
         #     return
 
         # Differential drive formulas
-        left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / self.left_wheel_radius
+        left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / (self.k_l * self.left_wheel_radius)
         left_wheel_rpm = left_wheel_w * self.radian_per_sec_to_rpm
 
-        right_wheel_w = (robot_v + robot_w*self.wheel_sep/2) / self.right_wheel_radius
+        right_wheel_w = (robot_v + robot_w*self.wheel_sep/2) / (self.k_r * self.right_wheel_radius)
         right_wheel_rpm = right_wheel_w * self.radian_per_sec_to_rpm
 
         msg = WheelRPM()

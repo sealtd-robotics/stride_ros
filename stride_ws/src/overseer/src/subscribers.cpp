@@ -25,6 +25,10 @@ void DataRecorderSub::InitializeSubscribers() {
     oxts_gps_velocity_sub_ = nh_.subscribe("/gps/vel", 1, &DataRecorderSub::OxtsGpsVelocityCallback, this);
     oxts_gps_imu_sub_      = nh_.subscribe("/imu/data", 1, &DataRecorderSub::OxtsGpsImuCallback, this);
 
+    sbg_gps_nav_sub_   = nh_.subscribe("/sbg/ekf_nav", 1, &DataRecorderSub::SbgGpsNavCallback, this);
+    sbg_gps_euler_sub_ = nh_.subscribe("/sbg/ekf_euler", 1, &DataRecorderSub::SbgGpsEulerCallback, this);
+    sbg_gps_gnss_sub_  = nh_.subscribe("/sbg/gps_pos", 1, &DataRecorderSub::SbgGpsGnnsCallback, this);
+    sbg_gps_imu_sub_   = nh_.subscribe("/sbg/imu_data", 1, &DataRecorderSub::SbgGpsImuCallback, this);
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
     record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
@@ -102,6 +106,35 @@ void DataRecorderSub::OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) 
     df_.yaw_rate_rads = msg->angular_velocity.z;
 }
 
+void DataRecorderSub::SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg) {
+    df_.latitude_deg = msg->latitude;
+    df_.longitude_deg = msg->longitude;
+    df_.altitude_m = msg->altitude;
+    df_.vel_east_ms  = msg->velocity.x;
+    df_.vel_north_ms = msg->velocity.y;
+    df_.vel_z_ms     = msg->velocity.z;
+}
+
+void DataRecorderSub::SbgGpsEulerCallback(const sbg_driver::SbgEkfEuler::ConstPtr& msg) {
+    df_.yaw_deg = radToDeg(msg->angle.z);
+    df_.pitch_deg = radToDeg(msg->angle.y);
+    df_.roll_deg = radToDeg(msg->angle.x);
+}
+
+void DataRecorderSub::SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& msg) {
+    df_.gnss_no_satellites = msg->num_sv_used;
+    df_.diff_age = msg->diff_age;
+    df_.RTK_status = msg->status.type;
+}
+
+void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg) {
+    df_.acc_x_mss = msg->accel.x;
+    df_.acc_y_mss = msg->accel.y;
+    df_.acc_z_mss = msg->accel.z;
+    df_.yaw_rate_rads = msg->gyro.z;
+
+}
+
 void DataRecorderSub::RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg) {
     df_.robot_temp = msg->data;
 }
@@ -123,6 +156,7 @@ void DataRecorderSub::OverseerCallback(const std_msgs::Int32::ConstPtr& msg) {
 
 void DataRecorderSub::DesiredVelocityCallback(const geometry_msgs::Pose2D::ConstPtr& msg) {
     df_.desired_velocity_ms = msg->x;
+    df_.desired_omega_rads = msg->theta;
 }
 
 void DataRecorderSub::RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -225,10 +259,9 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.utc_time_millisec << dem;
                 outFile << temp.status << dem;
                 outFile << temp.drive_status << dem;
-                outFile << unsigned(temp.gnss1_info) << dem;
-                outFile << unsigned(temp.gnss2_info) << dem;
-                outFile << unsigned(temp.dual_antenna_info) << dem;
-                outFile << temp.heading_uncertainty << dem;
+                outFile << unsigned(temp.gnss_no_satellites) << dem;
+                outFile << temp.diff_age << dem;
+                outFile << unsigned(temp.RTK_status) << dem;
                 outFile << temp.latitude_deg << dem;
                 outFile << temp.longitude_deg << dem;
                 outFile << temp.altitude_m << dem;
@@ -250,7 +283,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.goal_east_m << dem;
                 outFile << temp.goal_north_m << dem;
                 outFile << unsigned(temp.lookahead_m) << dem;
-                outFile << temp.desired_steering_deg << dem;
+                outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
                 outFile << int(temp.motor_velocity_RL_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_RL_rpm) << dem;

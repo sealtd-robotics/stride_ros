@@ -9,10 +9,11 @@ import rospy
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
 from external_interface.msg import TargetVehicle
-from geometry_msgs.msg import Pose2D, Vector3, Twist, TwistWithCovarianceStamped
+from geometry_msgs.msg import Pose2D, Vector3, Twist, TwistWithCovarianceStamped, TwistStamped
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
 from path_follower.msg import Latlong
+from sbg_driver.msg import SbgEkfNav, SbgGpsPos, SbgEkfEuler
 import time
 import threading
 from datetime import datetime
@@ -149,6 +150,13 @@ class RosInterface:
         rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
         rospy.Subscriber('/gps/pos_type', String, self.gps_oxford_pos_type_callback, queue_size=1)
+
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_pos_callback, queue_size=1)
+        rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_gnss_pos_callback, queue_size=1)
+        rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
+        
+
         # Motor Controller Subscribers
         # Left Front
         rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
@@ -363,6 +371,26 @@ class RosInterface:
             self.gnss_pos_status = 3
         time.sleep(self.gps_callback_sleep_time)
 
+    ### SBG GPS ###
+    def gps_sbg_pos_callback(self, msg):
+        self.robotState['gps']['latitude'] = msg.latitude
+        self.robotState['gps']['longitude'] = msg.longitude
+        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
+
+    def gps_sbg_gnss_pos_callback(self, msg):
+        self.robotState['gps']['status'] = msg.status.type
+        time.sleep(self.gps_callback_sleep_time)
+
+    def gps_sbg_vel_callback(self, msg):
+        self.robotState['gps']['northVelocity'] = round(msg.twist.linear.x, 3)
+        self.robotState['gps']['eastVelocity'] = round(msg.twist.linear.y, 3)
+        self.robotState['gps']['zAngularVelocity'] = msg.twist.angular.z
+        time.sleep(self.gps_callback_sleep_time)
+
+    def gps_sbg_imu_callback(self, msg):
+        self.robotState['gps']['heading'] = round(msg.angle.z, 3)
+        time.sleep(self.gps_callback_sleep_time)
+
     # Path follower callbacks
     def path_follower_callback_1(self, msg):
         self.robotState['pathFollower']['pathName'] = msg.data
@@ -373,6 +401,7 @@ class RosInterface:
 
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
+
 
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
