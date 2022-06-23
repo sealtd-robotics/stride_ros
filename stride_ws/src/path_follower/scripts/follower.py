@@ -7,6 +7,7 @@
 # long_ref: longitude reference
 
 from __future__ import division
+from cmath import acos
 import rospy
 import math
 import os
@@ -46,6 +47,7 @@ class PathFollower:
         self.path_intervals = []
         self.stop_index = 999999
         self.max_index = 9999999
+        self.cross_track_error = 0
 
         # Publishers
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
@@ -54,6 +56,7 @@ class PathFollower:
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
         self.turning_radius_publisher = rospy.Publisher('/path_follower/turning_radius', Float32, queue_size=1)
+        self.cross_track_error_publisher = rospy.Publisher('/path_follower/cross_track_error', Float32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
@@ -219,6 +222,31 @@ class PathFollower:
         # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
         # print('r: ', self.turning_radius, 'd: ', distance)
 
+        ###Cross Track Error
+        #Point behind robot's current position
+        x1_cte = self.path_easts[self.current_path_index]
+        y1_cte = self.path_norths[self.current_path_index]
+
+        #Point in front of robot's current position
+        x2_cte = self.path_easts[min(self.current_path_index + 1, self.max_index)]
+        y2_cte = self.path_norths[min(self.current_path_index + 1, self.max_index)]
+
+        #Law of Cosines
+        dist_a = sqrt((x1_cte - x1)**2 + (y1_cte - y1)**2) #Distance b/t point behind robot and robot 
+        dist_b = sqrt((x2_cte - x1)**2 + (y2_cte - y1)**2) #Distance b/t robot and point in front of robot
+        dist_c = sqrt((x2_cte - x1_cte)**2 + (y2_cte - y1_cte)**2) #Distance b/t point behind and point in front of robot
+        Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
+
+        #Caculate Cross Track Error
+        self.cross_track_error = dist_a * sin(Beta)
+
+        #Sign of CTE
+        s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
+
+        #Apply sign to CTE
+        if s_cte < 0:
+            self.cross_track_error *= -1
+
     def update_path_index_return_to_start(self):
         if self.last_path_index == 0:
             return
@@ -317,6 +345,7 @@ if __name__ ==  '__main__':
             pf.update_current_path_index()
             pf.update_turning_radius()
             pf.turning_radius_publisher.publish(pf.turning_radius)
+            pf.cross_track_error_publisher.publish(pf.cross_track_error)
         elif pf.overseer_state == RETURN_TO_START:
             pf.update_path_index_return_to_start()
             pf.update_turning_radius_return_to_start()

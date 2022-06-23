@@ -24,27 +24,39 @@ class DifferentialDrive:
         self.right_wheel_radius = rospy.get_param('~right_wheel_radius')
         self.k_l = rospy.get_param('~k_l')
         self.k_r = rospy.get_param('~k_r')
+        self.P_corr = rospy.get_param('~P_corr')
         
         self.overseer_state = 0
 
         self.commanded_robot_v = 0
         self.commanded_robot_w = 0
+        self.cross_track_error = 0
 
         self.wheel_rpm_publisher = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
         rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
+        rospy.Subscriber('/path_follower/cross_track_error', Float32, self.cross_track_error_callback, queue_size=1)
 
     def publish_wheel_rpm(self, robot_v, robot_w):
         # # if not in manual, auto, or descending, don't publish
         # if not (self.overseer_state == 1 or self.overseer_state == 2 or self.overseer_state == 6 ):
         #     return
 
-        # Differential drive formulas
-        left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / (self.k_l * self.left_wheel_radius)
-        left_wheel_rpm = left_wheel_w * self.radian_per_sec_to_rpm
+        #Check what side of path robot is on and adjust wheel RPM
+        adj_L = 0
+        adj_R = 0
 
-        right_wheel_w = (robot_v + robot_w*self.wheel_sep/2) / (self.k_r * self.right_wheel_radius)
+        if self.cross_track_error >= 0: #If on left side of path, add correction term for left wheel
+            adj_L = self.P_corr * abs(self.cross_track_error)
+
+        elif self.cross_track_error < 0: #If on right side of path, add correction term for right wheel
+            adj_R = self.P_corr * abs(self.cross_track_error)
+
+        # Differential drive formulas
+        left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / (self.k_l * self.left_wheel_radius) + adj_L
+        left_wheel_rpm = left_wheel_w * self.radian_per_sec_to_rpm
+        right_wheel_w = (robot_v + robot_w*self.wheel_sep/2) / (self.k_r * self.right_wheel_radius) + adj_R
         right_wheel_rpm = right_wheel_w * self.radian_per_sec_to_rpm
 
         msg = WheelRPM()
@@ -62,6 +74,9 @@ class DifferentialDrive:
         self.commanded_robot_v = pose2d.x
         self.commanded_robot_w = pose2d.theta
 
+    def cross_track_error_callback(self, msg):
+        self.cross_track_error = msg.data
+
 if __name__ ==  '__main__':
     node = rospy.init_node('drive_mechanism')
 
@@ -78,5 +93,6 @@ if __name__ ==  '__main__':
             df.commanded_robot_v = 0
             df.commanded_robot_w = 0
             df.publish_wheel_rpm(0,0)
+            df.cross_track_error = 0
 
         rate.sleep()
