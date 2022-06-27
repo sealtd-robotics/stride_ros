@@ -62,6 +62,7 @@ typedef struct
     float yaw_rate_rads;
     float goal_east_m;
     float goal_north_m;
+    float cross_track_error_m;
     uint8_t lookahead_m;
     float desired_omega_rads;
     float desired_velocity_ms;
@@ -81,6 +82,10 @@ typedef struct
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
     int motor_winding_temp_FR;
+    int motor_error_code_RL;
+    int motor_error_code_RR;
+    int motor_error_code_FL;
+    int motor_error_code_FR;
     float batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
@@ -150,6 +155,7 @@ private:
 
     ros::Subscriber dual_antenna_info_sub_;
     ros::Subscriber desired_velocity_sub_;
+    ros::Subscriber cross_track_error_sub_;
     std::shared_ptr<MotorInfoSub> motor_RL;
     std::shared_ptr<MotorInfoSub> motor_RR;
     std::shared_ptr<MotorInfoSub> motor_FL;
@@ -163,12 +169,12 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[52] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
+    std::string csv_header[56] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
-                                "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)", "yaw(deg",
+                                "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
                                 "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)",
-                                "goal_east(m)", "goal_north(m)", "lookahead(m)", 
+                                "goal_east(m)", "goal_north(m)", "lookahead(m)", "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
@@ -179,6 +185,8 @@ private:
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
                                 "winding_temp_FL(C)", "winding_temp_FR(C)",
+                                "error_code_RL", "error_code_RR",
+                                "error_code_FL", "error_code_FR",
                                 "battery_voltage(V)", "battery_temp(C)", "robot_temp(C)"};
 
 public:    
@@ -200,6 +208,7 @@ public:
     void RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg);
     void MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstPtr& msg);
     void DesiredVelocityCallback(const geometry_msgs::Pose2D::ConstPtr& msg);
+    void CrossTrackErrorCallback(const std_msgs::Float32::ConstPtr& msg);
     void RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
     void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
     void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);

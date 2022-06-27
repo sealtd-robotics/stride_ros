@@ -37,6 +37,7 @@ void DataRecorderSub::InitializeSubscribers() {
     desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
     battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
+    cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -159,6 +160,10 @@ void DataRecorderSub::DesiredVelocityCallback(const geometry_msgs::Pose2D::Const
     df_.desired_omega_rads = msg->theta;
 }
 
+void DataRecorderSub::CrossTrackErrorCallback(const std_msgs::Float32::ConstPtr& msg) {
+    df_.cross_track_error_m = msg->data;
+}
+
 void DataRecorderSub::RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
     record_command_on = msg->data;
     int ret = 0;
@@ -272,10 +277,9 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vel_east_ms << dem;
                 outFile << temp.vel_north_ms << dem;
                 outFile << temp.vel_z_ms << dem;
-                outFile << temp.heading_deg << dem;
+                outFile << temp.yaw_deg << dem;
                 outFile << temp.roll_deg << dem;
                 outFile << temp.pitch_deg << dem;
-                outFile << temp.yaw_deg << dem;
                 outFile << temp.acc_x_mss << dem;
                 outFile << temp.acc_y_mss << dem;
                 outFile << temp.acc_z_mss << dem;
@@ -283,6 +287,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.goal_east_m << dem;
                 outFile << temp.goal_north_m << dem;
                 outFile << unsigned(temp.lookahead_m) << dem;
+                outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
                 outFile << int(temp.motor_velocity_RL_rpm) << dem;
@@ -301,6 +306,10 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_RR << dem;
                 outFile << temp.motor_winding_temp_FL << dem;
                 outFile << temp.motor_winding_temp_FR << dem;
+                outFile << temp.motor_error_code_RL << dem;
+                outFile << temp.motor_error_code_RR << dem;
+                outFile << temp.motor_error_code_FL << dem;
+                outFile << temp.motor_error_code_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem << "\n";
@@ -326,7 +335,7 @@ MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) :
     motor_temp_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorWindingTempCallback, this);
 
     sprintf(c_name, "/motor_controller/%s/error_word", motor_name_.c_str());
-    motor_temp_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorErrorCallback, this);
+    motor_error_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorErrorCallback, this);
 }
 
 MotorInfoSub::~MotorInfoSub() {

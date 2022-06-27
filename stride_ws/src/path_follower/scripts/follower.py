@@ -7,7 +7,6 @@
 # long_ref: longitude reference
 
 from __future__ import division
-from cmath import acos
 import rospy
 import math
 import os
@@ -21,7 +20,7 @@ from path_follower.msg import Latlong
 from sbg_driver.msg import SbgEkfNav, SbgEkfEuler
 from shared_tools.overseer_states_constants import *
 
-from math import cos, sin, sqrt, pi, atan2
+from math import cos, sin, sqrt, pi, atan2, acos
 from glob import glob
 
 
@@ -222,6 +221,8 @@ class PathFollower:
         # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
         # print('r: ', self.turning_radius, 'd: ', distance)
 
+        if self.current_path_index == 0 or self.current_path_index == self.max_index:
+            return
         ###Cross Track Error
         #Point behind robot's current position
         x1_cte = self.path_easts[self.current_path_index]
