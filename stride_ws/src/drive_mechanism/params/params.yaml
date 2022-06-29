@@ -5,4 +5,4 @@ left_wheel_radius: 0.022 # in meters
 right_wheel_radius: 0.022 # in meters
 k_l: 0.954
 k_r: 0.954
-P_corr: 20 #7.575
+P_corr: 7.575

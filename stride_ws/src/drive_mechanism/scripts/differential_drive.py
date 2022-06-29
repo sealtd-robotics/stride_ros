@@ -49,9 +49,11 @@ class DifferentialDrive:
 
         if self.cross_track_error >= 0: #If on left side of path, add correction term for left wheel
             adj_L = self.P_corr * abs(self.cross_track_error)
+            adj_R = -1 * self.P_corr * abs(self.cross_track_error)
 
         elif self.cross_track_error < 0: #If on right side of path, add correction term for right wheel
             adj_R = self.P_corr * abs(self.cross_track_error)
+            adj_L = -1 * self.P_corr * abs(self.cross_track_error)
 
         # Differential drive formulas
         left_wheel_w = (robot_v - robot_w*self.wheel_sep/2) / (self.k_l * self.left_wheel_radius) + adj_L
