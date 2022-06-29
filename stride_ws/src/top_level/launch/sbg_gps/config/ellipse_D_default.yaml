@@ -12,7 +12,7 @@ driver:
   #       output frequency.
   #       The frequency can be reduced in order to reduce CPU consumption but
   #       it can lead to miss data frame and less accurate time stamping.
-  frequency: 100
+  frequency: 250
 
 odometry:
     # Enable ROS odometry messages.
@@ -32,7 +32,7 @@ uartConf:
   portName: "/dev/ttyTHS2"
 
   # Baude rate (4800 ,9600 ,19200 ,38400 ,115200 [default],230400 ,460800 ,921600)
-  baudRate: 230400
+  baudRate: 460800
 
   # Port Id
   # 0 PORT_A: Main communication interface. Full duplex.
