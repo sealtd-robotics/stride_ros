@@ -220,8 +220,9 @@ class PathFollower:
 
         # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
         # print('r: ', self.turning_radius, 'd: ', distance)
-
+        
         if self.current_path_index == 0 or self.current_path_index == self.max_index:
+            print("Before zero index= " + str(self.cross_track_error))
             return
         ###Cross Track Error
         #Point behind robot's current position
@@ -240,6 +241,11 @@ class PathFollower:
 
         #Caculate Cross Track Error
         self.cross_track_error = dist_a * sin(Beta)
+        print("Dist a= " + str(dist_a))
+        print("Dist b= " + str(dist_b))
+        print("Dist c= " + str(dist_c))
+        print("Beta= " + str(Beta))
+        print("CTE= " + str(self.cross_track_error))
 
         #Sign of CTE
         s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
@@ -355,5 +361,6 @@ if __name__ ==  '__main__':
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
             pf.turning_radius = 999
+            pf.cross_track_error = 0
 
         rate.sleep() 
