@@ -184,6 +184,8 @@ void DataRecorderSub::MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstP
     df_.desired_motor_velocity_RR_rpm = msg->right_back;
     df_.desired_motor_velocity_FL_rpm = msg->left_front;
     df_.desired_motor_velocity_FR_rpm = msg->right_front;
+    df_.desired_adj_L_rpm = msg->adj_left;
+    df_.desired_adj_R_rpm = msg->adj_right;
 }
 
 void DataRecorderSub::BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg) {
@@ -298,6 +300,8 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << int(temp.desired_motor_velocity_FL_rpm) << dem;
                 outFile << int(temp.motor_velocity_FR_rpm) << dem;
                 outFile << int(temp.desired_motor_velocity_FR_rpm) << dem;
+                outFile << int(temp.desired_adj_L_rpm) << dem;
+                outFile << int(temp.desired_adj_R_rpm) << dem;
                 outFile << temp.motor_current_RL_raw << dem;
                 outFile << temp.motor_current_RR_raw << dem;
                 outFile << temp.motor_current_FL_raw << dem;

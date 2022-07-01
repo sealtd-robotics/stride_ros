@@ -241,11 +241,11 @@ class PathFollower:
 
         #Caculate Cross Track Error
         self.cross_track_error = dist_a * sin(Beta)
-        print("Dist a= " + str(dist_a))
-        print("Dist b= " + str(dist_b))
-        print("Dist c= " + str(dist_c))
-        print("Beta= " + str(Beta))
-        print("CTE= " + str(self.cross_track_error))
+        # print("Dist a= " + str(dist_a))
+        # print("Dist b= " + str(dist_b))
+        # print("Dist c= " + str(dist_c))
+        # print("Beta= " + str(Beta))
+        # print("CTE= " + str(self.cross_track_error))
 
         #Sign of CTE
         s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)

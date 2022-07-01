@@ -66,6 +66,8 @@ class DifferentialDrive:
         msg.left_back = left_wheel_rpm
         msg.right_front = right_wheel_rpm
         msg.right_back = right_wheel_rpm
+        msg.adj_left = adj_L*self.radian_per_sec_to_rpm
+        msg.adj_right = adj_R*self.radian_per_sec_to_rpm
 
         self.wheel_rpm_publisher.publish(msg)
 

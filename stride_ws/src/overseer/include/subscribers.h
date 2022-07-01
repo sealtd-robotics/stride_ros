@@ -78,6 +78,8 @@ typedef struct
     float desired_motor_velocity_RR_rpm;
     float desired_motor_velocity_FL_rpm;
     float desired_motor_velocity_FR_rpm;
+    float desired_adj_L_rpm;
+    float desired_adj_R_rpm;
     int motor_winding_temp_RL;
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
@@ -169,7 +171,7 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[56] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
+    std::string csv_header[60] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
@@ -181,6 +183,7 @@ private:
                                 "actual_rpm_RR", "desired_rpm_RR",
                                 "actual_rpm_FL", "desired_rpm_FL",
                                 "actual_rpm_FR", "desired_rpm_FR",
+                                "adj_rpm_L", "adj_rpm_R",
                                 "actual_current_RL(A)", "actual_current_RR(A)",
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
