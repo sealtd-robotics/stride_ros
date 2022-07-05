@@ -239,6 +239,12 @@ class PathFollower:
         dist_c = sqrt((x2_cte - x1_cte)**2 + (y2_cte - y1_cte)**2) #Distance b/t point behind and point in front of robot
         Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
 
+        #Law of Cosines with lookahead point instead of point ahead of robot: Raplace (x2_cte, y2_cte) with (x2, y2)
+        # dist_a = sqrt((x1_cte - x1)**2 + (y1_cte - y1)**2) #Distance b/t point behind robot and robot 
+        # dist_b = sqrt((x2 - x1)**2 + (y2 - y1)**2) #Distance b/t robot and point in front of robot
+        # dist_c = sqrt((x2 - x1_cte)**2 + (y2 - y1_cte)**2) #Distance b/t point behind and point in front of robot
+        # Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
+
         #Caculate Cross Track Error
         self.cross_track_error = dist_a * sin(Beta)
         # print("Dist a= " + str(dist_a))
@@ -249,6 +255,7 @@ class PathFollower:
 
         #Sign of CTE
         s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
+        # s_cte = (x2 - x1_cte)* (y1 - y1_cte) - (y2 - y1_cte)* (x1 - x1_cte) #Sign of CTE when using lookahead point instead of point in front of robot
 
         #Apply sign to CTE
         if s_cte < 0:
