@@ -5,7 +5,6 @@ import rospy
 import time
 import threading
 import os
-import sys
 import math
 import numpy as np
 from glob import glob
@@ -61,6 +60,9 @@ class RobotCommander:
         while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
             time.sleep(0.1)
 
+    def _display_message(self, message):
+        print(message)
+        command_message_publisher.publish(message)
 
     def _send_velocity_command_using_radius(self, speed):
         self.limiter_initial_speed = speed
@@ -75,7 +77,7 @@ class RobotCommander:
         self.velocity_command_publisher.publish(pose2d)
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
-        print('Executing move_until_end_of_path')
+        self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
 
         initial_time = time.time()
@@ -86,7 +88,7 @@ class RobotCommander:
             rate.sleep()
 
     def brake_to_stop(self, speed_rate):
-        print('Executing brake_to_stop')
+        self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
         speed_goal = 0
 
@@ -100,7 +102,7 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
-        print('Executing move_until_index')
+        self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
@@ -110,7 +112,7 @@ class RobotCommander:
             rate.sleep()
 
     def set_index(self, index):
-        print('Executing set_index')
+        self._display_message('Executing set_index')
         self.set_index_publisher.publish(index)
         rate = rospy.Rate(50)
         while (self.current_path_index != index):
@@ -118,7 +120,7 @@ class RobotCommander:
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
-        print('Executing rotate_until_heading')
+        self._display_message('Executing rotate_until_heading')
         heading = heading % 360
 
         heading_radian = heading / 180 * math.pi
@@ -153,7 +155,7 @@ class RobotCommander:
 
 
     def decel_to_stop_at_index(self, stop_index):
-        print('Executing decel_to_stop_at_index')
+        self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50
@@ -179,7 +181,7 @@ class RobotCommander:
         self.stop_index_publisher.publish(999999)
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
-        print('Executing move_beginning_of_path')
+        self._display_message('Executing move_beginning_of_path')
         rate = rospy.Rate(50)
 
         initial_time = time.time()
@@ -190,36 +192,37 @@ class RobotCommander:
             rate.sleep()
 
     def sleep(self, seconds):
-        print('Executing sleep')
+        self._display_message('Executing sleep')
         time.sleep(seconds)
 
-    def get_time_now_in_ms(self):
+    def _get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
         now = datetime.utcnow()
         delta = now - epoch
         return delta.total_seconds() * 1000
 
     def go_straight_for_ms(self, speed, milliseconds):
-        start_time = self.get_time_now_in_ms()
+        self._display_message('Executing go_straight_for_ms')
+        start_time = self._get_time_now_in_ms()
         pose2d = Pose2D()
         pose2d.x = speed
         pose2d.theta = 0
 
         rate = rospy.Rate(10)
-        while self.get_time_now_in_ms() - start_time < milliseconds:
+        while self._get_time_now_in_ms() - start_time < milliseconds:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
 
 
     def rotate_for_ms(self, angular_speed, milliseconds):
-        print('Executing rotate_for_ms')
-        start_time = self.get_time_now_in_ms()
+        self._display_message('Executing rotate_for_ms')
+        start_time = self._get_time_now_in_ms()
         pose2d = Pose2D()
         pose2d.x = 0
         pose2d.theta = -angular_speed
 
         rate = rospy.Rate(10)
-        while self.get_time_now_in_ms() - start_time < milliseconds:
+        while self._get_time_now_in_ms() - start_time < milliseconds:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
 
@@ -238,6 +241,7 @@ class RobotCommander:
         Return:
             n/a
         """
+        self._display_message('Executing wait_for_target_position')
         llne = LL_NE(trigger_lat, trigger_long)
         boundary_checker = CheckBoundariesEnter(trigger_heading)
 
@@ -259,6 +263,7 @@ class RobotCommander:
             print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
 
     def wait_for_target_velocity(self, velocity):
+        self._display_message('Executing wait_for_target_velocity')
         rate = rospy.Rate(20)
         while (self.target_velocity < velocity 
             and self.target_gps_ready):
@@ -352,7 +357,10 @@ class Receptionist:
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
-        print("INFO: Test ends. Custom script completed execution.")
+        end_message = "Test ended. Custom script completed execution."
+        print(end_message)
+        command_message_publisher.publish(end_message)
+        command_message_publisher.publish("----------------------") # needed for separating tests
 
     def return_to_start(self):
         try:
@@ -371,6 +379,7 @@ class Receptionist:
 
 if __name__ == '__main__':
     node = rospy.init_node('robot_commander')
+    command_message_publisher = rospy.Publisher('/robot_commander/command_message', String, queue_size=20)
 
     recept = Receptionist()
 
@@ -384,7 +393,10 @@ if __name__ == '__main__':
                 let_script_runs = True
                 recept.is_script_running_publisher.publish(True)
 
-                print("INFO: Test started!")
+                start_message = "Test started"
+                print(start_message)
+                command_message_publisher.publish(start_message)
+
                 custom_script_thread = threading.Thread(target=recept.start_custom_script)
                 custom_script_thread.setDaemon(True)
                 custom_script_thread.start()
