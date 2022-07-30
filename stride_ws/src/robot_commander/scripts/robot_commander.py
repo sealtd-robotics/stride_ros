@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import queue
 import rospy
 import time
 import threading
 import os
-import sys
 import math
 import numpy as np
 from glob import glob
