@@ -222,7 +222,6 @@ class PathFollower:
         # print('r: ', self.turning_radius, 'd: ', distance)
         
         if self.current_path_index == 0 or self.current_path_index == self.max_index:
-            print("Before zero index= " + str(self.cross_track_error))
             return
         ###Cross Track Error
         #Point behind robot's current position
@@ -295,8 +294,8 @@ class PathFollower:
         x1 = self.robot_east
         y1 = self.robot_north
 
-        x2 = self.path_easts[max(0, self.current_path_index - 5)]
-        y2 = self.path_norths[max(0, self.current_path_index - 5)]
+        x2 = self.path_easts[max(0, self.last_path_index - 5)]
+        y2 = self.path_norths[max(0, self.last_path_index - 5)]
 
         adjusted_heading = 3*pi/2 - self.robot_heading
         distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
