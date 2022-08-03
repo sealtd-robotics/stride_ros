@@ -39,10 +39,6 @@ class DifferentialDrive:
         rospy.Subscriber('/path_follower/cross_track_error', Float32, self.cross_track_error_callback, queue_size=1)
 
     def publish_wheel_rpm(self, robot_v, robot_w):
-        # # if not in manual, auto, or descending, don't publish
-        # if not (self.overseer_state == 1 or self.overseer_state == 2 or self.overseer_state == 6 ):
-        #     return
-
         #Check what side of path robot is on and adjust wheel RPM
         adj_L = 0
         adj_R = 0

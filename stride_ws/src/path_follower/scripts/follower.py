@@ -19,7 +19,6 @@ from geometry_msgs.msg import Pose2D, Vector3
 from path_follower.msg import Latlong
 from sbg_driver.msg import SbgEkfNav, SbgEkfEuler
 from shared_tools.overseer_states_constants import *
-
 from math import cos, sin, sqrt, pi, atan2, acos
 from glob import glob
 
@@ -27,7 +26,6 @@ from glob import glob
 class PathFollower:
     def __init__(self):
         self.look_ahead_points = 5
-
         self.current_path_index = 0
         self.last_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
@@ -67,7 +65,6 @@ class PathFollower:
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
-
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_callback_1, queue_size=1)
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
 
@@ -217,12 +214,10 @@ class PathFollower:
             look_ahead_angle = atan2(y2-y1, x2-x1)
 
             self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
-
-        # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
-        # print('r: ', self.turning_radius, 'd: ', distance)
         
         if self.current_path_index == 0 or self.current_path_index == self.max_index:
             return
+        
         ###Cross Track Error
         #Point behind robot's current position
         x1_cte = self.path_easts[self.current_path_index]
@@ -238,23 +233,11 @@ class PathFollower:
         dist_c = sqrt((x2_cte - x1_cte)**2 + (y2_cte - y1_cte)**2) #Distance b/t point behind and point in front of robot
         Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
 
-        #Law of Cosines with lookahead point instead of point ahead of robot: Raplace (x2_cte, y2_cte) with (x2, y2)
-        # dist_a = sqrt((x1_cte - x1)**2 + (y1_cte - y1)**2) #Distance b/t point behind robot and robot 
-        # dist_b = sqrt((x2 - x1)**2 + (y2 - y1)**2) #Distance b/t robot and point in front of robot
-        # dist_c = sqrt((x2 - x1_cte)**2 + (y2 - y1_cte)**2) #Distance b/t point behind and point in front of robot
-        # Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
-
         #Caculate Cross Track Error
         self.cross_track_error = dist_a * sin(Beta)
-        # print("Dist a= " + str(dist_a))
-        # print("Dist b= " + str(dist_b))
-        # print("Dist c= " + str(dist_c))
-        # print("Beta= " + str(Beta))
-        # print("CTE= " + str(self.cross_track_error))
 
         #Sign of CTE
         s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
-        # s_cte = (x2 - x1_cte)* (y1 - y1_cte) - (y2 - y1_cte)* (x1 - x1_cte) #Sign of CTE when using lookahead point instead of point in front of robot
 
         #Apply sign to CTE
         if s_cte < 0:
@@ -317,9 +300,6 @@ class PathFollower:
         # changing look_ahead_points based on commanded speed
         self.look_ahead_points = int(max(10, 3 * msg.x))
 
-        # Second Waymo demo settings
-        # self.look_ahead_points = int(max(3, 1.5 * msg.x))
-
     def callback_4(self, msg):
         self.stop_index = msg.data
 
@@ -342,10 +322,6 @@ class PathFollower:
 
     def gps_imu_callback(self, msg):
         self.robot_heading = msg.angle.z
-
-    # def gps_callback_3(self, msg):
-    #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5
-    #     self.yaw_velocity_measured = msg.angular.z
 
 if __name__ ==  '__main__':
     node = rospy.init_node('path_follower')
