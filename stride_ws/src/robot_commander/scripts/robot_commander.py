@@ -115,7 +115,7 @@ class RobotCommander:
         self._display_message('Executing set_index')
         self.set_index_publisher.publish(index)
         rate = rospy.Rate(50)
-        while (self.current_path_index != index):
+        while (self.current_path_index != index) and let_script_runs:
             rate.sleep()
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
@@ -193,7 +193,8 @@ class RobotCommander:
 
     def sleep(self, seconds):
         self._display_message('Executing sleep')
-        time.sleep(seconds)
+        if let_script_runs:
+            time.sleep(seconds)
 
     def _get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -209,7 +210,7 @@ class RobotCommander:
         pose2d.theta = 0
 
         rate = rospy.Rate(10)
-        while self._get_time_now_in_ms() - start_time < milliseconds:
+        while (self._get_time_now_in_ms() - start_time < milliseconds) and let_script_runs:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
 
@@ -222,7 +223,7 @@ class RobotCommander:
         pose2d.theta = -angular_speed
 
         rate = rospy.Rate(10)
-        while self._get_time_now_in_ms() - start_time < milliseconds:
+        while (self._get_time_now_in_ms() - start_time < milliseconds) and let_script_runs:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
 
@@ -247,7 +248,7 @@ class RobotCommander:
 
         rate = rospy.Rate(50)
 
-        while self.target_gps_ready:
+        while self.target_gps_ready and let_script_runs:
             py, px = llne.LL2NE(self.target_latitude, self.target_longitude)
             if boundary_checker.in_boundaries(np.array([px,py])):
                 if abs((trigger_heading - self.target_heading) < 45):
@@ -266,7 +267,7 @@ class RobotCommander:
         self._display_message('Executing wait_for_target_velocity')
         rate = rospy.Rate(20)
         while (self.target_velocity < velocity 
-            and self.target_gps_ready):
+            and self.target_gps_ready) and let_script_runs:
             rate.sleep()
         
         if not self.target_gps_ready:

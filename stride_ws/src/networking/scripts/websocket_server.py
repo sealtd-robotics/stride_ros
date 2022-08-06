@@ -135,6 +135,7 @@ class RosInterface:
         rospy.Subscriber('/target', TargetVehicle, self.subscriber_callback_8, queue_size=1)
         rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/robot_commander/command_message', String, self.subscriber_callback_10, queue_size=20)
+        rospy.Subscriber('/overseer/error_message', String, self.subscriber_callback_11, queue_size=20)
 
         # GPS Subcribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -251,6 +252,10 @@ class RosInterface:
     def subscriber_callback_10(self, msg):
         command_message = json.dumps({'type': 'commandMessage', 'commandMessage': msg.data}, ensure_ascii = False).encode('utf8')
         reactor.callFromThread(self.websocket.sendMessage, command_message, False)
+
+    def subscriber_callback_11(self, msg):
+        error_message = json.dumps({'type': 'errorMessage', 'errorMessage': msg.data}, ensure_ascii = False).encode('utf8')
+        reactor.callFromThread(self.websocket.sendMessage, error_message, False)
 
     # Motor Controller Callbacks
     # Left Front

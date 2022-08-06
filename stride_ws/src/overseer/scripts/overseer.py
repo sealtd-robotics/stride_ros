@@ -11,7 +11,7 @@
 from __future__ import division
 import math
 import rospy
-from std_msgs.msg import Int32, Float32, Empty, Bool
+from std_msgs.msg import Int32, Float32, Empty, Bool, String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Vector3
@@ -31,7 +31,7 @@ class ErrorHandler:
         self.handheld = handheld
 
         # Publishers
-        self.error_publisher = rospy.Publisher('/overseer/has_error', Empty, queue_size=10)
+        self.error_publisher = rospy.Publisher('/overseer/error_message', String, queue_size=20)
 
     def has_error(self, overseer_state, should_log_error):
         errors = ""
@@ -61,7 +61,7 @@ class ErrorHandler:
 
         # Log errors and inform GUI
         if has_error and should_log_error:
-            self.error_publisher.publish()
+            self.error_publisher.publish(errors)
 
             time = datetime.now().strftime("%H:%M:%S")
             errors = time + "\n" + errors + "\n"
