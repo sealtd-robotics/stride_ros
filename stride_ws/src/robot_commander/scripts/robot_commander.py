@@ -77,6 +77,8 @@ class RobotCommander:
         self.velocity_command_publisher.publish(pose2d)
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
+        if not let_script_runs:
+            return
         self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
 
@@ -88,6 +90,8 @@ class RobotCommander:
             rate.sleep()
 
     def brake_to_stop(self, speed_rate):
+        if not let_script_runs:
+            return
         self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
         speed_goal = 0
@@ -102,6 +106,8 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
+        if not let_script_runs:
+            return
         self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
         initial_time = time.time()
@@ -112,6 +118,8 @@ class RobotCommander:
             rate.sleep()
 
     def set_index(self, index):
+        if not let_script_runs:
+            return
         self._display_message('Executing set_index')
         self.set_index_publisher.publish(index)
         rate = rospy.Rate(50)
@@ -120,6 +128,8 @@ class RobotCommander:
 
     # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
+        if not let_script_runs:
+            return
         self._display_message('Executing rotate_until_heading')
         heading = heading % 360
 
@@ -155,6 +165,8 @@ class RobotCommander:
 
 
     def decel_to_stop_at_index(self, stop_index):
+        if not let_script_runs:
+            return
         self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
 
@@ -181,6 +193,8 @@ class RobotCommander:
         self.stop_index_publisher.publish(999999)
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        if not let_script_runs:
+            return
         self._display_message('Executing move_beginning_of_path')
         rate = rospy.Rate(50)
 
@@ -192,9 +206,10 @@ class RobotCommander:
             rate.sleep()
 
     def sleep(self, seconds):
+        if not let_script_runs:
+            return
         self._display_message('Executing sleep')
-        if let_script_runs:
-            time.sleep(seconds)
+        time.sleep(seconds)
 
     def _get_time_now_in_ms(self):
         epoch = datetime.utcfromtimestamp(0)
@@ -203,6 +218,8 @@ class RobotCommander:
         return delta.total_seconds() * 1000
 
     def go_straight_for_ms(self, speed, milliseconds):
+        if not let_script_runs:
+            return
         self._display_message('Executing go_straight_for_ms')
         start_time = self._get_time_now_in_ms()
         pose2d = Pose2D()
@@ -216,6 +233,8 @@ class RobotCommander:
 
 
     def rotate_for_ms(self, angular_speed, milliseconds):
+        if not let_script_runs:
+            return
         self._display_message('Executing rotate_for_ms')
         start_time = self._get_time_now_in_ms()
         pose2d = Pose2D()
@@ -242,6 +261,8 @@ class RobotCommander:
         Return:
             n/a
         """
+        if not let_script_runs:
+            return
         self._display_message('Executing wait_for_target_position')
         llne = LL_NE(trigger_lat, trigger_long)
         boundary_checker = CheckBoundariesEnter(trigger_heading)
@@ -264,6 +285,8 @@ class RobotCommander:
             print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
 
     def wait_for_target_velocity(self, velocity):
+        if not let_script_runs:
+            return
         self._display_message('Executing wait_for_target_velocity')
         rate = rospy.Rate(20)
         while (self.target_velocity < velocity 
@@ -358,7 +381,7 @@ class Receptionist:
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
-        end_message = "Test ended. Custom script completed execution."
+        end_message = "Test ended"
         print(end_message)
         command_message_publisher.publish(end_message)
         command_message_publisher.publish("----------------------") # needed for separating tests
