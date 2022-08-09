@@ -10,7 +10,6 @@ import numpy as np
 from glob import glob
 from libcal import LL_NE, CheckBoundariesEnter
 
-
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
 from nav_msgs.msg import Odometry
@@ -106,7 +105,12 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
+        global let_script_runs
         if not let_script_runs:
+            return
+        if index > self.max_path_index:
+            let_script_runs = False
+            print("Input index must not exceed max path index.")
             return
         self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
@@ -163,9 +167,13 @@ class RobotCommander:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
-
     def decel_to_stop_at_index(self, stop_index):
+        global let_script_runs
         if not let_script_runs:
+            return
+        if stop_index > self.max_path_index:
+            let_script_runs = False
+            print("Input stop index must not exceed max path index.")
             return
         self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
@@ -230,7 +238,6 @@ class RobotCommander:
         while (self._get_time_now_in_ms() - start_time < milliseconds) and let_script_runs:
             self.velocity_command_publisher.publish(pose2d)
             rate.sleep()
-
 
     def rotate_for_ms(self, angular_speed, milliseconds):
         if not let_script_runs:
