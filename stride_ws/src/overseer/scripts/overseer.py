@@ -9,6 +9,8 @@
 # rb: right back
 
 from __future__ import division
+import glob
+import os
 import math
 import rospy
 from std_msgs.msg import Int32, Float32, Empty, Bool, String
@@ -61,15 +63,29 @@ class ErrorHandler:
 
         # Log errors and inform GUI
         if has_error and should_log_error:
+            # inform GUI
             self.error_publisher.publish(errors)
 
+            # Log errors
             time = datetime.now().strftime("%H:%M:%S")
             errors = time + "\n" + errors + "\n"
 
             date = datetime.now().strftime("%Y_%m_%d")
             filename = 'error_log_{}.txt'.format(date)
-            with open('../../../error_log/' + filename, 'a') as f:
+
+            log_dir = '../../../error_log/'
+            with open(log_dir + filename, 'a') as f:
                 f.write(errors)
+
+            # Remove old error log files
+            files = glob.glob(log_dir + "error_log*")
+            files.sort()
+            files_to_keep = 60
+
+            if len(files) > files_to_keep:
+                for f in files[0:-files_to_keep]:
+                    os.remove(f)
+                    print('Removed log file "{}" as regular cleanup'.format(os.path.basename(f)))
 
         return has_error
 

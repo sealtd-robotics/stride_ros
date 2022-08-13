@@ -103,12 +103,7 @@ class RosInterface:
                 "northVelocity": 0,
                 "eastVelocity": 0,
                 "zAngularVelocity": 0,
-                "systemStatus": 0,
-                "filterStatus": 0,
                 "heading": 0,
-                "magneticCalibrationStatus": 0,
-                "magneticCalibrationProgress": 0,
-                "magneticCalibrationError": 0,
             },
             "pathFollower": {
                 "pathName": "",
@@ -138,15 +133,6 @@ class RosInterface:
         rospy.Subscriber('/overseer/error_message', String, self.subscriber_callback_11, queue_size=20)
 
         # GPS Subcribers
-        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_2, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/system_status', UInt16, self.gps_subscriber_callback_4, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/filter_status', UInt16, self.gps_subscriber_callback_5, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_subscriber_callback_6, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/magnetic_calibration/status', UInt8, self.gps_subscriber_callback_8, queue_size=1)
-        rospy.Subscriber('/an_device/magnetic_calibration/progress', UInt8, self.gps_subscriber_callback_9, queue_size=1)
-        rospy.Subscriber('/an_device/magnetic_calibration/error', UInt8, self.gps_subscriber_callback_10, queue_size=1)
-
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
         rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
         rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
@@ -330,38 +316,11 @@ class RosInterface:
         self.robotState['gps']['longitude'] = msg.longitude
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
-    def gps_subscriber_callback_2(self, msg):
-        self.robotState['gps']['northVelocity'] = round(msg.linear.x, 3)
-        self.robotState['gps']['eastVelocity'] = round(msg.linear.y, 3)
-        self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
     def gps_subscriber_callback_3(self, msg):
         self.robotState['gps']['northVelocity'] = round(msg.twist.twist.linear.y, 3)
         self.robotState['gps']['eastVelocity'] = round(msg.twist.twist.linear.x, 3)
         self.robotState['gps']['zAngularVelocity'] = round(msg.twist.twist.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_4(self, msg):
-        self.robotState['gps']['systemStatus'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_5(self, msg):
-        self.robotState['gps']['filterStatus'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_6(self, msg):
-        self.robotState['gps']['heading'] = round(msg.data, 3)
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_8(self, msg):
-        self.robotState['gps']['magneticCalibrationStatus'] = msg.data
-
-    def gps_subscriber_callback_9(self, msg):
-        self.robotState['gps']['magneticCalibrationProgress'] = msg.data
-
-    def gps_subscriber_callback_10(self, msg):
-        self.robotState['gps']['magneticCalibrationError'] = msg.data
 
     def gps_subscriber_callback_11(self, msg):
         self.robotState['gps']['heading'] = round(msg.z, 3)

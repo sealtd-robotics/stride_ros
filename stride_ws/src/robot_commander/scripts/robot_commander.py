@@ -22,6 +22,7 @@ from shared_tools.overseer_states_constants import *
 # Global control robot commander across threads
 
 let_script_runs = False
+dash_line = "----------------------"
 
 class RobotCommander:
     def __init__(self):
@@ -203,7 +204,8 @@ class RobotCommander:
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
-        self._display_message('Executing move_beginning_of_path')
+        self._display_message('Executing move_until_beginning_of_path')
+        self._display_message(dash_line)
         rate = rospy.Rate(50)
 
         initial_time = time.time()
@@ -391,7 +393,7 @@ class Receptionist:
         end_message = "Test ended"
         print(end_message)
         command_message_publisher.publish(end_message)
-        command_message_publisher.publish("----------------------") # needed for separating tests
+        command_message_publisher.publish(dash_line) # needed for separating tests
 
     def return_to_start(self):
         try:
