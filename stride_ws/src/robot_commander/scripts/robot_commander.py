@@ -32,7 +32,6 @@ class RobotCommander:
         self.robot_speed = -1
         self.robot_heading = -1
         self.turning_radius = 999
-
         self.limiter_initial_speed = 0
 
         # Publishers
@@ -54,7 +53,6 @@ class RobotCommander:
 
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
-
 
         # blocking until these attributes have been updated by subscriber callbacks
         while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
@@ -131,8 +129,8 @@ class RobotCommander:
         while (self.current_path_index != index) and let_script_runs:
             rate.sleep()
 
-    # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
-    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
+    # maybe add a try-except statement to catch zero angular velocity and zero tolerance
+    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         if not let_script_runs:
             return
         self._display_message('Executing rotate_until_heading')
@@ -162,11 +160,8 @@ class RobotCommander:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
-        if brake_when_done:
-            while (self.robot_angular_speed > 0.02) and let_script_runs:
-                pose2d.theta = 0
-                self.velocity_command_publisher.publish(pose2d)
-                rate.sleep()
+        pose2d.theta = 0
+        self.velocity_command_publisher.publish(pose2d)   
 
     def decel_to_stop_at_index(self, stop_index):
         global let_script_runs
@@ -183,7 +178,7 @@ class RobotCommander:
         rate = rospy.Rate(frequency)
         period = 1/frequency
 
-        # kinemetic equation: vf^2 = vi^2 + 2*a*d
+        # kinematic equation: vf^2 = vi^2 + 2*a*d
         vi = self.robot_speed
         d = sum(self.path_intervals[ self.current_path_index : stop_index ])
         a = -vi**2 / (2*d)
@@ -193,7 +188,6 @@ class RobotCommander:
             vi = max(vi, 0.3) # prevent zero velocity before reaching the stop_index
             self._send_velocity_command_using_radius(vi)
             rate.sleep()
-
 
         while (self.robot_speed > 0.1) and let_script_runs:
             self._send_velocity_command_using_radius(0)
