@@ -218,7 +218,7 @@ class Gps:
         time.sleep(0.1)
 
     def gps_euler_callback(self, msg):
-        self.pitch = msg.angle.z
+        self.pitch = msg.angle.y
         time.sleep(0.1)
 
 # For Meredith's descend condition:
