@@ -134,13 +134,29 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing rotate_until_heading')
-        heading = heading % 360
+        if heading >= 0:
+            heading = heading % 360
+        else:
+            heading = heading % -360
 
         heading_radian = heading / 180 * math.pi
         tolerance_radian = heading_tolerance / 180 * math.pi
 
-        lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
-        upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
+        print(heading_radian)
+        print(tolerance_radian)
+        if heading >=3: 
+            lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
+            upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
+        elif heading < 3 and heading > -3:
+            lower_bound = (heading_radian - tolerance_radian) 
+            upper_bound = (heading_radian + tolerance_radian) 
+            print(lower_bound)
+            print(upper_bound)
+        else:
+            lower_bound = (heading_radian - tolerance_radian) % -(2*math.pi)
+            upper_bound = (heading_radian + tolerance_radian) % -(2*math.pi)
+            print(lower_bound)
+            print(upper_bound)
 
         pose2d = Pose2D()
         pose2d.x = 0
