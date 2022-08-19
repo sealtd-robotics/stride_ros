@@ -55,8 +55,9 @@ def main():
         msg.longitude = output_msg.longitude_deg
         msg.latitude = output_msg.latitude_deg
         msg.velocity = output_msg.velocity_mps
-        msg.gps_correction_type = output_msg.gps_correction
+        msg.gps_correction_type = output_msg.gps_correction + 1
         msg.gps_ready = output_msg.gps_ready
+        msg.no_of_satellites = output_msg.no_of_satellites
         pub.publish(msg)
 
 

@@ -28,7 +28,7 @@ echo_head() {
 }
 	
 
-dir_work="stride_ws"
+dir_work="../stride_ws"
 echo_head "Build $dir_work"
 
 cd "$dir_work"

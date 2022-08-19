@@ -1,0 +1,11 @@
+[Unit]
+Description=STRIDE
+After=multi-user.target roscore.service can_bus.service
+Requires=roscore.service
+
+[Service]
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/bash -c "source /home/%p/stride_ros/stride_ws/devel/setup.bash; roslaunch /home/%p/stride_ros/stride_ws/src/top_level/top_level_sbg.launch"
+
+[Install]
+WantedBy=multi-user.target

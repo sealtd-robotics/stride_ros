@@ -66,3 +66,10 @@ IV. Directory Structure
         ├── robot_commander
         └── top_level
 ```
+
+Dependencies
+---
+__sbg_driver__ `sudo apt-get install ros-kinetic-tf2-geometry-msgs`
+
+Install
+---

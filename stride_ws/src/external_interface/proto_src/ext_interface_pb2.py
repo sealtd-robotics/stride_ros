@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x13\x65xt-interface.proto\"\xeb\x01\n\x06PubMsg\x12\x13\n\x0bheading_deg\x18\x01 \x01(\x01\x12\x15\n\rlongitude_deg\x18\x02 \x01(\x01\x12\x14\n\x0clatitude_deg\x18\x03 \x01(\x01\x12\x14\n\x0cvelocity_mps\x18\x04 \x01(\x01\x12\x11\n\tgps_ready\x18\x05 \x01(\x08\x12-\n\x0egps_correction\x18\x06 \x01(\x0e\x32\x15.PubMsg.GpsCorrection\"G\n\rGpsCorrection\x12\x0b\n\x07GPS_FIX\x10\x00\x12\x12\n\x0e\x44GPS_RTK_FLOAT\x10\x01\x12\x15\n\x11\x44GPS_RTK_INTERGER\x10\x02\x62\x06proto3')
+  serialized_pb=_b('\n\x13\x65xt-interface.proto\"\xcb\x02\n\x06PubMsg\x12\x13\n\x0bheading_deg\x18\x01 \x01(\x01\x12\x15\n\rlongitude_deg\x18\x02 \x01(\x01\x12\x14\n\x0clatitude_deg\x18\x03 \x01(\x01\x12\x14\n\x0cvelocity_mps\x18\x04 \x01(\x01\x12\x11\n\tgps_ready\x18\x05 \x01(\x08\x12\x18\n\x10no_of_satellites\x18\x06 \x01(\r\x12-\n\x0egps_correction\x18\x07 \x01(\x0e\x32\x15.PubMsg.GpsCorrection\"\x8c\x01\n\rGpsCorrection\x12\x0c\n\x08GPS_NONE\x10\x00\x12\x0e\n\nGPS_SEARCH\x10\x01\x12\x0f\n\x0bGPS_DOPPLER\x10\x02\x12\x0b\n\x07GPS_SPS\x10\x03\x12\x14\n\x10GPS_DIFFERENTIAL\x10\x04\x12\x12\n\x0e\x44GPS_RTK_FLOAT\x10\x05\x12\x15\n\x11\x44GPS_RTK_INTERGER\x10\x06\x62\x06proto3')
 )
 
 
@@ -32,22 +32,38 @@ _PUBMSG_GPSCORRECTION = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='GPS_FIX', index=0, number=0,
+      name='GPS_NONE', index=0, number=0,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DGPS_RTK_FLOAT', index=1, number=1,
+      name='GPS_SEARCH', index=1, number=1,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DGPS_RTK_INTERGER', index=2, number=2,
+      name='GPS_DOPPLER', index=2, number=2,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='GPS_SPS', index=3, number=3,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='GPS_DIFFERENTIAL', index=4, number=4,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DGPS_RTK_FLOAT', index=5, number=5,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DGPS_RTK_INTERGER', index=6, number=6,
       serialized_options=None,
       type=None),
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=188,
-  serialized_end=259,
+  serialized_start=215,
+  serialized_end=355,
 )
 _sym_db.RegisterEnumDescriptor(_PUBMSG_GPSCORRECTION)
 
@@ -95,8 +111,15 @@ _PUBMSG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='gps_correction', full_name='PubMsg.gps_correction', index=5,
-      number=6, type=14, cpp_type=8, label=1,
+      name='no_of_satellites', full_name='PubMsg.no_of_satellites', index=5,
+      number=6, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='gps_correction', full_name='PubMsg.gps_correction', index=6,
+      number=7, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -115,7 +138,7 @@ _PUBMSG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=259,
+  serialized_end=355,
 )
 
 _PUBMSG.fields_by_name['gps_correction'].enum_type = _PUBMSG_GPSCORRECTION
