@@ -231,38 +231,6 @@ class RobotCommander:
         delta = now - epoch
         return delta.total_seconds() * 1000
 
-    def go_straight_for_ms(self, speed, milliseconds):
-        if not let_script_runs:
-            return
-        self._display_message('Executing go_straight_for_ms')
-        start_time = self._get_time_now_in_ms()
-        pose2d = Pose2D()
-        pose2d.x = speed
-        pose2d.theta = 0
-
-        rate = rospy.Rate(10)
-        while (self._get_time_now_in_ms() - start_time < milliseconds) and let_script_runs:
-            self.velocity_command_publisher.publish(pose2d)
-            rate.sleep()
-
-    def rotate_for_ms(self, angular_speed, milliseconds):
-        if not let_script_runs:
-            return
-        self._display_message('Executing rotate_for_ms')
-        start_time = self._get_time_now_in_ms()
-        pose2d = Pose2D()
-        pose2d.x = 0
-        pose2d.theta = -angular_speed
-
-        rate = rospy.Rate(10)
-        while (self._get_time_now_in_ms() - start_time < milliseconds) and let_script_runs:
-            self.velocity_command_publisher.publish(pose2d)
-            rate.sleep()
-
-        pose2d.x = 0
-        pose2d.theta = 0
-        self.velocity_command_publisher.publish(pose2d)
-
     def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
         """
         Spin until the target passes the trigger location.
