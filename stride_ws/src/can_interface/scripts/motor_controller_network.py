@@ -259,13 +259,19 @@ class MotorControllerNetwork:
 
         # relax the motor that draws the most current
         while True:
-            time.sleep(interval)
-            if self.can_relax():
-                max_current_node = nodes[0]
-                for i in range(1,4):
-                    if max_current_node.current < nodes[i].current:
-                        max_current_node = nodes[i]
-                max_current_node.disable_enable_power()
+            try:
+                time.sleep(interval)
+                if self.can_relax():
+                    max_current_node = nodes[0]
+                    for i in range(1,4):
+                        if max_current_node.current < nodes[i].current:
+                            max_current_node = nodes[i]
+                    max_current_node.disable_enable_power()
+            except Exception as e:
+                rospy.logerr("The relax_motors function from a thread of motor_controller_network.py has an error, shown below. It will retry")
+                rospy.logerr(e)
+                time.sleep(1)
+                continue
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
@@ -283,12 +289,18 @@ class MotorControllerNetwork:
 
     def update_ambient_temperature(self):
         while True:
-            self.mc_lf_node.transmit_ambient_temperature(self.ambient_temperature_F)
-            self.mc_lb_node.transmit_ambient_temperature(self.ambient_temperature_F)
-            self.mc_rf_node.transmit_ambient_temperature(self.ambient_temperature_F)
-            self.mc_rb_node.transmit_ambient_temperature(self.ambient_temperature_F)
+            try:
+                self.mc_lf_node.transmit_ambient_temperature(self.ambient_temperature_F)
+                self.mc_lb_node.transmit_ambient_temperature(self.ambient_temperature_F)
+                self.mc_rf_node.transmit_ambient_temperature(self.ambient_temperature_F)
+                self.mc_rb_node.transmit_ambient_temperature(self.ambient_temperature_F)
 
-            time.sleep(10)
+                time.sleep(10)
+            except Exception as e:
+                rospy.logerr("The update_ambient_temperature function from a thread of motor_controller_network.py has an error, shown below. It will retry")
+                rospy.logerr(e)
+                time.sleep(1)
+                continue
             
 
     def set_rpm(self,msg):
@@ -333,52 +345,58 @@ class MotorControllerNetwork:
 
     def drive(self):
         while True:
-            time.sleep(0.02)
-            if self.overseer_state == STOPPED:
-                self.enable_power_for_all_motors()
-                self.send_zero_rpm_to_all_motors()
-            elif self.overseer_state == DESCENDING or self.overseer_state == RETURN_TO_START:
-                self.enable_power_for_all_motors()
-
-                self.mc_lf_node.spin(self.left_front_rpm)
-                self.mc_lb_node.spin(self.left_back_rpm)
-                self.mc_rf_node.spin(self.right_front_rpm)
-                self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == E_STOPPED:
-                # self.quick_stop_all_motors()
-                self.enable_power_for_all_motors()
-                self.send_zero_rpm_to_all_motors()
-            elif self.overseer_state == MANUAL:
-                if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
-                    if self.does_brake_when_stopped:
-                        self.enable_power_for_all_motors()
-                        self.send_zero_rpm_to_all_motors()
-                    else:
-                        if self.is_any_measured_wheel_rpm_above_this(450):
-                            self.enable_power_for_all_motors()
-                            self.send_zero_rpm_to_all_motors()
-                        else:
-                            self.quick_stop_all_motors()
-                else:
+            try:
+                time.sleep(0.02)
+                if self.overseer_state == STOPPED:
+                    self.enable_power_for_all_motors()
+                    self.send_zero_rpm_to_all_motors()
+                elif self.overseer_state == DESCENDING or self.overseer_state == RETURN_TO_START:
                     self.enable_power_for_all_motors()
 
                     self.mc_lf_node.spin(self.left_front_rpm)
                     self.mc_lb_node.spin(self.left_back_rpm)
                     self.mc_rf_node.spin(self.right_front_rpm)
                     self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == AUTO:
-                self.enable_power_for_all_motors()
-
-                self.mc_lf_node.spin(self.left_front_rpm)
-                self.mc_lb_node.spin(self.left_back_rpm)
-                self.mc_rf_node.spin(self.right_front_rpm)
-                self.mc_rb_node.spin(self.right_back_rpm)
-            elif self.overseer_state == IDLE:
-                if self.is_any_measured_wheel_rpm_above_this(450):
+                elif self.overseer_state == E_STOPPED:
+                    # self.quick_stop_all_motors()
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
-                else:
-                    self.quick_stop_all_motors()
+                elif self.overseer_state == MANUAL:
+                    if self.left_front_rpm == 0 and self.left_back_rpm == 0 and self.right_front_rpm == 0 and self.right_back_rpm == 0:
+                        if self.does_brake_when_stopped:
+                            self.enable_power_for_all_motors()
+                            self.send_zero_rpm_to_all_motors()
+                        else:
+                            if self.is_any_measured_wheel_rpm_above_this(450):
+                                self.enable_power_for_all_motors()
+                                self.send_zero_rpm_to_all_motors()
+                            else:
+                                self.quick_stop_all_motors()
+                    else:
+                        self.enable_power_for_all_motors()
+
+                        self.mc_lf_node.spin(self.left_front_rpm)
+                        self.mc_lb_node.spin(self.left_back_rpm)
+                        self.mc_rf_node.spin(self.right_front_rpm)
+                        self.mc_rb_node.spin(self.right_back_rpm)
+                elif self.overseer_state == AUTO:
+                    self.enable_power_for_all_motors()
+
+                    self.mc_lf_node.spin(self.left_front_rpm)
+                    self.mc_lb_node.spin(self.left_back_rpm)
+                    self.mc_rf_node.spin(self.right_front_rpm)
+                    self.mc_rb_node.spin(self.right_back_rpm)
+                elif self.overseer_state == IDLE:
+                    if self.is_any_measured_wheel_rpm_above_this(450):
+                        self.enable_power_for_all_motors()
+                        self.send_zero_rpm_to_all_motors()
+                    else:
+                        self.quick_stop_all_motors()
+            except Exception as e:
+                rospy.logerr("The drive function from a thread of motor_controller_network.py has an error, shown below. It will retry")
+                rospy.logerr(e)
+                time.sleep(1)
+                continue
 
 if __name__ ==  '__main__':
     node = rospy.init_node('can_interface')

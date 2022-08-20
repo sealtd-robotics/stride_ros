@@ -5,7 +5,6 @@
 # w: angular velocity
 
 from __future__ import division
-import queue
 import rospy, time
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Int32, Float32
