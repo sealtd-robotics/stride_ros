@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import queue
 import rospy
 import numpy
 from std_msgs.msg import Int32, Float32

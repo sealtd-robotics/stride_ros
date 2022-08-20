@@ -2,7 +2,6 @@
 
 from http.server import SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn, TCPServer
-import BaseHTTPServer
 import threading
 import os
 

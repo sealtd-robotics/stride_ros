@@ -6,7 +6,7 @@ After=multi-user.target
 Type=idle
 Environment=PYTHONPATH=/home/%p/.local/lib/python3.6/site-packages
 WorkingDirectory=/home/%p
-ExecStart=/usr/bin/python2 /home/%p/stride_ros/system/web_server_for_gui.py > /home/%p/script.log 2>&1
+ExecStart=/usr/bin/python3 /home/%p/stride_ros/system/web_server_for_gui.py > /home/%p/script.log 2>&1
 
 [Install]
 WantedBy=multi-user.target

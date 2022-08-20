@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-from http.server import HTTPServer
-from socketserver import ThreadingMixIn
+from SocketServer import ThreadingMixIn
 import rospy
 import time
 import BaseHTTPServer
