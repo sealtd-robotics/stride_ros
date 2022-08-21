@@ -333,6 +333,8 @@ if __name__ ==  '__main__':
         elif state == DESCENDING:
             if gui.is_idle_clicked or abs(gps.pitch) < 3/180*math.pi:
                 state = IDLE
+            elif handheld.is_estop_pressed:
+                state = E_STOPPED
 
         # Idle
         elif state == IDLE:
