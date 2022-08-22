@@ -233,8 +233,9 @@ class PathFollower:
         dist_c = sqrt((x2_cte - x1_cte)**2 + (y2_cte - y1_cte)**2) #Distance b/t point behind and point in front of robot
         Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
 
-        #Caculate Cross Track Error
+        #Calculate Cross Track Error
         self.cross_track_error = dist_a * sin(Beta)
+        self.cross_track_error = min(self.cross_track_error, 1) #Limit for cross track error
 
         #Sign of CTE
         s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
