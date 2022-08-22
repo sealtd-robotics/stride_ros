@@ -120,15 +120,6 @@ class RobotCommander:
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def set_index(self, index):
-        if not let_script_runs:
-            return
-        self._display_message('Executing set_index')
-        self.set_index_publisher.publish(index)
-        rate = rospy.Rate(50)
-        while (self.current_path_index != index) and let_script_runs:
-            rate.sleep()
-
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         if not let_script_runs:
@@ -224,12 +215,6 @@ class RobotCommander:
             return
         self._display_message('Executing sleep')
         time.sleep(seconds)
-
-    def _get_time_now_in_ms(self):
-        epoch = datetime.utcfromtimestamp(0)
-        now = datetime.utcnow()
-        delta = now - epoch
-        return delta.total_seconds() * 1000
 
     def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
         """
