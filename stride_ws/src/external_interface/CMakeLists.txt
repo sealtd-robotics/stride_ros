@@ -9,7 +9,6 @@ project(external_interface)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
     std_msgs
-    oxford_gps_decoder
     message_generation
 )
 

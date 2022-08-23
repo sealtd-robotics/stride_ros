@@ -171,12 +171,16 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[60] = {"utc_time(millisec)", "general_status", "drive_status", "gnss_satellites", "diff_age", "RTK_status",
-                                "latitude(deg)", "longitude(deg)", "altitude(m)", "east(m)", "north(m)",
+    std::string csv_header[60] = {"utc_time(millisec)", 
+                                "general_status", "drive_status", 
+                                "gnss_satellites", "diff_age", "RTK_status",
+                                "latitude(deg)", "longitude(deg)", "altitude(m)", 
+                                "east(m)", "north(m)",
                                 "vel_longitudinal(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
                                 "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)",
-                                "goal_east(m)", "goal_north(m)", "lookahead(m)", "cte(m)", 
+                                "goal_east(m)", "goal_north(m)", 
+                                "lookahead(m)", "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
