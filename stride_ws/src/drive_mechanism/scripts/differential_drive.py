@@ -43,7 +43,7 @@ class DifferentialDrive:
         adj_R = 0
 
         # No adjdustments when robot is not moving. Otherwise robot moves when executing sleep command.
-        if not (robot_v == 0 and robot_w == 0):
+        if not (robot_v == 0):
             if self.cross_track_error >= 0: #If on left side of path, add correction term for left wheel
                 adj_L = self.P_corr * abs(self.cross_track_error)
                 adj_R = -1 * self.P_corr * abs(self.cross_track_error)
