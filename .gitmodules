@@ -2,9 +2,12 @@
 	path = stride_gui_build
 	branch = main
 	url = https://github.com/sealtd-robotics/stride_gui_build.git
+	ignore = untracked
 [submodule "sbg_ros_driver"]
 	path = stride_ws/src/sbg_ros_driver
 	url = https://github.com/SBG-Systems/sbg_ros_driver.git
+	ignore = untracked
 [submodule "stride_ws/src/oxford_gps_decoder"]
 	path = stride_ws/src/oxford_gps_decoder
 	url = https://github.com/sealtd-robotics/oxford_gps_decoder.git
+	ignore = untracked
