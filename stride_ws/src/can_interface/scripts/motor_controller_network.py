@@ -267,9 +267,8 @@ class MotorControllerNetwork:
                         if max_current_node.current < nodes[i].current:
                             max_current_node = nodes[i]
                     max_current_node.disable_enable_power()
-            except Exception as e:
-                rospy.logerr("The relax_motors function from a thread of motor_controller_network.py has an error, shown below. It will retry")
-                rospy.logerr(e)
+            except Exception as error:
+                rospy.logerr("Ignore this error when power-cycling motor controllers. The relax_motors function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
                 continue
 
@@ -296,9 +295,8 @@ class MotorControllerNetwork:
                 self.mc_rb_node.transmit_ambient_temperature(self.ambient_temperature_F)
 
                 time.sleep(10)
-            except Exception as e:
-                rospy.logerr("The update_ambient_temperature function from a thread of motor_controller_network.py has an error, shown below. It will retry")
-                rospy.logerr(e)
+            except Exception as error:
+                rospy.logerr("Ignore this error when power-cycling motor controllers. The update_ambient_temperature function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
                 continue
             
@@ -392,9 +390,8 @@ class MotorControllerNetwork:
                         self.send_zero_rpm_to_all_motors()
                     else:
                         self.quick_stop_all_motors()
-            except Exception as e:
-                rospy.logerr("The drive function from a thread of motor_controller_network.py has an error, shown below. It will retry")
-                rospy.logerr(e)
+            except Exception as error:
+                rospy.logerr("Ignore this error when power-cycling motor controllers. The drive function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
                 continue
 
