@@ -37,18 +37,14 @@
 typedef struct
 {
     int64_t utc_time_millisec;
-    uint32_t status;
-    uint32_t drive_status;
     uint8_t gnss_no_satellites;
     uint16_t diff_age;
     uint8_t RTK_status;
     double latitude_deg;
     double longitude_deg;
     double altitude_m;
-    float east_m;
-    float north_m;
-    float vel_long_ms;
-    float vel_lat_ms;
+    float vel_forward_ms;
+    float vel_lateral_ms;
     float vel_east_ms;
     float vel_north_ms;
     float vel_z_ms;
@@ -60,10 +56,8 @@ typedef struct
     double acc_y_mss;
     double acc_z_mss;
     float yaw_rate_rads;
-    float goal_east_m;
-    float goal_north_m;
     float cross_track_error_m;
-    uint8_t lookahead_m;
+    // uint8_t lookahead_m;
     float desired_omega_rads;
     float desired_velocity_ms;
     float motor_velocity_RL_rpm;
@@ -84,10 +78,6 @@ typedef struct
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
     int motor_winding_temp_FR;
-    int motor_error_code_RL;
-    int motor_error_code_RR;
-    int motor_error_code_FL;
-    int motor_error_code_FR;
     float batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
@@ -172,15 +162,12 @@ private:
 
 
     std::string csv_header[60] = {"utc_time(millisec)", 
-                                "general_status", "drive_status", 
                                 "gnss_satellites", "diff_age", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
-                                "east(m)", "north(m)",
-                                "vel_longitudinal(m/s)", "vel_lateral(m/s)",
+                                "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
-                                "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)",
-                                "goal_east(m)", "goal_north(m)", 
-                                "lookahead(m)", "cte(m)", 
+                                "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)", 
+                                // "lookahead(m)", "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
@@ -192,8 +179,6 @@ private:
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
                                 "winding_temp_FL(C)", "winding_temp_FR(C)",
-                                "error_code_RL", "error_code_RR",
-                                "error_code_FL", "error_code_FR",
                                 "battery_voltage(V)", "battery_temp(C)", "robot_temp(C)"};
 
 public:    

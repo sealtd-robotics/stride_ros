@@ -52,8 +52,6 @@ void DataRecorderSub::GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     df_.latitude_deg = msg->pose.pose.position.x;
     df_.longitude_deg = msg->pose.pose.position.y;
     df_.altitude_m = msg->pose.pose.position.z;
-    df_.east_m = 0;
-    df_.north_m = 0;
     df_.vel_east_ms = msg->twist.twist.linear.y;
     df_.vel_north_ms = msg->twist.twist.linear.x;
 
@@ -120,6 +118,8 @@ void DataRecorderSub::SbgGpsEulerCallback(const sbg_driver::SbgEkfEuler::ConstPt
     df_.yaw_deg = radToDeg(msg->angle.z);
     df_.pitch_deg = radToDeg(msg->angle.y);
     df_.roll_deg = radToDeg(msg->angle.x);
+    df_.vel_forward_ms = df_.vel_north_ms * cos(df_.yaw_deg* (M_PI/180)) + df_.vel_east_ms * sin(df_.yaw_deg* (M_PI/180));
+    df_.vel_lateral_ms = -df_.vel_north_ms * sin(df_.yaw_deg* (M_PI/180)) + df_.vel_east_ms * cos(df_.yaw_deg* (M_PI/180));
 }
 
 void DataRecorderSub::SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& msg) {
@@ -264,18 +264,14 @@ void DataRecorderSub::ConvertBin2Csv() {
             if (!inFile.eof())
             {
                 outFile << temp.utc_time_millisec << dem;
-                outFile << temp.status << dem;
-                outFile << temp.drive_status << dem;
                 outFile << unsigned(temp.gnss_no_satellites) << dem;
                 outFile << temp.diff_age << dem;
                 outFile << unsigned(temp.RTK_status) << dem;
                 outFile << temp.latitude_deg << dem;
                 outFile << temp.longitude_deg << dem;
                 outFile << temp.altitude_m << dem;
-                outFile << temp.east_m << dem;
-                outFile << temp.north_m << dem;
-                outFile << temp.vel_long_ms << dem;
-                outFile << temp.vel_lat_ms << dem;
+                outFile << temp.vel_forward_ms << dem;
+                outFile << temp.vel_lateral_ms << dem;
                 outFile << temp.vel_east_ms << dem;
                 outFile << temp.vel_north_ms << dem;
                 outFile << temp.vel_z_ms << dem;
@@ -286,9 +282,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.acc_y_mss << dem;
                 outFile << temp.acc_z_mss << dem;
                 outFile << temp.yaw_rate_rads << dem;
-                outFile << temp.goal_east_m << dem;
-                outFile << temp.goal_north_m << dem;
-                outFile << unsigned(temp.lookahead_m) << dem;
+                // outFile << unsigned(temp.lookahead_m) << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
@@ -310,10 +304,6 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_RR << dem;
                 outFile << temp.motor_winding_temp_FL << dem;
                 outFile << temp.motor_winding_temp_FR << dem;
-                outFile << temp.motor_error_code_RL << dem;
-                outFile << temp.motor_error_code_RR << dem;
-                outFile << temp.motor_error_code_FL << dem;
-                outFile << temp.motor_error_code_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem << "\n";
