@@ -1,6 +1,8 @@
 #!/bin/bash
 
-dir_init=$(pwd)
+dir_init=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+cd $dir_init
 echo "  -> Initial dir = $dir_init"
 
 echo_frmt() {
@@ -29,9 +31,8 @@ echo_head() {
 	
 
 dir_work="../stride_ws"
-echo_head "Build $dir_work"
-
-cd "$dir_work"
+cd $dir_work
+echo_head "Build $(pwd)"
 
 cmd="catkin_make"; echo $cmd; $cmd
 

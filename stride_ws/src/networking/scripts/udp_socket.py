@@ -8,6 +8,7 @@ from std_msgs.msg import Int32, Float32, Bool
 import select
 from datetime import datetime
 import threading
+from collections import deque
 
 def get_time_now_in_ms():
     epoch = datetime.utcfromtimestamp(0)
@@ -34,7 +35,8 @@ if __name__ == "__main__":
     estop_publisher2 = rospy.Publisher('/handheld/through_xboard/is_estop_pressed', Bool, queue_size=1)
 
     # for finding moving average
-    robot_temperature_history  = [70] * 20 
+    robot_temperature_history  = deque([70] * 20)
+    battery_temperature_history = deque([70] * 20)
 
     sensors_socket = socket(AF_INET, SOCK_DGRAM)
     sensors_socket.bind(('', 54003))
@@ -68,18 +70,22 @@ if __name__ == "__main__":
 
                 # robot temperature - moving average
                 robot_temperature = robot_temperature * 3.3 / 1024 * 100   # convert from digital to voltage, then to degree F
-                robot_temperature_history.pop(0)
+                # robot_temperature_history.pop(0)
+                robot_temperature_history.popleft()
                 robot_temperature_history.append(robot_temperature)
                 robot_temperature_averaged = sum(robot_temperature_history) / len(robot_temperature_history)
 
                 # battery temperature
                 battery_temperature = battery_temperature * 3.3 / 1024 * 100   # convert from digital to voltage, then to degree F
+                battery_temperature_history.popleft()
+                battery_temperature_history.append(battery_temperature)
+                battery_temperature_averaged = sum(battery_temperature_history) / len(battery_temperature_history)
 
                 # battery_voltage
                 battery_voltage = voltage_divider * 3.3 / 1024 * 8.745056384    # convert from digital to voltage of voltage divider, then to battery voltage
 
                 robot_temperature_publisher.publish(robot_temperature_averaged)
-                battery_temperature_publisher.publish(battery_temperature)
+                battery_temperature_publisher.publish(battery_temperature_averaged)
                 battery_voltage_publisher.publish(battery_voltage)
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
