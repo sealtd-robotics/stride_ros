@@ -74,6 +74,9 @@ class ErrorHandler:
             filename = 'error_log_{}.txt'.format(date)
 
             log_dir = '../../../error_log/'
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+                
             with open(log_dir + filename, 'a') as f:
                 f.write(errors)
 
