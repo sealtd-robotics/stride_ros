@@ -16,19 +16,12 @@ DataRecorderSub::~DataRecorderSub() {}
 void DataRecorderSub::InitializeSubscribers() {
     csv_converted_ = nh_.advertise<std_msgs::Empty>("/csv_converted", 1);
 
-    // AN GPS
-    an_gps_position_sub_ = nh_.subscribe("/an_device/NavSatFix", 1, &DataRecorderSub::ANGpsPositionCallback, this);
-    an_gps_velocity_sub_ = nh_.subscribe("/an_device/Twist", 1, &DataRecorderSub::ANGpsVelocityCallback, this);
-    gps_imu_sub_         = nh_.subscribe("/an_device/Imu", 1, &DataRecorderSub::GpsImuCallback, this);
-
-    oxts_gps_position_sub_ = nh_.subscribe("/gps/fix", 1, &DataRecorderSub::OxtsGpsPositionCallback, this);
-    oxts_gps_velocity_sub_ = nh_.subscribe("/gps/vel", 1, &DataRecorderSub::OxtsGpsVelocityCallback, this);
-    oxts_gps_imu_sub_      = nh_.subscribe("/imu/data", 1, &DataRecorderSub::OxtsGpsImuCallback, this);
-
+    // Sbg gps
     sbg_gps_nav_sub_   = nh_.subscribe("/sbg/ekf_nav", 1, &DataRecorderSub::SbgGpsNavCallback, this);
     sbg_gps_euler_sub_ = nh_.subscribe("/sbg/ekf_euler", 1, &DataRecorderSub::SbgGpsEulerCallback, this);
     sbg_gps_gnss_sub_  = nh_.subscribe("/sbg/gps_pos", 1, &DataRecorderSub::SbgGpsGnnsCallback, this);
     sbg_gps_imu_sub_   = nh_.subscribe("/sbg/imu_data", 1, &DataRecorderSub::SbgGpsImuCallback, this);
+    
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
     record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
@@ -46,71 +39,12 @@ void DataRecorderSub::InitializeSubscribers() {
     motor_FR = std::make_shared<MotorInfoSub>(&nh_, "right_front");
 }
 
-void DataRecorderSub::GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-    // LLH and NED, switch x,y for ENU
-    // df_.utc_time_millisec = msg->header.stamp.toNSec() * 1E-6;
-    df_.latitude_deg = msg->pose.pose.position.x;
-    df_.longitude_deg = msg->pose.pose.position.y;
-    df_.altitude_m = msg->pose.pose.position.z;
-    df_.vel_east_ms = msg->twist.twist.linear.y;
-    df_.vel_north_ms = msg->twist.twist.linear.x;
-
-    tf::Quaternion q(
-        msg->pose.pose.orientation.x,
-        msg->pose.pose.orientation.y,
-        msg->pose.pose.orientation.z,
-        msg->pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    df_.roll_deg = radToDeg(roll);
-    df_.pitch_deg = radToDeg(pitch);
-    df_.yaw_deg = radToDeg(yaw);
-}
-
-void DataRecorderSub::ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
-    df_.latitude_deg = msg->latitude;
-    df_.longitude_deg = msg->longitude;
-    df_.altitude_m = msg->altitude;
-}
-
-void DataRecorderSub::ANGpsVelocityCallback(const geometry_msgs::Twist::ConstPtr& msg) {
-    df_.vel_east_ms = msg->linear.y;
-    df_.vel_north_ms = msg->linear.x;
-}
-
-void DataRecorderSub::GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
-    df_.acc_x_mss = msg->linear_acceleration.x;
-    df_.acc_y_mss = msg->linear_acceleration.y;
-    df_.acc_z_mss = msg->linear_acceleration.z;
-    df_.yaw_rate_rads = msg->angular_velocity.z;
-}
-
-void DataRecorderSub::OxtsGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
-    df_.latitude_deg = msg->latitude;
-    df_.longitude_deg = msg->longitude;
-    df_.altitude_m = msg->altitude;
-}
-
-void DataRecorderSub::OxtsGpsVelocityCallback(const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg) {
-    df_.vel_east_ms  = msg->twist.twist.linear.x;
-    df_.vel_north_ms = msg->twist.twist.linear.y;
-    df_.vel_z_ms     = msg->twist.twist.linear.z;
-}
-
-void DataRecorderSub::OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
-    df_.acc_x_mss = msg->linear_acceleration.x;
-    df_.acc_y_mss = msg->linear_acceleration.y;
-    df_.acc_z_mss = msg->linear_acceleration.z;
-    df_.yaw_rate_rads = msg->angular_velocity.z;
-}
-
 void DataRecorderSub::SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg) {
     df_.latitude_deg = msg->latitude;
     df_.longitude_deg = msg->longitude;
     df_.altitude_m = msg->altitude;
-    df_.vel_east_ms  = msg->velocity.x;
-    df_.vel_north_ms = msg->velocity.y;
+    df_.vel_east_ms  = msg->velocity.y;
+    df_.vel_north_ms = msg->velocity.x;
     df_.vel_z_ms     = msg->velocity.z;
 }
 

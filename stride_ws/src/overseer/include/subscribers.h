@@ -113,7 +113,6 @@ public:
     uint16_t GetError();
 };
 
-
 class DataRecorderSub {
 private:
 // Subscribers
@@ -129,15 +128,6 @@ private:
     ros::Subscriber robot_temperature_sub_;
     ros::Subscriber battery_voltage_sub_;
     ros::Subscriber battery_temperature_sub_;
-
-    // Advanced Navigation
-    ros::Subscriber an_gps_position_sub_;
-    ros::Subscriber an_gps_velocity_sub_;
-
-    // Oxts
-    ros::Subscriber oxts_gps_position_sub_;
-    ros::Subscriber oxts_gps_velocity_sub_;
-    ros::Subscriber oxts_gps_imu_sub_;
 
     // Sbg
     ros::Subscriber sbg_gps_nav_sub_;
@@ -180,7 +170,7 @@ private:
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
                                 "winding_temp_FL(C)", "winding_temp_FR(C)",
-                                "battery_voltage(V)", "battery_temp(C)", "robot_temp(C)"};
+                                "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)"};
 
 public:    
     std::string export_path = "";
@@ -195,8 +185,6 @@ public:
     void InitializeSubscribers();
 
     // Subscribing functions
-    void GpsOdomCallback(const nav_msgs::Odometry::ConstPtr& msg);
-    void GpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
     void OverseerCallback(const std_msgs::Int32::ConstPtr& msg);
     void RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg);
     void MotorsRpmCmdCallback(const can_interface::WheelRPM::ConstPtr& msg);
@@ -205,15 +193,6 @@ public:
     void RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
     void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
     void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
-
-    // Advanced Navigation
-    void ANGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
-    void ANGpsVelocityCallback(const geometry_msgs::Twist::ConstPtr& msg);
-
-    // Oxts
-    void OxtsGpsPositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
-    void OxtsGpsVelocityCallback(const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg);
-    void OxtsGpsImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);
