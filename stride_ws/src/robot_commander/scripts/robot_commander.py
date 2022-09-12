@@ -216,7 +216,7 @@ class RobotCommander:
         self._display_message('Executing sleep')
         time.sleep(seconds)
 
-    def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
+    def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
         Spin until the target passes the trigger location.
 
@@ -229,7 +229,7 @@ class RobotCommander:
         """
         if not let_script_runs:
             return
-        self._display_message('Executing wait_for_target_position')
+        self._display_message('Executing wait_for_vehicle_position')
         llne = LL_NE(trigger_lat, trigger_long)
         boundary_checker = CheckBoundariesEnter(trigger_heading)
 
@@ -250,10 +250,10 @@ class RobotCommander:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
             print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
 
-    def wait_for_target_velocity(self, velocity):
+    def wait_for_vehicle_velocity(self, velocity):
         if not let_script_runs:
             return
-        self._display_message('Executing wait_for_target_velocity')
+        self._display_message('Executing wait_for_vehicle_velocity')
         rate = rospy.Rate(20)
         while (self.target_velocity < velocity 
             and self.target_gps_ready) and let_script_runs:
