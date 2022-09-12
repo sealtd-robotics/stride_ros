@@ -23,9 +23,10 @@
 rc = RobotCommander()
 
 ### Function Calls
-rc.move_until_index(2, 0.1 * 9.81, 45)
-rc.decel_to_stop_at_index(50)
-rc.rotate_until_heading(0.87, 45)
-rc.sleep(2)
-rc.move_until_index(2, 0.1 * 9.81, 93)
-rc.decel_to_stop_at_index(98)
+rc.move_until_index(2, 0.1 * 9.81, 45)#Move at 2 m/s with 0.1g acceleration to index 45
+rc.decel_to_stop_at_index(50) #Decelerate and stop at index 50
+rc.rotate_until_heading(0.87, 45) #rotate at 0.87 rad/s to a heading of 45 degrees
+rc.sleep(2) #Stop for 2 seconds
+rc.move_until_index(2, 0.1 * 9.81, 93) #Move at 2 m/s with 0.1g acceleration to index 93
+rc.decel_to_stop_at_index(98) #Decelerate and stop at index 98
+## End of test
