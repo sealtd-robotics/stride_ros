@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     can_interface
     sbg_driver
+    external_interface
 )
 
 find_package(can_interface REQUIRED)

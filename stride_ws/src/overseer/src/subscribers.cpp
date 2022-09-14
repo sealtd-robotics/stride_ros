@@ -31,6 +31,7 @@ void DataRecorderSub::InitializeSubscribers() {
     battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
     cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
+    target_vehicle_sub_ = nh_.subscribe("/target", 1, &DataRecorderSub::TargetVehicleCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -130,6 +131,12 @@ void DataRecorderSub::BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr
     df_.batt_temp = msg->data;
 }
 
+void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehicle::ConstPtr& msg) {
+    df_.vehicle_speed = msg -> velocity;
+    df_.vehicle_latitude = msg -> latitude;
+    df_.vehicle_longitude = msg -> longitude;
+    df_.vehicle_heading = msg -> heading;
+}
 
 int DataRecorderSub::SetupRecording() {
     wf.open(export_path + "/data.bin", std::ios::out | std::ios::binary);
@@ -216,7 +223,6 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.acc_y_mss << dem;
                 outFile << temp.acc_z_mss << dem;
                 outFile << temp.yaw_rate_rads << dem;
-                // outFile << unsigned(temp.lookahead_m) << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
@@ -240,7 +246,11 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_temp << dem;
-                outFile << unsigned(temp.robot_temp) << dem << "\n";
+                outFile << unsigned(temp.robot_temp) << dem ;
+                outFile << temp.vehicle_speed << dem;
+                outFile << temp.vehicle_latitude << dem;
+                outFile << temp.vehicle_longitude << dem;
+                outFile << temp.vehicle_heading << dem << "\n";
             }
         }
         outFile.close();

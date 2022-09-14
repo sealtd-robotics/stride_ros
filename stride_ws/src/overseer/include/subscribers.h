@@ -19,6 +19,7 @@
 #include <sbg_driver/SbgEkfNav.h>
 #include <sbg_driver/SbgGpsPos.h>
 #include <sbg_driver/SbgImuData.h>
+#include <external_interface/TargetVehicle.h>
 #include <tf/tf.h>
 
 #include <ros/ros.h>
@@ -57,7 +58,6 @@ typedef struct
     double acc_z_mss;
     float yaw_rate_rads;
     float cross_track_error_m;
-    // uint8_t lookahead_m;
     float desired_omega_rads;
     float desired_velocity_ms;
     float motor_velocity_RL_rpm;
@@ -83,6 +83,10 @@ typedef struct
     uint8_t batt_soc;
     int batt_temp;
     uint8_t robot_temp;
+    float vehicle_speed;
+    float vehicle_latitude;
+    float vehicle_longitude;
+    float vehicle_heading;
 } DataFrame;
 
 class MotorInfoSub {
@@ -93,7 +97,6 @@ private:
     ros::Subscriber motor_rpm_sub_;
     ros::Subscriber motor_temp_sub_;
     ros::Subscriber motor_error_sub_;
-    ros::Subscriber motor_heatbeat_sub_;
     float current_;
     float rpm_;
     int temperature_;
@@ -128,6 +131,7 @@ private:
     ros::Subscriber robot_temperature_sub_;
     ros::Subscriber battery_voltage_sub_;
     ros::Subscriber battery_temperature_sub_;
+    ros::Subscriber target_vehicle_sub_;
 
     // Sbg
     ros::Subscriber sbg_gps_nav_sub_;
@@ -157,7 +161,6 @@ private:
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
                                 "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)", 
-                                // "lookahead(m)", 
                                 "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 
@@ -170,7 +173,8 @@ private:
                                 "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(C)", "winding_temp_RR(C)",
                                 "winding_temp_FL(C)", "winding_temp_FR(C)",
-                                "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)"};
+                                "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
+                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)"};
 
 public:    
     std::string export_path = "";
@@ -193,6 +197,7 @@ public:
     void RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
     void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
     void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
+    void TargetVehicleCallback(const external_interface::TargetVehicle::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);

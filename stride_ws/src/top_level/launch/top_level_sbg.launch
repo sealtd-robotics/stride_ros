@@ -11,4 +11,5 @@
     <include file="$(find descender)/launch/descender.launch" />
     <include file="$(find overseer)/launch/data_record.launch" />
     <include file="$(find top_level)/launch/sbg_gps/sbg_ellipseD.launch" />
+    <include file="$(find external_interface)/launch/get_vehicle_input.launch" />
 </launch>

@@ -7,10 +7,10 @@ target_velocity = 3 # m/s
 sleep_time = 5 # seconds
 
 # # Trigger using target position and heading
-rc.wait_for_target_position(target_lat, target_long, target_heading)
+# rc.wait_for_vehicle_position(target_lat, target_long, target_heading)
 
 # # Trigger using target vehicle
-# rc.wait_for_target_velocity(target_velocity)
+rc.wait_for_vehicle_velocity(target_velocity)
 
 # # Trigger time-base
 # rc.sleep(sleep_time)
