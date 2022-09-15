@@ -1,15 +1,15 @@
 # STRIDE
 
-Table of Content
----
+## Table of Content
+
 I. Build Workspace
 II. What to run?
 III. Collect data
 IV. Directory Structure
 
 ---
-I. Build Workspace
-----
+
+## I. Build Workspace
 
 ```
 cd ~
@@ -33,12 +33,14 @@ git submodule update
 ```
 
 If submodule is updated, pull latest changes in the submodules:
+
 ```
 cd ~/stride_ros
 git submodule update --recursive
 ```
 
 For developer, pull the latest commit of the submodule into project
+
 ```
 cd ~/stride_ros
 git submodule update --remote --merge
@@ -47,44 +49,55 @@ git commit -m "content of your commit"
 git push
 ```
 
-II. How to run on target robot?
-----
+## II. How to run on target robot?
 
 1. The manual approach
-    Webserver is hosted directly within this repo. We need to spin up the webserver first to get access to gui:
-    ```
-    python3 web_server_for_gui.py
-    ```
-    Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network.
-    
-    Then, launch ALL nodes
-    ```bash
-    roslaunch top_level top_level.launch 
-    ```
+
+   Webserver is hosted directly within this repo. We need to spin up the webserver first to get access to gui:
+
+   ```
+   python3 web_server_for_gui.py
+   ```
+
+   Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network.
+
+   Then, launch ALL nodes
+
+   ```bash
+   roslaunch top_level top_level.launch
+   ```
+
 2. The Auto approach
-    Enable the systemd services to take care of the steps above. So everytime the robot is boot up, it will automatically spin up webserver and roslaunch
-    ```
-    sudo bash system/enable_webserver.sh
-    sudo bash system/enable_services.sh
-    ```
 
+   Enable the systemd services to take care of the steps above. So everytime the robot is boot up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
 
-III. Collect Data
----
-When test is trigged with state AUTO (value 2) in `overseer/state` topic, `data_record_node` starts recording until the state is out of AUTO. 
+   ```
+   sudo bash system/enable_webserver.sh
+   sudo bash system/enable_services.sh
+   ```
 
-Other way to manually starts recording is by publish 
-`rostopic pub /cmd/record std_msgs/Bool true -1` 
+   To disable services related to ros program and can bus
 
-To stop manual recording: 
-`rostopic pub /cmd/record std_msgs/Bool false -1` 
+   ```
+   sudo bash system/disable_services.sh
+   ```
+
+## III. Collect Data
+
+When test is trigged with state AUTO (value 2) in `overseer/state` topic, `data_record_node` starts recording until the state is out of AUTO.
+
+Other way to manually starts recording is by publish
+`rostopic pub /cmd/record std_msgs/Bool true -1`
+
+To stop manual recording:
+`rostopic pub /cmd/record std_msgs/Bool false -1`
 
 Manual record has higher priority than state mode previously. Once `/cmd/record` is published `true`, no other mode can turn it off until `/cmd/record` is published `false`. **Use carefully and don't forget to turn it off**
 
 Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data at each recording (either by ssh copy or using our web gui download feature), or it will be overwritten in the next recording.
 
-IV. Directory Structure
-----
+## IV. Directory Structure
+
 ```
 .
 ├── bash                                # Include scripts to help build project and dependencies
@@ -98,7 +111,7 @@ IV. Directory Structure
 │   ├── src
 │   │   ├── can_interface               # Can interface interact with low level hardware
 │   │   ├── descender                   # Safety on slope
-│   │   ├── drive_mechanism             
+│   │   ├── drive_mechanism
 │   │   ├── external_interface
 │   │   ├── joystick
 │   │   ├── networking
