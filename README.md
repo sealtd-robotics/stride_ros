@@ -53,13 +53,13 @@ git push
 
 1. The manual approach
 
-   Webserver is hosted directly within this repo. We need to spin up the webserver first to get access to gui:
+   Spin up the webserver first to get access to gui:
 
    ```
    python3 web_server_for_gui.py
    ```
 
-   Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network.
+   Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network. `ip_address` is the address of machine runs the web server.
 
    Then, launch ALL nodes
 
@@ -69,17 +69,18 @@ git push
 
 2. The Auto approach
 
-   Enable the systemd services to take care of the steps above. So everytime the robot is boot up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
+   Enable the systemd services to take care of the steps above. So everytime the robot is booted up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
 
    ```
-   sudo bash system/enable_webserver.sh
-   sudo bash system/enable_services.sh
+   sudo ./system/enable_webserver.sh
+   sudo ./system/enable_services.sh
    ```
 
-   To disable services related to ros program and can bus
+   To disable all services and remove systemd services
 
    ```
-   sudo bash system/disable_services.sh
+   sudo ./system/disable_webserver.sh
+   sudo ./system/disable_services.sh
    ```
 
 ## III. Collect Data
@@ -111,17 +112,17 @@ Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data a
 │   ├── src
 │   │   ├── can_interface               # Can interface interact with low level hardware
 │   │   ├── descender                   # Safety on slope
-│   │   ├── drive_mechanism
-│   │   ├── external_interface
-│   │   ├── joystick
-│   │   ├── networking
-│   │   ├── overseer
-│   │   ├── oxford_gps_decoder
-│   │   ├── path_follower
-│   │   ├── robot_commander
-│   │   ├── sbg_ros_driver
-│   │   ├── shared_tools
-│   │   └── top_level
-│   └── test_log
-└── system
+│   │   ├── drive_mechanism             # Control
+│   │   ├── external_interface          # Interface with external vehicle
+│   │   ├── joystick                    
+│   │   ├── networking                  # Everything networking
+│   │   ├── overseer                    # Top level state machine manager
+│   │   ├── oxford_gps_decoder          # Python driver to read Oxts GPS through CANbus and Ethernet
+│   │   ├── path_follower               # Path following algos
+│   │   ├── robot_commander             # Process test setup and execution
+│   │   ├── sbg_ros_driver              # submodule to SBG GPS driver
+│   │   ├── shared_tools                # misc
+│   │   └── top_level                   # top level launch files
+│   └── test_log                        
+└── system                              # Systemd files
 ```
