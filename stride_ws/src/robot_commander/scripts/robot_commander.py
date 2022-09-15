@@ -205,10 +205,20 @@ class RobotCommander:
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
+
         while (self.current_path_index > 0) and let_script_runs:
-            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-            self._send_velocity_command_using_radius(limited_speed)
-            rate.sleep()
+            if self.current_path_index < 5 and let_script_runs:
+                limited_speed = _find_rate_limited_speed(0.05, initial_time, -0.5, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
+            elif 5 <= self.current_path_index < 10 and let_script_runs:
+                limited_speed = _find_rate_limited_speed(0.1, initial_time, -1.0, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
+            else:
+                limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
 
     def sleep(self, seconds):
         if not let_script_runs:
