@@ -5,8 +5,11 @@ from socketserver import ThreadingMixIn, TCPServer
 import threading
 import os
 
+absolute_path = os.path.dirname(__file__)
+relative_path = "../stride_gui_build/build"
 PORT_NUMBER = 3000
-gui_directory = '/home/nvidia/stride_ros/stride_gui_build/build'
+gui_directory = os.path.join(absolute_path, relative_path)
+# gui_directory = '/home/nvidia/stride_ros/stride_gui_build/build'
 
 Handler = SimpleHTTPRequestHandler
 

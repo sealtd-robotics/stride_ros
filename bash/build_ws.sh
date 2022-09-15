@@ -34,6 +34,8 @@ dir_work="../stride_ws"
 cd $dir_work
 echo_head "Build $(pwd)"
 
+cmd="rm -rf build devel"; echo $cmd; $cmd
+sleep 1
 cmd="catkin_make"; echo $cmd; $cmd
 
 source "./devel/setup.bash"

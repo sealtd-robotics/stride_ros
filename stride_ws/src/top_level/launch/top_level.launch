@@ -6,11 +6,10 @@
     <include file="$(find drive_mechanism)/launch/drive_mechanism.launch" />
     <include file="$(find joystick)/launch/joystick.launch" />
     <include file="$(find overseer)/launch/overseer.launch" />
-    <include file="$(find advanced_navigation_driver)/launch/advanced_navigation_driver.launch" />
     <include file="$(find path_follower)/launch/path_follower.launch" />
     <include file="$(find robot_commander)/launch/robot_commander.launch" />
     <include file="$(find descender)/launch/descender.launch" />
-    <!-- <include file="$(find external_interface)/launch/get_vehicle_input.launch" /> -->
     <include file="$(find overseer)/launch/data_record.launch" />
-    <!-- <include file="$(find oxford_gps_eth)/launch/gps.launch" /> -->
+    <include file="$(find top_level)/launch/sbg_gps/sbg_ellipseD.launch" />
+    <include file="$(find external_interface)/launch/get_vehicle_input.launch" />
 </launch>

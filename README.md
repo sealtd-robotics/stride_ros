@@ -2,8 +2,8 @@
 
 Table of Content
 ---
-I. What is Stride ROS?
-II. How to run?
+I. Build Workspace
+II. What to run?
 III. Collect data
 IV. Directory Structure
 
@@ -25,28 +25,48 @@ rm -rf stride_ws/src/sbg_ros_driver
 git submodule init
 git submodule update
 
+## Install dependencies, should need to do this only once on the same machine
+./bash/dep_install.sh
+
 ## Build workspace
 ./bash/build_ws.sh
 ```
 
-II. How to run?
-----
-
-For developers:
-
-Step 1: Lauch All Nodes
-```bash
-roslaunch top_level top_level.launch 
+If submodule is updated, pull latest changes in the submodules:
+```
+cd ~/stride_ros
+git submodule update --recursive
 ```
 
-Step 2: Start/Stop Robot
-- Headless/no gui: ssh and overwrite `custom_script/script1.py` 
-- Publishes `Empty` message to `/gui/start_path_following_clicked` to simulate path following (ref: `overseer/overseer.py`)
-- Previous step will take care of this: Publish value 2 for `Int32` to `/overseer/state` to simulate the __AUTO__ command (ref: `robot_commander/robot_commander.py` `overseer/overseer.py`)
-- If robot goes to end of path, Jetson will put a __STOP__ automatically to the path following.
-- If for active __STOP__, publish `Empty` to `/gui/stop_clicked`.
+For developer, pull the latest commit of the submodule into project
+```
+cd ~/stride_ros
+git submodule update --remote --merge
+git add stride_ros/<submodule_name>
+git commit -m "content of your commit"
+git push
+```
 
-Step 3: Scripting Rules
+II. How to run on target robot?
+----
+
+1. The manual approach
+    Webserver is hosted directly within this repo. We need to spin up the webserver first to get access to gui:
+    ```
+    python3 web_server_for_gui.py
+    ```
+    Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network.
+    
+    Then, launch ALL nodes
+    ```bash
+    roslaunch top_level top_level.launch 
+    ```
+2. The Auto approach
+    Enable the systemd services to take care of the steps above. So everytime the robot is boot up, it will automatically spin up webserver and roslaunch
+    ```
+    sudo bash system/enable_webserver.sh
+    sudo bash system/enable_services.sh
+    ```
 
 
 III. Collect Data
@@ -61,33 +81,34 @@ To stop manual recording:
 
 Manual record has higher priority than state mode previously. Once `/cmd/record` is published `true`, no other mode can turn it off until `/cmd/record` is published `false`. **Use carefully and don't forget to turn it off**
 
-Data is saved in `stride_ws/test_log/data.csv`. Make sure to grab the data at each recording, or it will be overwritten in the next recording.
+Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data at each recording (either by ssh copy or using our web gui download feature), or it will be overwritten in the next recording.
 
 IV. Directory Structure
 ----
 ```
 .
-├── bash
-└── stride_ws
-    ├── custom_script
-    ├── gps_debug_log
-    ├── path
-    └── src
-        ├── advanced_navigation_driver
-        ├── can_interface
-        ├── drive_mechanism
-        ├── external_interface
-        ├── joystick
-        ├── networking
-        ├── overseer
-        ├── path_follower
-        ├── robot_commander
-        └── top_level
+├── bash                                # Include scripts to help build project and dependencies
+├── example_scripts                     # Include some example scripts to help user getting started to setup robot test
+├── stride_gui_build                    # Binary build of our web gui
+├── stride_ws                           # Main ROS workspace
+│   ├── custom_script                   # Where the test script is stored
+│   ├── gps_debug_log
+│   ├── params                          # Location to parameters and config files
+│   ├── path                            # Location to test path files
+│   ├── src
+│   │   ├── can_interface               # Can interface interact with low level hardware
+│   │   ├── descender                   # Safety on slope
+│   │   ├── drive_mechanism             
+│   │   ├── external_interface
+│   │   ├── joystick
+│   │   ├── networking
+│   │   ├── overseer
+│   │   ├── oxford_gps_decoder
+│   │   ├── path_follower
+│   │   ├── robot_commander
+│   │   ├── sbg_ros_driver
+│   │   ├── shared_tools
+│   │   └── top_level
+│   └── test_log
+└── system
 ```
-
-Dependencies
----
-__sbg_driver__ `sudo apt-get install ros-kinetic-tf2-geometry-msgs`
-
-Install
----
