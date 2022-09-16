@@ -9,6 +9,7 @@ IV. Directory Structure
 
 ---
 
+
 ## I. Build Workspace
 
 ```
@@ -69,6 +70,8 @@ git push
 
 2. The Auto approach
 
+   ***Note**: the services below are designed for SEA's provided hardware running on Stride.*
+   &nbsp;
    Enable the systemd services to take care of the steps above. So everytime the robot is booted up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
 
    ```
@@ -82,6 +85,32 @@ git push
    sudo ./system/disable_webserver.sh
    sudo ./system/disable_services.sh
    ```
+
+## IV. Vehicle gps output
+
+   This is for the target vehicle that needs to sync with Stride in test. We provide a solution to read GPS from the vehicle and output vehicle's gps information to our network.
+   
+   1. The manual approach
+      Make sure to enable CAN bus:
+      ```
+      sudo system/can_setup.sh
+      ```
+      Roslaunch all the required nodes:
+      ```
+      roslaunch top_level target_vehicle.launch
+      ```
+
+   2. The Auto approach
+
+      Enable the systemd services to configurate CAN bus and roslaunch `target_vehicle.launch` at boot.
+      ```
+      sudo ./enable_target_services.sh
+      ```
+
+      To disable the services above:
+      ```
+      sudo ./disable_target_services.sh
+      ```
 
 ## III. Collect Data
 
