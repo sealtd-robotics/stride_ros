@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="advanced_navigation_driver" type="advanced_navigation_driver" name="advanced_navigation_driver" output="screen" cwd="node">
-  </node>
-</launch>

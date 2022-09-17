@@ -5,7 +5,7 @@ import serial
 import rospy
 
 if __name__ == '__main__':
-    rospy.init('rtk_forwarding')
+    rospy.init_node('rtk_forwarding')
     ser = serial.Serial("/dev/ttyTHS2")
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

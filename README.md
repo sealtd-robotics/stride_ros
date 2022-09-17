@@ -3,9 +3,10 @@
 ## Table of Content
 
 I. Build Workspace
-II. What to run?
-III. Collect data
-IV. Directory Structure
+II. How to run on target robot?
+III. Vehicle info output
+IV. Collect data
+V. Directory Structure
 
 ---
 
@@ -57,12 +58,14 @@ git push
    Spin up the webserver first to get access to gui:
 
    ```
-   python3 web_server_for_gui.py
+   python3 ./system/web_server_for_gui.py
    ```
 
    Then the web gui can be accessed with `ip_address:3000` from browser of pc connect to the network. `ip_address` is the address of machine runs the web server.
+   &nbsp;
+   ![image](./docs/images/gui_front.png)
 
-   Then, launch ALL nodes
+   Then, launch ALL nodes. Don't forget to source the workspace.
 
    ```bash
    roslaunch top_level top_level.launch
@@ -86,14 +89,14 @@ git push
    sudo ./system/disable_services.sh
    ```
 
-## IV. Vehicle gps output
+## III. Vehicle info output
 
    This is for the target vehicle that needs to sync with Stride in test. We provide a solution to read GPS from the vehicle and output vehicle's gps information to our network.
    
    1. The manual approach
       Make sure to enable CAN bus:
       ```
-      sudo system/can_setup.sh
+      sudo ./system/can_setup.sh
       ```
       Roslaunch all the required nodes:
       ```
@@ -104,15 +107,15 @@ git push
 
       Enable the systemd services to configurate CAN bus and roslaunch `target_vehicle.launch` at boot.
       ```
-      sudo ./enable_target_services.sh
+      sudo ./system/enable_target_services.sh
       ```
 
       To disable the services above:
       ```
-      sudo ./disable_target_services.sh
+      sudo ./system/disable_target_services.sh
       ```
 
-## III. Collect Data
+## IV. Collect Data
 
 When test is trigged with state AUTO (value 2) in `overseer/state` topic, `data_record_node` starts recording until the state is out of AUTO.
 
@@ -126,7 +129,7 @@ Manual record has higher priority than state mode previously. Once `/cmd/record`
 
 Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data at each recording (either by ssh copy or using our web gui download feature), or it will be overwritten in the next recording.
 
-## IV. Directory Structure
+## V. Directory Structure
 
 ```
 .
