@@ -13,19 +13,21 @@ import os
 import time
 import threading
 from std_msgs.msg import Int32, Float32, String, Empty, Float32MultiArray
-from geometry_msgs.msg import Pose2D
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import Pose2D, Vector3
 from path_follower.msg import Latlong
-
-from math import cos, sin, sqrt, pi, atan2
+from sbg_driver.msg import SbgEkfNav, SbgEkfEuler
+from shared_tools.overseer_states_constants import *
+from math import cos, sin, sqrt, pi, atan2, acos
 from glob import glob
 
 
 class PathFollower:
     def __init__(self):
         self.look_ahead_points = 5
-
         self.current_path_index = 0
+        self.last_path_index = 0
         self.overseer_state = 5      # 5: STOPPED state
         self.E_factor = 0
         self.N_factor = 0
@@ -42,6 +44,7 @@ class PathFollower:
         self.path_intervals = []
         self.stop_index = 999999
         self.max_index = 9999999
+        self.cross_track_error = 0
 
         # Publishers
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
@@ -50,6 +53,7 @@ class PathFollower:
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
         self.turning_radius_publisher = rospy.Publisher('/path_follower/turning_radius', Float32, queue_size=1)
+        self.cross_track_error_publisher = rospy.Publisher('/path_follower/cross_track_error', Float32, queue_size=1)
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
@@ -61,6 +65,12 @@ class PathFollower:
         # GPS Subscribers
         rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
         rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/gps/fix', NavSatFix, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
+
+        # topics for SBG
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_position_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_imu_callback, queue_size=1)
 
         # Load path at startup
         self.load_path()
@@ -175,6 +185,7 @@ class PathFollower:
             self.current_path_index += 1
         
         self.current_path_index_publisher.publish(self.current_path_index)
+        self.last_path_index = self.current_path_index
 
     def update_turning_radius(self):
         # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
@@ -187,7 +198,7 @@ class PathFollower:
         x2 = self.path_easts[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
         y2 = self.path_norths[min(self.max_index, self.stop_index, self.current_path_index + self.look_ahead_points)]
 
-        # make heading begin on the x-axis (east axis) and go counter-clockwise as positive
+        # make heading zero on the x-axis (east axis) and go counter-clockwise as positive
         adjusted_heading = pi/2 - self.robot_heading
 
         # distance from robot to look-ahead point
@@ -203,9 +214,81 @@ class PathFollower:
             look_ahead_angle = atan2(y2-y1, x2-x1)
 
             self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
+        
+        if self.current_path_index == 0 or self.current_path_index == self.max_index:
+            return
+        
+        ###Cross Track Error
+        #Point behind robot's current position
+        x1_cte = self.path_easts[self.current_path_index]
+        y1_cte = self.path_norths[self.current_path_index]
 
-        # print(isNearMaxIndex, self.current_path_index, self.max_index, distance)
-        # print('r: ', self.turning_radius, 'd: ', distance)
+        #Point in front of robot's current position
+        x2_cte = self.path_easts[min(self.current_path_index + 1, self.max_index)]
+        y2_cte = self.path_norths[min(self.current_path_index + 1, self.max_index)]
+
+        #Law of Cosines
+        dist_a = sqrt((x1_cte - x1)**2 + (y1_cte - y1)**2) #Distance b/t point behind robot and robot 
+        dist_b = sqrt((x2_cte - x1)**2 + (y2_cte - y1)**2) #Distance b/t robot and point in front of robot
+        dist_c = sqrt((x2_cte - x1_cte)**2 + (y2_cte - y1_cte)**2) #Distance b/t point behind and point in front of robot
+        Beta = acos((dist_a**2 + dist_c**2 - dist_b**2)/(2 * dist_a * dist_c)) #Angle b/t point behind robot and robot
+
+        #Calculate Cross Track Error
+        self.cross_track_error = dist_a * sin(Beta)
+        self.cross_track_error = min(self.cross_track_error, 1) #Limit for cross track error
+
+        #Sign of CTE
+        s_cte = (x2_cte - x1_cte)* (y1 - y1_cte) - (y2_cte - y1_cte)* (x1 - x1_cte)
+
+        #Apply sign to CTE
+        if s_cte < 0:
+            self.cross_track_error *= -1
+
+    def update_path_index_return_to_start(self):
+        if self.last_path_index == 0:
+            return
+
+        # Find slope of line (m) connecting current index and the next index
+        x_cur = self.path_easts[self.last_path_index]
+        y_cur = self.path_norths[self.last_path_index]
+
+        x_next = self.path_easts[max(self.last_path_index - 1, 0)]
+        y_next = self.path_norths[max(self.last_path_index - 1, 0)]
+        m = (y_next - y_cur) / (x_next - x_cur)
+
+        # Slope of the perpendicular line to the original line
+        m_perp = -1/m
+
+        # Notes: The point-slope form of the perpendicular line at point (x_next, y_next) is as follows:
+        # 0 = (y_cur - y_next) - m_perp * (x_cur - x_next)
+
+        # Determine which side of the line the current index point lies on, indicated by the sign of k_cur
+        k_cur = (y_cur - y_next) - m_perp * (x_cur - x_next)
+
+        # Determine which side of the line the robot lies on, indicated by the sign of k_robot
+        k_robot = (self.robot_north - y_next) - m_perp * (self.robot_east - x_next)
+
+        # If the two above points are on different sides of the line
+        if k_cur * k_robot < 0:
+            self.last_path_index -= 1
+        
+        self.current_path_index_publisher.publish(self.last_path_index)
+
+    def update_turning_radius_return_to_start(self):
+        x1 = self.robot_east
+        y1 = self.robot_north
+
+        x2 = self.path_easts[max(0, self.last_path_index - 5)]
+        y2 = self.path_norths[max(0, self.last_path_index - 5)]
+
+        adjusted_heading = 3*pi/2 - self.robot_heading
+        distance = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+
+        if distance < 0.2:
+            self.turning_radius = 999999
+        else:
+            look_ahead_angle = atan2(y2-y1, x2-x1)
+            self.turning_radius = distance / (2 * sin(look_ahead_angle - adjusted_heading))
 
     # Subscriber callbacks
     def callback_1(self, msg):
@@ -216,11 +299,7 @@ class PathFollower:
 
     def callback_3(self, msg):
         # changing look_ahead_points based on commanded speed
-        # self.look_ahead_points = int(max(10, 4 * msg.x))
-        self.look_ahead_points = int(max(5, 2 * msg.x))
-
-        # Second Waymo demo setting
-        # self.look_ahead_points = int(max(3, 1.5 * msg.x))
+        self.look_ahead_points = int(max(10, 3 * msg.x))
 
     def callback_4(self, msg):
         self.stop_index = msg.data
@@ -230,14 +309,20 @@ class PathFollower:
 
     # GPS subscriber callbacks
     def gps_callback_1(self, msg):
+        # In the message, pose.pose.position.x is latitude and pose.pose.position.y is longitude 
+        (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
+
+    def gps_position_callback(self, msg):
         (self.robot_north, self.robot_east)  = self.LL2NE(msg.latitude, msg.longitude)
 
     def gps_callback_2(self, msg):
         self.robot_heading = msg.data    # radian
 
-    # def gps_callback_3(self, msg):
-    #     self.linear_speed_measured = (msg.linear.x ** 2 + msg.linear.y ** 2) ** 0.5
-    #     self.yaw_velocity_measured = msg.angular.z
+    def gps_orientation_callback(self, msg):
+        self.robot_heading = msg.z
+
+    def gps_imu_callback(self, msg):
+        self.robot_heading = msg.angle.z
 
 if __name__ ==  '__main__':
     node = rospy.init_node('path_follower')
@@ -246,13 +331,19 @@ if __name__ ==  '__main__':
 
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
-        if pf.overseer_state == 2:    # 2 is the autonomous (AUTO) state
+        if pf.overseer_state == AUTO:
             pf.update_current_path_index()
             pf.update_turning_radius()
+            pf.turning_radius_publisher.publish(pf.turning_radius)
+            pf.cross_track_error_publisher.publish(pf.cross_track_error)
+        elif pf.overseer_state == RETURN_TO_START:
+            pf.update_path_index_return_to_start()
+            pf.update_turning_radius_return_to_start()
             pf.turning_radius_publisher.publish(pf.turning_radius)
         else:
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
             pf.turning_radius = 999
+            pf.cross_track_error = 0
 
         rate.sleep() 

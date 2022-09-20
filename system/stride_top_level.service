@@ -1,0 +1,12 @@
+[Unit]
+Description=STRIDE
+After=multi-user.target melodic@roscore.service %p@can_bus.service
+Requires=melodic@roscore.service
+
+[Service]
+User=%p
+ExecStartPre=/bin/sleep 2
+ExecStart=/bin/bash -c "source /home/%p/stride_ros/stride_ws/devel/setup.bash; roslaunch /home/%p/stride_ros/stride_ws/src/top_level/launch/top_level.launch"
+
+[Install]
+WantedBy=multi-user.target

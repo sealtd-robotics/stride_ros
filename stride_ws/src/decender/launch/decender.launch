@@ -1,3 +1,0 @@
-<launch>
-  <node pkg="decender" type="decender.py" name="decender" output="screen"/>
-</launch>

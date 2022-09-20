@@ -1,1 +1,0 @@
-scp -r nvidia@195.0.0.10:/home/nvidia/stride_ros/stride_ws/gps_debug_log/* /home/chedanix/work/stride/ros/stride_ws/gps_debug_log/

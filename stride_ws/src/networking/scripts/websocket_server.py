@@ -9,10 +9,11 @@ import rospy
 from can_interface.msg import WheelRPM
 from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
 from external_interface.msg import TargetVehicle
-from geometry_msgs.msg import Pose2D, Vector3, Twist
+from geometry_msgs.msg import Pose2D, Vector3, Twist, TwistWithCovarianceStamped, TwistStamped
 from sensor_msgs.msg import NavSatFix, Imu
 from joystick.msg import Stick
 from path_follower.msg import Latlong
+from sbg_driver.msg import SbgEkfNav, SbgGpsPos, SbgEkfEuler
 import time
 import threading
 from datetime import datetime
@@ -29,8 +30,10 @@ from twisted.internet import reactor
 
 
 class RosInterface:
-    def __init__(self):
+    def __init__(self, websocket):
         self.gps_callback_sleep_time = 0.1
+        self.websocket = websocket
+        self.gnss_pos_status = 0
 
         # Does not get transmitted continuously
         self.path_to_follow = {
@@ -97,23 +100,10 @@ class RosInterface:
                 "status": -1,
                 "latitude": 0,
                 "longitude": 0,
-                # "latitudeVariance": 0,
-                # "longitudeVariance": 0,
                 "northVelocity": 0,
                 "eastVelocity": 0,
                 "zAngularVelocity": 0,
-                # "xAcceleration": 0,
-                # "yAcceleration": 0,
-                # "zAcceleration": 0,
-                "systemStatus": 0,
-                "filterStatus": 0,
                 "heading": 0,
-                # "xMagnetometer": 0,
-                # "yMagnetometer": 0,
-                # "zMagnetometer": 0,
-                "magneticCalibrationStatus": 0,
-                "magneticCalibrationProgress": 0,
-                "magneticCalibrationError": 0,
             },
             "pathFollower": {
                 "pathName": "",
@@ -138,19 +128,21 @@ class RosInterface:
         rospy.Subscriber('/battery_temperature', Int32, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.subscriber_callback_8, queue_size=1)
-
+        rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
+        rospy.Subscriber('/robot_commander/command_message', String, self.subscriber_callback_10, queue_size=20)
+        rospy.Subscriber('/overseer/error_message', String, self.subscriber_callback_11, queue_size=20)
 
         # GPS Subcribers
-        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/Twist', Twist, self.gps_subscriber_callback_2, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/Imu', Imu, self.gps_subscriber_callback_3, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/system_status', UInt16, self.gps_subscriber_callback_4, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/filter_status', UInt16, self.gps_subscriber_callback_5, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_subscriber_callback_6, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/an_device/magnetometers', Vector3, self.gps_subscriber_callback_7, queue_size=1)
-        rospy.Subscriber('/an_device/magnetic_calibration/status', UInt8, self.gps_subscriber_callback_8, queue_size=1)
-        rospy.Subscriber('/an_device/magnetic_calibration/progress', UInt8, self.gps_subscriber_callback_9, queue_size=1)
-        rospy.Subscriber('/an_device/magnetic_calibration/error', UInt8, self.gps_subscriber_callback_10, queue_size=1)
+        rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
+        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
+        rospy.Subscriber('/gps/pos_type', String, self.gps_oxford_pos_type_callback, queue_size=1)
+
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_pos_callback, queue_size=1)
+        rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_gnss_pos_callback, queue_size=1)
+        rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
+        
 
         # Motor Controller Subscribers
         # Left Front
@@ -206,7 +198,8 @@ class RosInterface:
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
         self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
-    
+        self.return_to_start_publisher = rospy.Publisher('/gui/return_to_start_clicked', Empty, queue_size=1)
+        
     # Callbacks
     def subscriber_callback_1(self, msg):
         self.robotState['robotVelocityCommand']['v'] = round(msg.x, 3)
@@ -238,6 +231,17 @@ class RosInterface:
         self.robotState['targetVehicle']['gps_ready'] = msg.gps_ready
         self.robotState['targetVehicle']['gps_correction_type'] = msg.gps_correction_type
 
+    def subscriber_callback_9(self, msg):
+        csvCreatedMsg = json.dumps({'type': 'createdCSV',}, ensure_ascii = False).encode('utf8')
+        reactor.callFromThread(self.websocket.sendMessage, csvCreatedMsg, False)
+
+    def subscriber_callback_10(self, msg):
+        command_message = json.dumps({'type': 'commandMessage', 'commandMessage': msg.data}, ensure_ascii = False).encode('utf8')
+        reactor.callFromThread(self.websocket.sendMessage, command_message, False)
+
+    def subscriber_callback_11(self, msg):
+        error_message = json.dumps({'type': 'errorMessage', 'errorMessage': msg.data}, ensure_ascii = False).encode('utf8')
+        reactor.callFromThread(self.websocket.sendMessage, error_message, False)
 
     # Motor Controller Callbacks
     # Left Front
@@ -306,50 +310,53 @@ class RosInterface:
 
     # GPS callbacks
     def gps_subscriber_callback_1(self, msg):
-        self.robotState['gps']['status'] = msg.status.status
+        # self.robotState['gps']['status'] = msg.status.status
+        self.robotState['gps']['status'] = self.gnss_pos_status # temp patch
         self.robotState['gps']['latitude'] = msg.latitude
         self.robotState['gps']['longitude'] = msg.longitude
-        self.robotState['gps']['latitudeVariance'] = round(msg.position_covariance[0], 9)
-        self.robotState['gps']['longitudeVariance'] = round(msg.position_covariance[4], 9)
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_2(self, msg):
-        self.robotState['gps']['northVelocity'] = round(msg.linear.x, 3)
-        self.robotState['gps']['eastVelocity'] = round(msg.linear.y, 3)
-        self.robotState['gps']['zAngularVelocity'] = round(msg.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_3(self, msg):
-        self.robotState['gps']['xAcceleration'] = round(msg.linear_acceleration.x, 3)
-        self.robotState['gps']['yAcceleration'] = round(msg.linear_acceleration.y, 3)
-        self.robotState['gps']['zAcceleration'] = round(msg.linear_acceleration.z, 3)
+        self.robotState['gps']['northVelocity'] = round(msg.twist.twist.linear.y, 3)
+        self.robotState['gps']['eastVelocity'] = round(msg.twist.twist.linear.x, 3)
+        self.robotState['gps']['zAngularVelocity'] = round(msg.twist.twist.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
-    def gps_subscriber_callback_4(self, msg):
-        self.robotState['gps']['systemStatus'] = msg.data
+    def gps_subscriber_callback_11(self, msg):
+        self.robotState['gps']['heading'] = round(msg.z, 3)
+        time.sleep(self.gps_callback_sleep_time)
+
+    def gps_oxford_pos_type_callback(self, msg):
+        pos_type = msg.data
+        if (pos_type == "RTK_INTEGER"):
+            self.gnss_pos_status = 7
+        elif (pos_type == "RTK_FLOAT"):
+            self.gnss_pos_status = 6
+        elif (pos_type == "DIFF_PSEUDORANGE"):
+            self.gnss_pos_status = 4
+        else:
+            self.gnss_pos_status = 3
+        time.sleep(self.gps_callback_sleep_time)
+
+    ### SBG GPS ###
+    def gps_sbg_pos_callback(self, msg):
+        self.robotState['gps']['latitude'] = msg.latitude
+        self.robotState['gps']['longitude'] = msg.longitude
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
-    def gps_subscriber_callback_5(self, msg):
-        self.robotState['gps']['filterStatus'] = msg.data
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
+    def gps_sbg_gnss_pos_callback(self, msg):
+        self.robotState['gps']['status'] = msg.status.type
+        time.sleep(self.gps_callback_sleep_time)
 
-    def gps_subscriber_callback_6(self, msg):
-        self.robotState['gps']['heading'] = round(msg.data, 3)
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
+    def gps_sbg_vel_callback(self, msg):
+        self.robotState['gps']['northVelocity'] = round(msg.twist.linear.x, 3)
+        self.robotState['gps']['eastVelocity'] = round(msg.twist.linear.y, 3)
+        self.robotState['gps']['zAngularVelocity'] = msg.twist.angular.z
+        time.sleep(self.gps_callback_sleep_time)
 
-    def gps_subscriber_callback_7(self, msg):
-        self.robotState['gps']['xMagnetometer'] = round(msg.x, 3)
-        self.robotState['gps']['yMagnetometer'] = round(msg.y, 3)
-        self.robotState['gps']['zMagnetometer'] = round(msg.z, 3)
-
-    def gps_subscriber_callback_8(self, msg):
-        self.robotState['gps']['magneticCalibrationStatus'] = msg.data
-
-    def gps_subscriber_callback_9(self, msg):
-        self.robotState['gps']['magneticCalibrationProgress'] = msg.data
-
-    def gps_subscriber_callback_10(self, msg):
-        self.robotState['gps']['magneticCalibrationError'] = msg.data
+    def gps_sbg_imu_callback(self, msg):
+        self.robotState['gps']['heading'] = round(msg.angle.z, 3)
+        time.sleep(self.gps_callback_sleep_time)
 
     # Path follower callbacks
     def path_follower_callback_1(self, msg):
@@ -362,12 +369,15 @@ class RosInterface:
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
 
+
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
     websocket_client_count = 0
-    ros_interface = RosInterface()
+    ros_interface = 0
     shared_path = {'type': '', 'latitudes':[], 'longitudes':[]}
 
+    def __init__(self):
+        MyServerProtocol.ros_interface = RosInterface(self)
     # Side note: The init function of this class is called before each connection and is only relevent to that connection
 
     # Each connection will have its own onConnect, onOpen, onMessage, and onClose 
@@ -437,6 +447,8 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.shared_path = {'type': 'sharedPath', 'latitudes': message['latitudes'], 'longitudes': message['longitudes']}
         elif message['type'] == '/gui/start_path_following_clicked':
             MyServerProtocol.ros_interface.start_following_publisher.publish()
+        elif message['type'] == '/gui/return_to_start_clicked':
+            MyServerProtocol.ros_interface.return_to_start_publisher.publish()
         elif message['type'] == '/gui/upload_path_clicked':
             folder = '../../../path/'
             

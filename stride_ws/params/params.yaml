@@ -1,0 +1,33 @@
+### can_interface
+# Motors
+gear_ratio: 6.6 # input revolutions divided by output revolutions
+rated_current: 6 # ampere
+peak_current: 18000 # mA
+
+# Motor Controllers
+mc_lf_node_id: 1 # Motor Controller at Left Front
+mc_lb_node_id: 2 # Motor Controller at Left Back
+mc_rf_node_id: 3 # Motor Controller Right Front
+mc_rb_node_id: 4 # Motor Controller Right Back
+local_node_id: 10 # Jetson
+
+mc_eds_path: "605.0101.01-L.eds"
+local_eds_path: "empty.eds"
+
+# CAN
+channel: "can0"
+bustype: "socketcan"
+bitrate: 1000000
+
+### drive_mechanism
+wheel_sep: 0.545 # seperation between left and right wheels in meters
+
+left_wheel_radius: 0.022 # in meters
+right_wheel_radius: 0.022 # in meters
+k_l: 0.954
+k_r: 0.954
+P_corr: 18
+
+### joystick
+v_max: 3 # max linear velocity in m/s (5.6 almost max speed, 3 is good)
+w_max_spin_in_place: 2 # max angular velocity when spinning in place in rad/s (5 is fast, 2 is good)

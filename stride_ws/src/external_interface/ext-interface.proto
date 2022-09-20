@@ -7,10 +7,15 @@ message PubMsg {
 	double latitude_deg = 3;
 	double velocity_mps = 4;
 	bool gps_ready = 5;
+	uint32 no_of_satellites = 6;
 	enum GpsCorrection {
-		GPS_FIX = 0;
-		DGPS_RTK_FLOAT = 1;
-		DGPS_RTK_INTERGER = 2;
+		GPS_NONE = 0;
+		GPS_SEARCH = 1;
+		GPS_DOPPLER = 2;
+		GPS_SPS = 3;
+		GPS_DIFFERENTIAL = 4;
+		DGPS_RTK_FLOAT = 5;
+		DGPS_RTK_INTERGER = 6;
 	}
-	GpsCorrection gps_correction = 6;
+	GpsCorrection gps_correction = 7;
 }

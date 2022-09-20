@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup CAN 1000K
+After=multi-user.target
+
+[Service]
+ExecStartPre=/bin/sleep 2
+ExecStart=/home/%p/stride_ros/system/can_setup.sh
+
+[Install]
+WantedBy=multi-user.target

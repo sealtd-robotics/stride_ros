@@ -5,20 +5,24 @@ import rospy
 import time
 import threading
 import os
-import sys
 import math
 import numpy as np
 from glob import glob
 from libcal import LL_NE, CheckBoundariesEnter
 
-
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
-from geometry_msgs.msg import Pose2D, Twist
+from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
+from nav_msgs.msg import Odometry
+from sbg_driver.msg import SbgEkfEuler, SbgEkfNav
 from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
+from shared_tools.overseer_states_constants import *
 
+# Global control robot commander across threads
 
+let_script_runs = False
+dash_line = "----------------------"
 
 class RobotCommander:
     def __init__(self):
@@ -28,7 +32,6 @@ class RobotCommander:
         self.robot_speed = -1
         self.robot_heading = -1
         self.turning_radius = 999
-
         self.limiter_initial_speed = 0
 
         # Publishers
@@ -42,185 +45,188 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
         rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
-        rospy.Subscriber('/an_device/Twist', Twist, self.gps_twist_callback, queue_size=1)
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_heading_callback, queue_size=1)
+        rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_1, queue_size=1)
+        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
+        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
+        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_velocity_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
+        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
+        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
         # blocking until these attributes have been updated by subscriber callbacks
         while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
             time.sleep(0.1)
 
+    def _display_message(self, message):
+        print(message)
+        command_message_publisher.publish(message)
 
     def _send_velocity_command_using_radius(self, speed):
         self.limiter_initial_speed = speed
 
         pose2d = Pose2D()
         pose2d.x = speed
-        pose2d.theta = speed / self.turning_radius
+        w = speed / self.turning_radius
+        if (speed < 0):
+            w *= -1.0
+        pose2d.theta = w
 
         self.velocity_command_publisher.publish(pose2d)
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
-        print('Executing move_until_end_of_path')
+        if not let_script_runs:
+            return
+        self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < self.max_path_index):
+        while (self.current_path_index < self.max_path_index) and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
     def brake_to_stop(self, speed_rate):
-        print('Executing brake_to_stop')
+        if not let_script_runs:
+            return
+        self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
         speed_goal = 0
 
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.robot_speed > 0.1 and self.current_path_index < self.max_path_index):
+        while (self.robot_speed > 0.1 \
+            and self.current_path_index < self.max_path_index) \
+            and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
-        print('Executing move_until_index')
+        global let_script_runs
+        if not let_script_runs:
+            return
+        if index > self.max_path_index:
+            let_script_runs = False
+            print("Input index must not exceed max path index.")
+            return
+        self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < index):
+        while (self.current_path_index < index) and let_script_runs:
             limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def set_index(self, index):
-        print('Executing set_index')
-        self.set_index_publisher.publish(index)
-        rate = rospy.Rate(50)
-        while (self.current_path_index != index):
-            rate.sleep()
-
-    # maybe add a try-except statement to catch zero angular veloctiy and zero tolerance
-    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3, brake_when_done = True):
-        print('Executing rotate_until_heading')
-        heading = heading % 360
+    # maybe add a try-except statement to catch zero angular velocity and zero tolerance
+    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
+        if not let_script_runs:
+            return
+        self._display_message('Executing rotate_until_heading')
+        if heading >= 0:
+            heading = heading % 360
+        else:
+            heading = heading % -360
 
         heading_radian = heading / 180 * math.pi
         tolerance_radian = heading_tolerance / 180 * math.pi
 
-        lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
-        upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
+        if heading >=3: 
+            lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
+            upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
+        elif heading < 3 and heading > -3:
+            lower_bound = (heading_radian - tolerance_radian) 
+            upper_bound = (heading_radian + tolerance_radian) 
+        else:
+            lower_bound = (heading_radian - tolerance_radian) % -(2*math.pi)
+            upper_bound = (heading_radian + tolerance_radian) % -(2*math.pi)
 
         pose2d = Pose2D()
         pose2d.x = 0
-        pose2d.theta = angular_velocity
+        pose2d.theta = -angular_velocity
 
         rate = rospy.Rate(50)
         if upper_bound > lower_bound:
-            while self.robot_heading < lower_bound or self.robot_heading > upper_bound:
+            while (self.robot_heading < lower_bound \
+                    or self.robot_heading > upper_bound) \
+                    and let_script_runs:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
         else:
-            while self.robot_heading > lower_bound and self.robot_heading < upper_bound:
+            while (self.robot_heading > lower_bound \
+                and self.robot_heading < upper_bound) \
+                and let_script_runs:
                 self.velocity_command_publisher.publish(pose2d)
                 rate.sleep()
 
-        if brake_when_done:
-            while self.robot_angular_speed > 0.02:
-                pose2d.theta = 0
-                self.velocity_command_publisher.publish(pose2d)
-                rate.sleep()
-
+        pose2d.theta = 0
+        self.velocity_command_publisher.publish(pose2d)   
 
     def decel_to_stop_at_index(self, stop_index):
-        print('Executing decel_to_stop_at_index')
+        global let_script_runs
+        if not let_script_runs:
+            return
+        if stop_index > self.max_path_index:
+            let_script_runs = False
+            print("Input stop index must not exceed max path index.")
+            return
+        self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50
         rate = rospy.Rate(frequency)
         period = 1/frequency
 
-        # kinemetic equation: vf^2 = vi^2 + 2*a*d
+        # kinematic equation: vf^2 = vi^2 + 2*a*d
         vi = self.robot_speed
         d = sum(self.path_intervals[ self.current_path_index : stop_index ])
-        a = -vi**2 / 2 / d
+        a = -vi**2 / (2*d)
 
-        while (self.current_path_index < stop_index):
+        while (self.current_path_index < stop_index) and let_script_runs:
             vi = vi + a*period # a is negative
             vi = max(vi, 0.3) # prevent zero velocity before reaching the stop_index
             self._send_velocity_command_using_radius(vi)
             rate.sleep()
 
-
-        while self.robot_speed > 0.1:
+        while (self.robot_speed > 0.1) and let_script_runs:
             self._send_velocity_command_using_radius(0)
             rate.sleep()
             
         self.stop_index_publisher.publish(999999)
 
+    def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        if not let_script_runs:
+            return
+        self._display_message('Executing move_until_beginning_of_path')
+        self._display_message(dash_line)
+        rate = rospy.Rate(50)
+
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
+
+        while (self.current_path_index > 0) and let_script_runs:
+            if self.current_path_index < 5 and let_script_runs:
+                limited_speed = _find_rate_limited_speed(0.05, initial_time, -0.5, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
+            elif 5 <= self.current_path_index < 10 and let_script_runs:
+                limited_speed = _find_rate_limited_speed(0.1, initial_time, -1.0, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
+            else:
+                limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+                self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
+
     def sleep(self, seconds):
-        print('Executing sleep')
+        if not let_script_runs:
+            return
+        self._display_message('Executing sleep')
         time.sleep(seconds)
 
-    def get_time_now_in_ms(self):
-        epoch = datetime.utcfromtimestamp(0)
-        now = datetime.utcnow()
-        delta = now - epoch
-        return delta.total_seconds() * 1000
-
-    def go_straight_for_milliseconds(self, speed, milliseconds):
-        start_time = self.get_time_now_in_ms()
-        pose2d = Pose2D()
-        pose2d.x = speed
-        pose2d.theta = 0
-
-        rate = rospy.Rate(10)
-        while self.get_time_now_in_ms() - start_time < milliseconds:
-            self.velocity_command_publisher.publish(pose2d)
-            rate.sleep()
-
-
-    def turn_for_milliseconds(self, angle, milliseconds):
-        start_time = self.get_time_now_in_ms()
-        pose2d = Pose2D()
-        pose2d.x = speed
-        pose2d.theta = 0
-
-        rate = rospy.Rate(10)
-        while self.get_time_now_in_ms() - start_time < milliseconds:
-            self.velocity_command_publisher.publish(pose2d)
-            rate.sleep()
-
-    # Subscriber Callbacks
-    def current_path_index_callback(self, msg):
-        self.current_path_index = msg.data
-
-    def max_path_index_callback(self, msg):
-        self.max_path_index = msg.data
-
-    def path_intervals_callback(self, msg):
-        self.path_intervals = msg.data
-
-    def gps_twist_callback(self, msg):
-        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
-        self.robot_angular_speed = abs(msg.angular.z)
-
-    def gps_heading_callback(self, msg):
-        self.robot_heading = msg.data # in radian
-
-    def target_callback(self, msg):
-        self.target_heading = msg.heading
-        self.target_velocity = msg.velocity
-        self.target_gps_ready = msg.gps_ready
-        self.target_longitude = msg.longitude
-        self.target_latitude = msg.latitude
-        self.target_gps_correction_type = msg.gps_correction_type
-
-    def turning_radius_callback(self, msg):
-        self.turning_radius = msg.data
-
-    def wait_for_target_position(self, trigger_lat, trigger_long, trigger_heading):
+    def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
         Spin until the target passes the trigger location.
 
@@ -231,12 +237,15 @@ class RobotCommander:
         Return:
             n/a
         """
+        if not let_script_runs:
+            return
+        self._display_message('Executing wait_for_vehicle_position')
         llne = LL_NE(trigger_lat, trigger_long)
         boundary_checker = CheckBoundariesEnter(trigger_heading)
 
         rate = rospy.Rate(50)
 
-        while self.target_gps_ready:
+        while self.target_gps_ready and let_script_runs:
             py, px = llne.LL2NE(self.target_latitude, self.target_longitude)
             if boundary_checker.in_boundaries(np.array([px,py])):
                 if abs((trigger_heading - self.target_heading) < 45):
@@ -251,16 +260,58 @@ class RobotCommander:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
             print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
 
-    def wait_for_target_velocity(self, velocity):
+    def wait_for_vehicle_velocity(self, velocity):
+        if not let_script_runs:
+            return
+        self._display_message('Executing wait_for_vehicle_velocity')
         rate = rospy.Rate(20)
         while (self.target_velocity < velocity 
-            and self.target_gps_ready):
+            and self.target_gps_ready) and let_script_runs:
             rate.sleep()
         
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
             print("ERROR: Something wrong. Target GPS not ready, handle this error.End test.")
 
+    # Subscriber Callbacks
+    def current_path_index_callback(self, msg):
+        self.current_path_index = msg.data
+
+    def max_path_index_callback(self, msg):
+        self.max_path_index = msg.data
+
+    def path_intervals_callback(self, msg):
+        self.path_intervals = msg.data
+
+    def gps_callback_1(self, msg):
+        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
+        self.robot_angular_speed = abs(msg.angular.z)
+
+    def gps_callback_2(self, msg):
+        self.robot_heading = msg.data # in radian
+
+    def gps_velocity_callback(self, msg):
+        self.robot_speed = math.sqrt(msg.twist.twist.linear.x**2 + msg.twist.twist.linear.y**2)
+
+    def gps_orientation_callback(self, msg):
+        self.robot_heading = msg.z
+
+    def gps_sbg_euler_callback(self, msg):
+        self.robot_heading = msg.angle.z
+
+    def gps_sbg_nav_callback(self, msg):
+        self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
+
+    def target_callback(self, msg):
+        self.target_heading = msg.heading
+        self.target_velocity = msg.velocity
+        self.target_gps_ready = msg.gps_ready
+        self.target_longitude = msg.longitude
+        self.target_latitude = msg.latitude
+        self.target_gps_correction_type = msg.gps_correction_type
+
+    def turning_radius_callback(self, msg):
+        self.turning_radius = msg.data
 
 class Receptionist:
     def __init__(self):
@@ -306,7 +357,19 @@ class Receptionist:
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
-        print("Custom script completed execution")
+        end_message = "Test ended"
+        print(end_message)
+        command_message_publisher.publish(end_message)
+        command_message_publisher.publish(dash_line) # needed for separating tests
+
+    def return_to_start(self):
+        try:
+            execfile('./return_to_start.py')
+        except Exception as error:
+            print(error)
+
+        self.is_script_running = False
+        self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
 
     def overseer_state_callback(self, msg):
         self.overseer_state = msg.data
@@ -316,6 +379,7 @@ class Receptionist:
 
 if __name__ == '__main__':
     node = rospy.init_node('robot_commander')
+    command_message_publisher = rospy.Publisher('/robot_commander/command_message', String, queue_size=20)
 
     recept = Receptionist()
 
@@ -324,19 +388,34 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         # if there is a state change
         if recept.previous_state != recept.overseer_state:
-            if recept.overseer_state == 2 and not recept.is_script_running:  # overseer state 2 is AUTO mode
+            if recept.overseer_state == AUTO and not recept.is_script_running:
                 recept.is_script_running = True
+                let_script_runs = True
                 recept.is_script_running_publisher.publish(True)
+
+                start_message = "Test started"
+                print(start_message)
+                command_message_publisher.publish(start_message)
 
                 custom_script_thread = threading.Thread(target=recept.start_custom_script)
                 custom_script_thread.setDaemon(True)
                 custom_script_thread.start()
-            
+            elif recept.overseer_state == RETURN_TO_START and not recept.is_script_running:
+                recept.is_script_running = True
+                let_script_runs = True
+                recept.is_script_running_publisher.publish(True)
+
+                custom_script_thread = threading.Thread(target=recept.return_to_start)
+                custom_script_thread.setDaemon(True)
+                custom_script_thread.start()
+
             # If the STOP button is clicked when the custom script is still running, kill this ROS node by breaking out of the while loop.
             # This ROS node will respawn after being killed
-            elif recept.overseer_state != 2 and recept.is_script_running:
+            elif (recept.overseer_state != AUTO and recept.overseer_state != RETURN_TO_START) \
+                                                and recept.is_script_running:
+                let_script_runs = False
                 recept.is_script_running_publisher.publish(False)
-                break
+                # break
 
             recept.previous_state = recept.overseer_state
             
