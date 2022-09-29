@@ -39,6 +39,8 @@ class RobotCommander:
         self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
+        self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
+        self.disable_motor_publisher.publish(False) # in case this node crashes when disable_motor in can_interface.py is still True
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -225,6 +227,16 @@ class RobotCommander:
             return
         self._display_message('Executing sleep')
         time.sleep(seconds)
+
+    def engage_brake_hill(self):
+        while self.robot_speed > 0.1 and let_script_runs:
+            self._send_velocity_command_using_radius(0)
+
+        # Tell Arduino via UDP to engage brake
+        
+        # Add a while loop to block until Ardino says brake is engaged via UDP (remember to have let_script_run in while loop)
+        
+        self.disable_motor_publisher.publish(True)
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """

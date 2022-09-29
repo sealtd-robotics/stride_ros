@@ -63,9 +63,6 @@ class MotorControllerNode:
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
         self.winding_temperature_publisher = rospy.Publisher('/motor_controller/{}/winding_temperature'.format(self.topic_name), Int32, queue_size=10)
 
-        # Subscribers
-        # rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
-
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
         self.heartbeat_thread.setDaemon(True)
@@ -175,6 +172,7 @@ class MotorControllerNetwork:
         self.overseer_state = 0
         self.does_brake_when_stopped = False
         self.ambient_temperature_F = 72
+        self.disable_motor = False
 
         self.left_front_rpm = 0
         self.left_back_rpm = 0
@@ -228,6 +226,7 @@ class MotorControllerNetwork:
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
         rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
+        rospy.Subscriber('/robot_commander/disable_motor', Bool, self.set_disable_motor, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -285,6 +284,9 @@ class MotorControllerNetwork:
     
     def set_ambient_temperature(self, msg):
         self.ambient_temperature_F = msg.data
+
+    def set_disable_motor(self, msg):
+        self.disable_motor = msg.data
 
     def update_ambient_temperature(self):
         while True:
@@ -378,12 +380,14 @@ class MotorControllerNetwork:
                         self.mc_rf_node.spin(self.right_front_rpm)
                         self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == AUTO:
-                    self.enable_power_for_all_motors()
-
-                    self.mc_lf_node.spin(self.left_front_rpm)
-                    self.mc_lb_node.spin(self.left_back_rpm)
-                    self.mc_rf_node.spin(self.right_front_rpm)
-                    self.mc_rb_node.spin(self.right_back_rpm)
+                    if self.disable_motor:
+                        self.quick_stop_all_motors()
+                    else:
+                        self.enable_power_for_all_motors()
+                        self.mc_lf_node.spin(self.left_front_rpm)
+                        self.mc_lb_node.spin(self.left_back_rpm)
+                        self.mc_rf_node.spin(self.right_front_rpm)
+                        self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == IDLE:
                     if self.is_any_measured_wheel_rpm_above_this(450):
                         self.enable_power_for_all_motors()
