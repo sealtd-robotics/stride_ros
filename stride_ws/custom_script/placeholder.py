@@ -1,11 +1,16 @@
 rc = RobotCommander()
 
-print('a')
-rc.move_till_index(2, 100)
-print('b')
-rc.decel_to_stop_at_index(110)
-rc.rotate_till_heading(-25/180*math.pi, 45)
-rc.move_till_index(1.5, 130)
+print("This is working")
+rc.engage_brake_hill()
+rc.sleep(3)
+rc.disengage_brake_hill()
+
+# print('a')
+# rc.move_till_index(2, 100)
+# print('b')
+# rc.decel_to_stop_at_index(110)
+# rc.rotate_till_heading(-25/180*math.pi, 45)
+# rc.move_till_index(1.5, 130)
 
 # time.sleep(3)
 

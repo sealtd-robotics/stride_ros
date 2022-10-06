@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
+from socket import setdefaulttimeout
 import rospy
 import time
 import threading
@@ -33,6 +34,8 @@ class RobotCommander:
         self.robot_heading = -1
         self.turning_radius = 999
         self.limiter_initial_speed = 0
+        self.brake_command = 0
+        self.brake_status = 3
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -41,6 +44,7 @@ class RobotCommander:
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
         self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
         self.disable_motor_publisher.publish(False) # in case this node crashes when disable_motor in can_interface.py is still True
+        self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -56,9 +60,12 @@ class RobotCommander:
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
+        #solenoid breake subscribers
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+
         # blocking until these attributes have been updated by subscriber callbacks
-        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
-            time.sleep(0.1)
+        # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
+        #     time.sleep(0.1)
 
     def _display_message(self, message):
         print(message)
@@ -229,14 +236,44 @@ class RobotCommander:
         time.sleep(seconds)
 
     def engage_brake_hill(self):
+        if not let_script_runs:
+            return
+        self._display_message('Executing engage_brake')
+        rate = rospy.Rate(50)
+
         while self.robot_speed > 0.1 and let_script_runs:
             self._send_velocity_command_using_radius(0)
+            rate.sleep()
 
-        # Tell Arduino via UDP to engage brake
+        # Tell Arduino via UDP to engage brake 
+        self.brake_command = True #publish this first and subscribe in udp_socket.py, or write to udp here?
+        self.brake_command_publisher.publish(self.brake_command)
         
         # Add a while loop to block until Ardino says brake is engaged via UDP (remember to have let_script_run in while loop)
-        
+        while self.brake_status != 2 and let_script_runs: #is this all the longer loop needs to be?
+            # self.disable_motor_publisher.publish(True)
+            rate.sleep()
         self.disable_motor_publisher.publish(True)
+
+        # Add a timeout
+    
+    def disengage_brake_hill(self):
+        if not let_script_runs:
+            return
+        self._display_message('Executing disengage_brake')
+        rate = rospy.Rate(50)
+
+        #Tell arduino to disengage brake
+        self.brake_command = False #publish this first and subscribe in udp_socket.py, or write to udp here?
+        self.brake_command_publisher.publish(self.brake_command)
+
+        #Other disenage brake stuff
+        while self.brake_status != 1 and let_script_runs:
+            rate.sleep()
+        
+        self.disable_motor_publisher.publish(False)     #Dont know if this is even needed
+
+        #Add a timeout
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
@@ -324,6 +361,9 @@ class RobotCommander:
 
     def turning_radius_callback(self, msg):
         self.turning_radius = msg.data
+
+    def brake_status_callback(self,msg):
+        self.brake_status = msg.data
 
 class Receptionist:
     def __init__(self):

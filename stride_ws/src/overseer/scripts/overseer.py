@@ -23,7 +23,6 @@ import enum
 import threading
 from datetime import datetime
 from shared_tools.overseer_states_constants import *
-from tf.transformations import euler_from_quaternion
 
 
 class ErrorHandler:
