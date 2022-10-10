@@ -238,6 +238,7 @@ class RobotCommander:
     def engage_brake_hill(self):
         if not let_script_runs:
             return
+        time.sleep(0.1)
         self._display_message('Executing engage_brake')
         rate = rospy.Rate(50)
 
@@ -260,6 +261,7 @@ class RobotCommander:
     def disengage_brake_hill(self):
         if not let_script_runs:
             return
+        time.sleep(0.1)    
         self._display_message('Executing disengage_brake')
         rate = rospy.Rate(50)
 
