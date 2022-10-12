@@ -20,8 +20,7 @@ from proto_src import PubMsg
 import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from geometry_msgs.msg import TwistWithCovarianceStamped
-from external_interface.msg import TargetVehicle
-from tf.transformations import euler_from_quaternion
+from external_interface.msg import TargetVehicle 
 from math import pi, degrees, sin, cos
 import time
 import zmq
