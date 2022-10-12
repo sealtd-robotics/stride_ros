@@ -1,3 +1,11 @@
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 import time
 
 def find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed):
