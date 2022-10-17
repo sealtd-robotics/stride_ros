@@ -65,7 +65,7 @@ if __name__ == "__main__":
     heartbeat_thread.start()
 
     socket_list = [sensors_socket, estop_socket1, estop_socket2]
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
         # read_sockets gives a list of sockets that have data available to be read. This prevents recvfrom() from blocking indefinitely if no data coming.
