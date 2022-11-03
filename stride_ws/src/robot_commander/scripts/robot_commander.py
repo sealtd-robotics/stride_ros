@@ -63,7 +63,7 @@ class RobotCommander:
         #solenoid breake subscribers
         rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
         rospy.Subscriber('/fully_seated_L', Int32, self.left_brake_callback, queue_size=1)
-        rospy.Subscriber('/fully_seated_L', Int32, self.right_brake_callback, queue_size=1)
+        rospy.Subscriber('/fully_seated_R', Int32, self.right_brake_callback, queue_size=1)
 
         # blocking until these attributes have been updated by subscriber callbacks
         # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
