@@ -62,6 +62,8 @@ class RobotCommander:
 
         #solenoid breake subscribers
         rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/fully_seated_L', Int32, self.left_brake_callback, queue_size=1)
+        rospy.Subscriber('/fully_seated_L', Int32, self.right_brake_callback, queue_size=1)
 
         # blocking until these attributes have been updated by subscriber callbacks
         # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
@@ -118,7 +120,7 @@ class RobotCommander:
             return
         if index > self.max_path_index:
             let_script_runs = False
-            print("Input index must not exceed max path index.")
+            self._display_message("Input index must not exceed max path index.")
             return
         self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
@@ -179,7 +181,7 @@ class RobotCommander:
             return
         if stop_index > self.max_path_index:
             let_script_runs = False
-            print("Input stop index must not exceed max path index.")
+            self._display_message("Input stop index must not exceed max path index.")
             return
         self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
@@ -242,6 +244,11 @@ class RobotCommander:
         self._display_message('Executing engage_brake')
         rate = rospy.Rate(50)
 
+        #Pitch check
+        if abs(self.pitch) < 4:
+            self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
+            return        
+
         while self.robot_speed > 0.1 and let_script_runs:
             self._send_velocity_command_using_radius(0)
             rate.sleep()
@@ -249,15 +256,27 @@ class RobotCommander:
         # Tell Arduino via UDP to engage brake 
         self.brake_command = True #publish this first and subscribe in udp_socket.py, or write to udp here?
         self.brake_command_publisher.publish(self.brake_command)
+
+        #Timeout info
+        engage_brake_timeout = False
+        timeout = 2 #start with 2 second timeout
+        t0 = time.time()
         
-        # Add a while loop to block until Ardino says brake is engaged via UDP (remember to have let_script_run in while loop)
-        while self.brake_status != 2 and let_script_runs: #is this all the longer loop needs to be?
+        #While loop to block code until Ardino says brake is engaged via UDP 
+        while self.brake_status != 2 and let_script_runs: 
             # self.disable_motor_publisher.publish(True)
             rate.sleep()
-        self.disable_motor_publisher.publish(True)
+            if (time.time() - t0) > timeout:
+                engage_brake_timeout = True
+                break
 
-        # Add a timeout
-    
+        if self.brake_status == 2:
+            self.disable_motor_publisher.publish(True)
+        elif engage_brake_timeout == True:
+            let_script_runs = False #Abort test. State will be STOPPED
+            self._display_message("Engage brake failed") #Warning message to gui. Do they need to clcik disengage_button? If only one solenoid engaged, then may need to.
+            #Check fully seated left and right vars?
+
     def disengage_brake_hill(self):
         if not let_script_runs:
             return
@@ -265,17 +284,29 @@ class RobotCommander:
         self._display_message('Executing disengage_brake')
         rate = rospy.Rate(50)
 
+        self.disable_motor_publisher.publish(False)
+
         #Tell arduino to disengage brake
         self.brake_command = False #publish this first and subscribe in udp_socket.py, or write to udp here?
         self.brake_command_publisher.publish(self.brake_command)
 
-        #Other disenage brake stuff
+        #Timeout info
+        disengage_brake_timeout = False
+        timeout = 2
+        t0 = time.time()
+
+        #While loop to block code until Ardino says brake is disengaged via UDP 
         while self.brake_status != 1 and let_script_runs:
             rate.sleep()
-        
-        self.disable_motor_publisher.publish(False)     #Dont know if this is even needed
+            if (time.time() - t0) > timeout:
+                disengage_brake_timeout = True
+                break
 
-        #Add a timeout
+        if self.brake_status == 1:
+            return
+        elif disengage_brake_timeout == True: 
+            let_script_runs = False #Abort test
+            self._display_message('Brake failed to disengage. Press disengage brake button') #Send message to GUI to let user know they need to do something.
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
@@ -349,6 +380,7 @@ class RobotCommander:
 
     def gps_sbg_euler_callback(self, msg):
         self.robot_heading = msg.angle.z
+        self.pitch = msg.angle.y
 
     def gps_sbg_nav_callback(self, msg):
         self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
@@ -364,8 +396,14 @@ class RobotCommander:
     def turning_radius_callback(self, msg):
         self.turning_radius = msg.data
 
-    def brake_status_callback(self,msg):
+    def brake_status_callback(self, msg):
         self.brake_status = msg.data
+
+    def left_brake_callback(self, msg):
+        self.fully_seated_L = msg.data
+
+    def right_brake_callback(self, msg):
+        self.fully_seated_R = msg.data
 
 class Receptionist:
     def __init__(self):

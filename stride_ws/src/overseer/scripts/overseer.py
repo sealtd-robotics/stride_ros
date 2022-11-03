@@ -223,6 +223,15 @@ class Gps:
         self.pitch = msg.angle.y
         time.sleep(0.1)
 
+#brake class with callback function
+class Brake: 
+    def __init__(self):
+        self.brake_status = 3
+        rospy.subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+
+    def brake_status_callback(self, msg):
+        self.brake_status = msg.data
+
 # For Meredith's descend condition:
 # Remember to Initialize this class in main!!!!!!!
 # class Robot:
@@ -278,6 +287,7 @@ if __name__ ==  '__main__':
     error_handler = ErrorHandler(mcs, gui, handheld)
     rc = RobotCommander()
     gps = Gps()
+    brake = Brake()
     # robot = Robot()
 
     # initial state
@@ -313,22 +323,27 @@ if __name__ ==  '__main__':
 
         # E_Stopped
         elif state == E_STOPPED:
-            if not handheld.is_estop_pressed:
+            if not handheld.is_estop_pressed and brake.brake_status == 1:
                 state = STOPPED
+            elif not handheld.is_estop_pressed and brake.brake_status != 1:
+                #gui will show brake is engaged and that disengage button needs to be clicked
+                print("Disengage brake button on GUI needs to be clicked") #make gui message
+                #Need if logic somehwere for if disengage button is clicked
+                pass
 
         # Stopped
         elif state == STOPPED:
-            if gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
+            if gui.is_enable_manual_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = MANUAL
-            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50: # bring robot to stop before descending
+            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50 and brake.brake_status == 1: # bring robot to stop before descending
                 state = DESCENDING
-            elif gui.is_idle_clicked:
+            elif gui.is_idle_clicked and brake.brake_status == 1:
                 state = IDLE
-            elif gui.is_return_to_start_clicked:
+            elif gui.is_return_to_start_clicked and brake.brake_status == 1:
                 state = RETURN_TO_START
 
         # Decending
