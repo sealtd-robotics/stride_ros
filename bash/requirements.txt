@@ -1,4 +1,5 @@
 canopen==1.1.0
+txaio==1.0.0
 autobahn==0.10.3
 twisted==16.0.0
 protobuf==3.17.3
