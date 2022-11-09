@@ -274,8 +274,7 @@ class RobotCommander:
             self.disable_motor_publisher.publish(True)
         elif engage_brake_timeout == True:
             let_script_runs = False #Abort test. State will be STOPPED
-            self._display_message("Engage brake failed") #Warning message to gui. Do they need to clcik disengage_button? If only one solenoid engaged, then may need to.
-            #Check fully seated left and right vars?
+            self._display_message("Engage brake failed") #Warning message to gui. 
 
     def disengage_brake_hill(self):
         if not let_script_runs:
@@ -306,7 +305,7 @@ class RobotCommander:
             return
         elif disengage_brake_timeout == True: 
             let_script_runs = False #Abort test
-            self._display_message('Brake failed to disengage. Press disengage brake button') #Send message to GUI to let user know they need to do something.
+            self._display_message('Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """

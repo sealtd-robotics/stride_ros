@@ -116,7 +116,13 @@ class RosInterface:
                 "velocity": 0,
                 "gps_ready": False,
                 "gps_correction_type": 0,
-            }
+            },
+            # "mechanicalBrake": {
+            #     "brakeStatus": 0,
+            #     "fullyseated_L": 0,
+            #     "fullyseated_R": 0,
+            # },
+
         }
         
         # Subscribers
@@ -142,6 +148,11 @@ class RosInterface:
         rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_gnss_pos_callback, queue_size=1)
         rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
+
+        #Brake subscribers
+        # rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        # rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+        # rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
         
 
         # Motor Controller Subscribers
@@ -368,6 +379,17 @@ class RosInterface:
 
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
+
+    # # Brake Callbacks
+    # def brake_status_callback(self, msg):
+    #     self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
+
+    # def left_brake_callback(self, msg):
+    #     self.robotState['mechanicalBrake']['fullyseated_L'] = msg.data
+
+    # def right_brake_callback(self, msg):
+    #     self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
+        
 
 
 class MyServerProtocol(WebSocketServerProtocol):

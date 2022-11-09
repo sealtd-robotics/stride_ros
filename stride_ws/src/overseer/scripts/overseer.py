@@ -227,7 +227,7 @@ class Gps:
 class Brake: 
     def __init__(self):
         self.brake_status = 3
-        rospy.subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
 
     def brake_status_callback(self, msg):
         self.brake_status = msg.data
@@ -323,13 +323,8 @@ if __name__ ==  '__main__':
 
         # E_Stopped
         elif state == E_STOPPED:
-            if not handheld.is_estop_pressed and brake.brake_status == 1:
+            if not handheld.is_estop_pressed:
                 state = STOPPED
-            elif not handheld.is_estop_pressed and brake.brake_status != 1:
-                #gui will show brake is engaged and that disengage button needs to be clicked
-                print("Disengage brake button on GUI needs to be clicked") #make gui message
-                #Need if logic somehwere for if disengage button is clicked
-                pass
 
         # Stopped
         elif state == STOPPED:
