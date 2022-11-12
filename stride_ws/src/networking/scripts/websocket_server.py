@@ -117,11 +117,11 @@ class RosInterface:
                 "gps_ready": False,
                 "gps_correction_type": 0,
             },
-            # "mechanicalBrake": {
-            #     "brakeStatus": 0,
-            #     "fullyseated_L": 0,
-            #     "fullyseated_R": 0,
-            # },
+            "mechanicalBrake": {
+                "brakeStatus": 0,
+                "fullyseated_L": 0,
+                "fullyseated_R": 0,
+            },
 
         }
         
@@ -150,9 +150,9 @@ class RosInterface:
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
 
         #Brake subscribers
-        # rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-        # rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
-        # rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
         
 
         # Motor Controller Subscribers
@@ -210,6 +210,7 @@ class RosInterface:
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
         self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
         self.return_to_start_publisher = rospy.Publisher('/gui/return_to_start_clicked', Empty, queue_size=1)
+        self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
         
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -381,14 +382,14 @@ class RosInterface:
         self.robotState['pathFollower']['scriptName'] = msg.data
 
     # # Brake Callbacks
-    # def brake_status_callback(self, msg):
-    #     self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
+    def brake_status_callback(self, msg):
+        self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
 
-    # def left_brake_callback(self, msg):
-    #     self.robotState['mechanicalBrake']['fullyseated_L'] = msg.data
+    def left_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['fullyseated_L'] = msg.data
 
-    # def right_brake_callback(self, msg):
-    #     self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
+    def right_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
         
 
 
@@ -450,6 +451,8 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.joystick_publisher.publish(stick)
         elif message['type'] == '/gui/stop_clicked':
             MyServerProtocol.ros_interface.stop_clicked_publisher.publish()
+        elif message['type'] == '/gui/release_mechanical_brake_clicked':
+            MyServerProtocol.ros_interface.brake_command_publisher.publish(False)
         elif message['type'] == '/gui/enable_manual_clicked':
             MyServerProtocol.ros_interface.enable_manual_publisher.publish()
         elif message['type'] == '/gui/idle_clicked':
