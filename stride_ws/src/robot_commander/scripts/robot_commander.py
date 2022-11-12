@@ -238,6 +238,7 @@ class RobotCommander:
         time.sleep(seconds)
 
     def engage_brake_hill(self):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)
@@ -245,26 +246,27 @@ class RobotCommander:
         rate = rospy.Rate(50)
 
         #Pitch check
-        if abs(self.pitch) < 4:
-            self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
-            return        
+        # if abs(self.pitch) < 4:
+        #     self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
+        #     let_script_runs = False
+        #     return        
 
-        while self.robot_speed > 0.1 and let_script_runs:
-            self._send_velocity_command_using_radius(0)
-            rate.sleep()
+        # while self.robot_speed > 0.1 and let_script_runs:
+        #     self._send_velocity_command_using_radius(0)
+        #     rate.sleep()
 
         # Tell Arduino via UDP to engage brake 
-        self.brake_command = True #publish this first and subscribe in udp_socket.py, or write to udp here?
+        self.brake_command = True
         self.brake_command_publisher.publish(self.brake_command)
 
         #Timeout info
         engage_brake_timeout = False
-        timeout = 2 #start with 2 second timeout
+        timeout = 5 #start with 2 second timeout
         t0 = time.time()
         
         #While loop to block code until Ardino says brake is engaged via UDP 
         while self.brake_status != 2 and let_script_runs: 
-            # self.disable_motor_publisher.publish(True)
+            # self.disable_motor_publisher.publish(False)
             rate.sleep()
             if (time.time() - t0) > timeout:
                 engage_brake_timeout = True
@@ -277,6 +279,7 @@ class RobotCommander:
             self._display_message("Engage brake failed") #Warning message to gui. 
 
     def disengage_brake_hill(self):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)    
