@@ -32,6 +32,12 @@ void DataRecorderSub::InitializeSubscribers() {
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
     cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
     target_vehicle_sub_ = nh_.subscribe("/target", 1, &DataRecorderSub::TargetVehicleCallback, this);
+
+    //Mechanical Brake info
+    brake_command_sub_ = nh_.subscribe("/brake_command", 1, &DataRecorderSub::BrakeCommandCallback, this);
+    brake_status_sub_ = nh_.subscribe("/brake_status", 1, &DataRecorderSub::BrakeStatusCallback, this);
+    fully_seated_L_sub_ = nh_.subscribe("/fullyseated_L", 1, &DataRecorderSub::LeftBrakeCallback, this);
+    fully_seated_R_sub_ = nh_.subscribe("/fullyseated_R", 1, &DataRecorderSub::RightBrakeCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -136,6 +142,22 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_latitude = msg -> latitude;
     df_.vehicle_longitude = msg -> longitude;
     df_.vehicle_heading = msg -> heading;
+}
+
+void DataRecorderSub::BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
+    df_.brake_command = msg -> data;
+}
+
+void DataRecorderSub::BrakeStatusCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.brake_status = msg -> data;
+}
+
+void DataRecorderSub::LeftBrakeCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.fully_seated_L = msg -> data;
+}
+
+void DataRecorderSub::RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.fully_seated_R = msg -> data;
 }
 
 int DataRecorderSub::SetupRecording() {
@@ -250,7 +272,11 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vehicle_speed << dem;
                 outFile << temp.vehicle_latitude << dem;
                 outFile << temp.vehicle_longitude << dem;
-                outFile << temp.vehicle_heading << dem << "\n";
+                outFile << temp.vehicle_heading << dem;
+                outFile << temp.brake_command << dem;
+                outFile << temp.brake_status << dem;
+                outFile << temp.fully_seated_L << dem;
+                outFile << temp.fully_seated_R << dem << "\n";
             }
         }
         outFile.close();

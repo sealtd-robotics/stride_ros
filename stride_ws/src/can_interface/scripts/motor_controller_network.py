@@ -227,6 +227,8 @@ class MotorControllerNetwork:
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
         rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
         rospy.Subscriber('/robot_commander/disable_motor', Bool, self.set_disable_motor, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/brake_command', Bool, self.brake_command_callback, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -248,13 +250,17 @@ class MotorControllerNetwork:
         self.mcn_thread_4.setDaemon(True)
         self.mcn_thread_4.start()
 
+    # def can_relax(self):
+    #     return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
+    #             self.are_all_measured_wheel_rpm_below_this(10)
+
     def can_relax(self):
-        return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
+        return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED or (self.overseer_state == AUTO and self.brake_command == True and self.brake_status !=2)) and \
                 self.are_all_measured_wheel_rpm_below_this(10)
 
     def relax_motors(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
-        interval = 3
+        interval = 2
 
         # relax the motor that draws the most current
         while True:
@@ -287,6 +293,12 @@ class MotorControllerNetwork:
 
     def set_disable_motor(self, msg):
         self.disable_motor = msg.data
+
+    def brake_command_callback(self,msg):
+        self.brake_command = msg.data
+
+    def brake_status_callback(self,msg):
+        self.brake_status = msg.data
 
     def update_ambient_temperature(self):
         while True:
