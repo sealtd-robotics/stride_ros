@@ -62,8 +62,8 @@ class RobotCommander:
 
         #solenoid breake subscribers
         rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-        rospy.Subscriber('/fully_seated_L', Int32, self.left_brake_callback, queue_size=1)
-        rospy.Subscriber('/fully_seated_R', Int32, self.right_brake_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
 
         # blocking until these attributes have been updated by subscriber callbacks
         # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
@@ -246,7 +246,7 @@ class RobotCommander:
         rate = rospy.Rate(50)
 
         #Pitch check
-        # if abs(self.pitch) < 4:
+        # if abs(self.pitch) < 4 /180*math.pi:
         #     self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
         #     let_script_runs = False
         #     return        
@@ -261,16 +261,21 @@ class RobotCommander:
 
         #Timeout info
         engage_brake_timeout = False
-        timeout = 5 #start with 2 second timeout
+        timeout = 10 #start with 2 second timeout
         t0 = time.time()
         
         #While loop to block code until Ardino says brake is engaged via UDP 
         while self.brake_status != 2 and let_script_runs: 
-            # self.disable_motor_publisher.publish(False)
             rate.sleep()
+            # self.brake_command_publisher.publish(False)
+            # self.brake_command_publisher.publish(True)
             if (time.time() - t0) > timeout:
                 engage_brake_timeout = True
                 break
+            # time.sleep(5)
+            # self.brake_command_publisher.publish(False)
+            # time.sleep(2)
+            # self.brake_command_publisher.publish(True)
 
         if self.brake_status == 2:
             self.disable_motor_publisher.publish(True)
