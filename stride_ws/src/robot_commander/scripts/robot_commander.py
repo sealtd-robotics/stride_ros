@@ -261,21 +261,22 @@ class RobotCommander:
 
         #Timeout info
         engage_brake_timeout = False
-        timeout = 10 #start with 2 second timeout
+        timeout = 50 
         t0 = time.time()
         
         #While loop to block code until Ardino says brake is engaged via UDP 
         while self.brake_status != 2 and let_script_runs: 
+            # print("let_script_run = " + str(let_script_runs) + "\n") 
+            print("brake_status = " + str(self.brake_status) + "\n")
             rate.sleep()
-            # self.brake_command_publisher.publish(False)
-            # self.brake_command_publisher.publish(True)
             if (time.time() - t0) > timeout:
                 engage_brake_timeout = True
                 break
-            # time.sleep(5)
-            # self.brake_command_publisher.publish(False)
-            # time.sleep(2)
-            # self.brake_command_publisher.publish(True)
+            time.sleep(7)
+            self.brake_command_publisher.publish(False)
+            time.sleep(1)
+            self.brake_command_publisher.publish(True)
+            time.sleep(2)
 
         if self.brake_status == 2:
             self.disable_motor_publisher.publish(True)
@@ -405,6 +406,7 @@ class RobotCommander:
 
     def brake_status_callback(self, msg):
         self.brake_status = msg.data
+        # print("callback brake status: " + str(self.brake_status))
 
     def left_brake_callback(self, msg):
         self.fully_seated_L = msg.data

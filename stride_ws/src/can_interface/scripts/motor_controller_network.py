@@ -179,6 +179,8 @@ class MotorControllerNetwork:
         self.right_front_rpm = 0
         self.right_back_rpm = 0
 
+        self.brake_command = 0
+        self.brake_status = 3
         # Get motor controller parameters
         mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
         mc_lb_node_id = rospy.get_param('~mc_lb_node_id') # motor controller at left back
@@ -260,7 +262,7 @@ class MotorControllerNetwork:
 
     def relax_motors(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
-        interval = 2
+        interval = 1
 
         # relax the motor that draws the most current
         while True:
