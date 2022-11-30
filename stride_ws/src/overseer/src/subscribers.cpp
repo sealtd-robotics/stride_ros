@@ -38,6 +38,7 @@ void DataRecorderSub::InitializeSubscribers() {
     brake_status_sub_ = nh_.subscribe("/brake_status", 1, &DataRecorderSub::BrakeStatusCallback, this);
     fully_seated_L_sub_ = nh_.subscribe("/fullyseated_L", 1, &DataRecorderSub::LeftBrakeCallback, this);
     fully_seated_R_sub_ = nh_.subscribe("/fullyseated_R", 1, &DataRecorderSub::RightBrakeCallback, this);
+    disable_motors_sub_ = nh_.subscribe("/robot_commander/disable_motor", 1, &DataRecorderSub::DisableMotorsCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -160,6 +161,10 @@ void DataRecorderSub::RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg) {
     df_.fully_seated_R = msg -> data;
 }
 
+void DataRecorderSub::DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg) {
+    df_.disable_motors = msg -> data;
+}
+
 int DataRecorderSub::SetupRecording() {
     wf.open(export_path + "/data.bin", std::ios::out | std::ios::binary);
     if (!wf.is_open()) {
@@ -276,7 +281,8 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.brake_command << dem;
                 outFile << temp.brake_status << dem;
                 outFile << temp.fully_seated_L << dem;
-                outFile << temp.fully_seated_R << dem << "\n";
+                outFile << temp.fully_seated_R << dem;
+                outFile << temp.disable_motors << dem << "\n";
             }
         }
         outFile.close();

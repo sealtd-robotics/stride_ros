@@ -118,6 +118,9 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        # if self.brake_status != 1:
+        #     print("Brake is Engaged. Movement is blocked")
+        #     return
         if index > self.max_path_index:
             let_script_runs = False
             self._display_message("Input index must not exceed max path index.")
@@ -265,20 +268,46 @@ class RobotCommander:
         t0 = time.time()
         
         #While loop to block code until Ardino says brake is engaged via UDP 
+        time.sleep(0.2)
+        t1 = time.time()
+        time_check = 5
         while self.brake_status != 2 and let_script_runs: 
-            # print("let_script_run = " + str(let_script_runs) + "\n") 
-            print("brake_status = " + str(self.brake_status) + "\n")
-            rate.sleep()
+            # time_check = 7
+            # rate.sleep()
             if (time.time() - t0) > timeout:
                 engage_brake_timeout = True
                 break
-            time.sleep(7)
-            self.brake_command_publisher.publish(False)
-            time.sleep(1)
-            self.brake_command_publisher.publish(True)
-            time.sleep(2)
+
+            if self.brake_status !=2 and (time.time() - t1) < time_check:
+                # time.sleep(1)
+                # print("first check. sleep 1 second")
+                # print("time - t1" + str((time.time()-t1)))
+                pass
+            elif self.brake_status == 2:
+                break
+            if (time.time() - t1) > time_check:
+                t1 = time.time()
+                self.brake_command_publisher.publish(False)
+                print("Sleep 1 second" + '\n')
+                time.sleep(1)
+                self.brake_command_publisher.publish(True)
+                print("Sleep 2 seconds" + '\n')
+            rate.sleep()
+
+                # print("Sleep 7 seconds" + '\n')
+                # time.sleep(7)
+                # if self.brake_status == 2:
+                #     break
+                # self.brake_command_publisher.publish(False)
+                # print("Sleep 1 second" + '\n')
+                # time.sleep(1)
+                # self.brake_command_publisher.publish(True)
+                # print("Sleep 2 seconds" + '\n')
+                # time.sleep(2)
+                # print("Brake Status = " + str(self.brake_status))
 
         if self.brake_status == 2:
+            time.sleep(0.5)
             self.disable_motor_publisher.publish(True)
         elif engage_brake_timeout == True:
             let_script_runs = False #Abort test. State will be STOPPED
@@ -293,6 +322,7 @@ class RobotCommander:
         rate = rospy.Rate(50)
 
         self.disable_motor_publisher.publish(False)
+        time.sleep(0.1)
 
         #Tell arduino to disengage brake
         self.brake_command = False #publish this first and subscribe in udp_socket.py, or write to udp here?

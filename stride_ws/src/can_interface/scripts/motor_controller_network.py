@@ -181,6 +181,7 @@ class MotorControllerNetwork:
 
         self.brake_command = 0
         self.brake_status = 3
+        self.previous_state = -1
         # Get motor controller parameters
         mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
         mc_lb_node_id = rospy.get_param('~mc_lb_node_id') # motor controller at left back
@@ -394,6 +395,10 @@ class MotorControllerNetwork:
                         self.mc_rf_node.spin(self.right_front_rpm)
                         self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == AUTO:
+                    if self.previous_state != self.overseer_state:
+                        self.disable_motor = False
+                        print("It goes here")
+                    # self.previous_state = self.overseer_state
                     if self.disable_motor:
                         self.quick_stop_all_motors()
                     else:
@@ -408,6 +413,7 @@ class MotorControllerNetwork:
                         self.send_zero_rpm_to_all_motors()
                     else:
                         self.quick_stop_all_motors()
+                self.previous_state = self.overseer_state
             except Exception as error:
                 rospy.logerr("Ignore this error when power-cycling motor controllers. The drive function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
