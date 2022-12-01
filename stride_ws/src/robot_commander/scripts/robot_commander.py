@@ -88,7 +88,7 @@ class RobotCommander:
     def move_until_end_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing move_until_end_of_path')
@@ -104,7 +104,7 @@ class RobotCommander:
     def brake_to_stop(self, speed_rate):
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing brake_to_stop')
@@ -124,7 +124,7 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         if index > self.max_path_index:
@@ -144,7 +144,7 @@ class RobotCommander:
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing rotate_until_heading')
@@ -191,7 +191,7 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         if stop_index > self.max_path_index:
@@ -225,7 +225,7 @@ class RobotCommander:
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
-        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing move_until_beginning_of_path')
