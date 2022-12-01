@@ -253,17 +253,16 @@ class MotorControllerNetwork:
         self.mcn_thread_4.setDaemon(True)
         self.mcn_thread_4.start()
 
-    # def can_relax(self):
-    #     return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
-    #             self.are_all_measured_wheel_rpm_below_this(10)
-
     def can_relax(self):
-        return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED or (self.overseer_state == AUTO and self.brake_command == True and self.brake_status !=2)) and \
+        return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
                 self.are_all_measured_wheel_rpm_below_this(10)
+
+    def can_relax_while_braking(self):
+        return (self.overseer_state == AUTO and self.are_all_measured_wheel_rpm_below_this(10))
 
     def relax_motors(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
-        interval = 1
+        interval = 3
 
         # relax the motor that draws the most current
         while True:
@@ -279,6 +278,25 @@ class MotorControllerNetwork:
                 rospy.logerr("Ignore this error when power-cycling motor controllers. The relax_motors function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
                 continue
+    
+    def relax_motors_while_braking(self):
+        nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
+        interval = 1
+
+        # relax the motor that draws the most current
+        while True:
+            # try:
+            time.sleep(interval)
+            if self.can_relax_while_braking():
+                max_current_node = nodes[0]
+                for i in range(1,4):
+                    if max_current_node.current < nodes[i].current:
+                        max_current_node = nodes[i]
+                max_current_node.disable_enable_power()
+            # except Exception as error:
+            #     rospy.logerr("Ignore this error when power-cycling motor controllers. The relax_motors function from a thread of motor_controller_network.py raised an error, which says %s", error)
+            #     time.sleep(1)
+            #     continue
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
@@ -397,16 +415,17 @@ class MotorControllerNetwork:
                 elif self.overseer_state == AUTO:
                     if self.previous_state != self.overseer_state:
                         self.disable_motor = False
-                        print("It goes here")
-                    # self.previous_state = self.overseer_state
                     if self.disable_motor:
                         self.quick_stop_all_motors()
                     else:
-                        self.enable_power_for_all_motors()
-                        self.mc_lf_node.spin(self.left_front_rpm)
-                        self.mc_lb_node.spin(self.left_back_rpm)
-                        self.mc_rf_node.spin(self.right_front_rpm)
-                        self.mc_rb_node.spin(self.right_back_rpm)
+                        if self.brake_command == True and self.brake_status != 2:
+                            self.relax_motors_while_braking()
+                        else:
+                            self.enable_power_for_all_motors()
+                            self.mc_lf_node.spin(self.left_front_rpm)
+                            self.mc_lb_node.spin(self.left_back_rpm)
+                            self.mc_rf_node.spin(self.right_front_rpm)
+                            self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == IDLE:
                     if self.is_any_measured_wheel_rpm_above_this(450):
                         self.enable_power_for_all_motors()

@@ -88,6 +88,9 @@ class RobotCommander:
     def move_until_end_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
+            return
         self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
 
@@ -100,6 +103,9 @@ class RobotCommander:
 
     def brake_to_stop(self, speed_rate):
         if not let_script_runs:
+            return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
@@ -118,9 +124,9 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
-        # if self.brake_status != 1:
-        #     print("Brake is Engaged. Movement is blocked")
-        #     return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
+            return
         if index > self.max_path_index:
             let_script_runs = False
             self._display_message("Input index must not exceed max path index.")
@@ -137,6 +143,9 @@ class RobotCommander:
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         if not let_script_runs:
+            return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing rotate_until_heading')
         if heading >= 0:
@@ -182,6 +191,9 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
+            return
         if stop_index > self.max_path_index:
             let_script_runs = False
             self._display_message("Input stop index must not exceed max path index.")
@@ -212,6 +224,9 @@ class RobotCommander:
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
+            return
+        if self.brake_status != 1: #Blcok function if brake isn't fully disengaged
+            print("Brake not disengaged. Movement is blocked")
             return
         self._display_message('Executing move_until_beginning_of_path')
         self._display_message(dash_line)
@@ -254,6 +269,7 @@ class RobotCommander:
         #     let_script_runs = False
         #     return        
 
+        #Send speed to zero before braking
         # while self.robot_speed > 0.1 and let_script_runs:
         #     self._send_velocity_command_using_radius(0)
         #     rate.sleep()
@@ -267,25 +283,20 @@ class RobotCommander:
         timeout = 50 
         t0 = time.time()
         
-        #While loop to block code until Ardino says brake is engaged via UDP 
+        #While loop to block code until Arduino says brake is engaged via UDP 
         time.sleep(0.2)
         t1 = time.time()
-        time_check = 5
+        time_check = 5 #Time for motors to be able to relax
         while self.brake_status != 2 and let_script_runs: 
-            # time_check = 7
-            # rate.sleep()
-            if (time.time() - t0) > timeout:
+            if (time.time() - t0) > timeout: #Timeout engage brake when it fails
                 engage_brake_timeout = True
                 break
 
-            if self.brake_status !=2 and (time.time() - t1) < time_check:
-                # time.sleep(1)
-                # print("first check. sleep 1 second")
-                # print("time - t1" + str((time.time()-t1)))
+            if self.brake_status !=2 and (time.time() - t1) < time_check: #Allow motor rollback time if brake doesn't engage all the way
                 pass
-            elif self.brake_status == 2:
+            elif self.brake_status == 2: #Exit while loop if brake is fully engaged
                 break
-            if (time.time() - t1) > time_check:
+            if (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
                 t1 = time.time()
                 self.brake_command_publisher.publish(False)
                 print("Sleep 1 second" + '\n')
@@ -294,24 +305,12 @@ class RobotCommander:
                 print("Sleep 2 seconds" + '\n')
             rate.sleep()
 
-                # print("Sleep 7 seconds" + '\n')
-                # time.sleep(7)
-                # if self.brake_status == 2:
-                #     break
-                # self.brake_command_publisher.publish(False)
-                # print("Sleep 1 second" + '\n')
-                # time.sleep(1)
-                # self.brake_command_publisher.publish(True)
-                # print("Sleep 2 seconds" + '\n')
-                # time.sleep(2)
-                # print("Brake Status = " + str(self.brake_status))
-
-        if self.brake_status == 2:
-            time.sleep(0.5)
-            self.disable_motor_publisher.publish(True)
-        elif engage_brake_timeout == True:
+        if self.brake_status == 2: #Once brake fully engaged, wait 0.5 seconds and then disable motors
+            time.sleep(0.5)  
+            self.disable_motor_publisher.publish(True) 
+        elif engage_brake_timeout == True: #If timeout occurs
             let_script_runs = False #Abort test. State will be STOPPED
-            self._display_message("Engage brake failed") #Warning message to gui. 
+            self._display_message("Engage brake failed") #Warning message to gui 
 
     def disengage_brake_hill(self):
         global let_script_runs
@@ -321,11 +320,12 @@ class RobotCommander:
         self._display_message('Executing disengage_brake')
         rate = rospy.Rate(50)
 
+        #Enable motors before disengaging
         self.disable_motor_publisher.publish(False)
         time.sleep(0.1)
 
         #Tell arduino to disengage brake
-        self.brake_command = False #publish this first and subscribe in udp_socket.py, or write to udp here?
+        self.brake_command = False 
         self.brake_command_publisher.publish(self.brake_command)
 
         #Timeout info
@@ -336,13 +336,13 @@ class RobotCommander:
         #While loop to block code until Ardino says brake is disengaged via UDP 
         while self.brake_status != 1 and let_script_runs:
             rate.sleep()
-            if (time.time() - t0) > timeout:
+            if (time.time() - t0) > timeout: #Timeout disengage brake when it fails
                 disengage_brake_timeout = True
                 break
 
-        if self.brake_status == 1:
+        if self.brake_status == 1: #Exit function if brake fully disengaged
             return
-        elif disengage_brake_timeout == True: 
+        elif disengage_brake_timeout == True: #If function times out, abort test and send message to the gui
             let_script_runs = False #Abort test
             self._display_message('Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
