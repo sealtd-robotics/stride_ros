@@ -88,6 +88,7 @@ class RobotCommander:
     def move_until_end_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
@@ -104,6 +105,7 @@ class RobotCommander:
     def brake_to_stop(self, speed_rate):
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
@@ -124,6 +126,7 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
@@ -144,6 +147,7 @@ class RobotCommander:
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
@@ -191,6 +195,7 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
@@ -225,6 +230,7 @@ class RobotCommander:
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
+        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             print("Brake not disengaged. Movement is blocked")
             return
