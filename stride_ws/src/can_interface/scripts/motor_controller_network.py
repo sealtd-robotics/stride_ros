@@ -418,13 +418,10 @@ class MotorControllerNetwork:
                         self.disable_motor = False
                     if self.disable_motor:
                         self.quick_stop_all_motors()
-                        print("Motors are disabling")
                     else:
                         if self.brake_command == True and self.brake_status != 2:
-                            print("motors are relaxing")
                             self.relax_motors_while_braking()
                         else:
-                            print("else motors enable")
                             self.enable_power_for_all_motors()
                             self.mc_lf_node.spin(self.left_front_rpm)
                             self.mc_lb_node.spin(self.left_back_rpm)
