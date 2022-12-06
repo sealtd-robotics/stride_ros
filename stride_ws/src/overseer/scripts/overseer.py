@@ -352,13 +352,13 @@ if __name__ ==  '__main__':
         elif state == IDLE:
             if gui.is_stop_clicked:
                 state = STOPPED
-            elif gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
+            elif gui.is_enable_manual_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = MANUAL
-            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif gui.is_return_to_start_clicked:
+            elif gui.is_return_to_start_clicked and brake.brake_status == 1:
                 state = RETURN_TO_START
 
         # Return to start

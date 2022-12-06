@@ -43,7 +43,7 @@ class RobotCommander:
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
         self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
-        self.disable_motor_publisher.publish(False) # in case this node crashes when disable_motor in can_interface.py is still True
+        # self.disable_motor_publisher.publish(False) # in case this node crashes when disable_motor in can_interface.py is still True
         self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
         # Subscribers
@@ -86,11 +86,13 @@ class RobotCommander:
         self.velocity_command_publisher.publish(pose2d)
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
@@ -103,11 +105,13 @@ class RobotCommander:
             rate.sleep()
 
     def brake_to_stop(self, speed_rate):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
@@ -128,7 +132,8 @@ class RobotCommander:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         if index > self.max_path_index:
             let_script_runs = False
@@ -145,11 +150,13 @@ class RobotCommander:
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         self._display_message('Executing rotate_until_heading')
         if heading >= 0:
@@ -197,7 +204,8 @@ class RobotCommander:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         if stop_index > self.max_path_index:
             let_script_runs = False
@@ -228,11 +236,13 @@ class RobotCommander:
         self.stop_index_publisher.publish(999999)
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        global let_script_runs
         if not let_script_runs:
             return
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            print("Brake not disengaged. Movement is blocked")
+            let_script_runs = False
+            print("Brake not disengaged. Movement blocked and test aborted.")
             return
         self._display_message('Executing move_until_beginning_of_path')
         self._display_message(dash_line)
@@ -305,10 +315,10 @@ class RobotCommander:
             if (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
                 t1 = time.time()
                 self.brake_command_publisher.publish(False)
-                print("Sleep 1 second" + '\n')
+                # print("Sleep 1 second" + '\n')
                 time.sleep(1)
                 self.brake_command_publisher.publish(True)
-                print("Sleep 2 seconds" + '\n')
+                # print("Sleep 2 seconds" + '\n')
             rate.sleep()
 
         if self.brake_status == 2: #Once brake fully engaged, wait 0.5 seconds and then disable motors
