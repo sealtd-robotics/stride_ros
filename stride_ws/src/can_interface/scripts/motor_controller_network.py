@@ -257,8 +257,8 @@ class MotorControllerNetwork:
         return (self.overseer_state == MANUAL or self.overseer_state == E_STOPPED or self.overseer_state == STOPPED) and \
                 self.are_all_measured_wheel_rpm_below_this(10)
 
-    def can_relax_while_braking(self):
-        return (self.overseer_state == AUTO and self.are_all_measured_wheel_rpm_below_this(10))
+    # def can_relax_while_braking(self):
+    #     return (self.overseer_state == AUTO and self.are_all_measured_wheel_rpm_below_this(10))
 
     def relax_motors(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
@@ -281,10 +281,10 @@ class MotorControllerNetwork:
     
     def relax_motors_while_braking(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
-        interval = 1
+        interval = 0.25
 
         # relax the motor that draws the most current
-        while self.brake_status !=2:
+        while self.brake_status !=2 and self.overseer_state == AUTO:
             # try:
             time.sleep(interval)
             # if self.can_relax_while_braking():

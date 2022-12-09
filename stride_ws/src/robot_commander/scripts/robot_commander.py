@@ -89,12 +89,12 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing move_until_end_of_path')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        self._display_message('Executing move_until_end_of_path')
         rate = rospy.Rate(50)
 
         initial_time = time.time()
@@ -108,12 +108,12 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing brake_to_stop')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        self._display_message('Executing brake_to_stop')
         rate = rospy.Rate(50)
         speed_goal = 0
 
@@ -130,16 +130,16 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing move_until_index')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
         if index > self.max_path_index:
             let_script_runs = False
             self._display_message("Input index must not exceed max path index.")
             return
-        self._display_message('Executing move_until_index')
         rate = rospy.Rate(50)
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
@@ -153,12 +153,12 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing rotate_until_heading')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        self._display_message('Executing rotate_until_heading')
         if heading >= 0:
             heading = heading % 360
         else:
@@ -202,16 +202,16 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing decel_to_stop_at_index')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
         if stop_index > self.max_path_index:
             let_script_runs = False
             self._display_message("Input stop index must not exceed max path index.")
             return
-        self._display_message('Executing decel_to_stop_at_index')
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50
@@ -239,12 +239,12 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing move_until_beginning_of_path')
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            print("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        self._display_message('Executing move_until_beginning_of_path')
         self._display_message(dash_line)
         rate = rospy.Rate(50)
 
@@ -285,9 +285,11 @@ class RobotCommander:
         #     let_script_runs = False
         #     return        
 
-        #Send speed to zero before braking
+        # Send speed to zero before braking
         # while self.robot_speed > 0.1 and let_script_runs:
-        #     self._send_velocity_command_using_radius(0)
+        #     # self._send_velocity_command_using_radius(0)
+        #     self._display_message("WARNING: Robot speed still active before brake")
+        #     self.brake_to_stop(0.1*9.81)
         #     rate.sleep()
 
         # Tell Arduino via UDP to engage brake 
