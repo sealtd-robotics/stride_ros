@@ -82,18 +82,69 @@ class RobotCommander:
 
         self.velocity_command_publisher.publish(pose2d)
 
+    def _rate_limiter(self, speed_goal, acceleration, total_distance_in_index):
+        initial_time_in_s = time.time()
+        current_velocity = 0
+        is_starting_decel = True
+        frequency = 50 #hz
+        period = 1/frequency
+        r = rospy.Rate(frequency) 
+        minimum_decel_vel = 0.3 #m/s
+       
+        if speed_goal < 0: #reverse motion
+            acceleration_distance =  total_distance_in_index*2/3 
+            const_vel_distance = total_distance_in_index/3
+
+            while self.current_path_index > 0 and let_script_runs:
+                if self.current_path_index >=  acceleration_distance:
+                    velocity_input = math.copysign((min(abs(acceleration * (time.time()-initial_time_in_s)), abs(speed_goal))), speed_goal)
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep()
+                elif self.current_path_index >=  const_vel_distance:
+                    velocity_input =  current_velocity
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep()
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[ 0 : self.current_path_index ])
+                        a = current_velocity**2 / (2*d) #vf^2 = vi^2 + 2*a*d
+                        is_starting_decel = False
+
+                    velocity_input = math.copysign(max(abs(current_velocity + a*period) , abs(minimum_decel_vel)), speed_goal) #current velocity is -ve
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep() 
+                current_velocity = velocity_input
+                
+        else: #forward motion
+            acceleration_distance = total_distance_in_index/3
+            const_vel_distance = total_distance_in_index*2/3
+
+            while self.current_path_index < total_distance_in_index and let_script_runs:
+                if self.current_path_index <=  acceleration_distance:
+                    velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep()
+                elif self.current_path_index <=  const_vel_distance:
+                    velocity_input = current_velocity
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep()
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
+                        a = current_velocity**2 / (2*d) 
+                        is_starting_decel = False
+
+                    velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
+                    self._send_velocity_command_using_radius(velocity_input)
+                    r.sleep() 
+                current_velocity = velocity_input
+
     def move_until_end_of_path(self, speed_goal, speed_rate):
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
-        rate = rospy.Rate(50)
-
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < self.max_path_index) and let_script_runs:
-            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-            self._send_velocity_command_using_radius(limited_speed)
-            rate.sleep()
+        self._display_message(dash_line)
+        self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
 
     def brake_to_stop(self, speed_rate):
         if not let_script_runs:
@@ -209,24 +260,7 @@ class RobotCommander:
             return
         self._display_message('Executing move_until_beginning_of_path')
         self._display_message(dash_line)
-        rate = rospy.Rate(50)
-
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
-
-        while (self.current_path_index > 0) and let_script_runs:
-            if self.current_path_index < 5 and let_script_runs:
-                limited_speed = _find_rate_limited_speed(0.05, initial_time, -0.5, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
-            elif 5 <= self.current_path_index < 10 and let_script_runs:
-                limited_speed = _find_rate_limited_speed(0.1, initial_time, -1.0, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
-            else:
-                limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
+        self._rate_limiter(speed_goal, speed_rate, self.current_path_index)
 
     def sleep(self, seconds):
         if not let_script_runs:
