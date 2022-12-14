@@ -27,6 +27,12 @@ def monitor_heartbeat():
             estop_publisher2.publish(True)
         time.sleep(0.3)
 
+def monitor_portenta_heartbeat():
+    while True:
+        if get_time_now_in_ms() - portenta_socket_timestamp > 2000:
+            portenta_heartbeat_publisher.publish(False)
+        time.sleep(0.2)
+
 def brake_command_callback(msg):
     global brake_command
     brake_command = msg.data
@@ -49,6 +55,7 @@ if __name__ == "__main__":
     brake_status_publisher = rospy.Publisher('/brake_status', Int32, queue_size = 1)
     fullyseated_L_publisher = rospy.Publisher('/fullyseated_L', Int32, queue_size = 1)
     fullyseated_R_publisher = rospy.Publisher('/fullyseated_R', Int32, queue_size = 1)
+    portenta_heartbeat_publisher = rospy.Publisher('/portenta_heartbeat', Bool, queue_size = 1)
 
     # for finding moving average
     robot_temperature_history  = deque([70] * 20)
@@ -69,17 +76,27 @@ if __name__ == "__main__":
 
     # Brake: Arduino to jetson
     brake_socket = socket(AF_INET, SOCK_DGRAM)
-    brake_socket.bind(('',54005)) #check if port number is ok
+    brake_socket.bind(('',54005)) 
 
     # Brake: Jetson to arduino
-    brake_socket2 = socket(AF_INET, SOCK_DGRAM) # Should this be elsewhere if I need to write data?
+    brake_socket2 = socket(AF_INET, SOCK_DGRAM) 
+
+    #Portenta heartbeat
+    portenta_socket = socket(AF_INET, SOCK_DGRAM)
+    portenta_socket.bind(('',54007)) 
+    portenta_socket_timestamp = get_time_now_in_ms()
 
     # Heartbeat timeout thread
     heartbeat_thread = threading.Thread(target=monitor_heartbeat)
     heartbeat_thread.setDaemon(True)
     heartbeat_thread.start()
 
-    socket_list = [sensors_socket, estop_socket1, estop_socket2, brake_socket]
+    # Portenta Heartbeat timeout thread
+    portenta_heartbeat_thread = threading.Thread(target=monitor_portenta_heartbeat)
+    portenta_heartbeat_thread.setDaemon(True)
+    portenta_heartbeat_thread.start()
+
+    socket_list = [sensors_socket, estop_socket1, estop_socket2, brake_socket, portenta_socket]
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
@@ -128,11 +145,17 @@ if __name__ == "__main__":
 
             elif sock == brake_socket:
                 dat, addr = sock.recvfrom(1024) 
-                brake_status, fullyseated_L, fullyseated_R = struct.unpack('3B',dat[0:3]) ##edit this line based on number of params from arduino
+                brake_status, fullyseated_L, fullyseated_R = struct.unpack('3B',dat[0:3]) 
                 
                 #publish vars from arduino
                 brake_status_publisher.publish(brake_status)   
                 fullyseated_L_publisher.publish(fullyseated_L)    
                 fullyseated_R_publisher.publish(fullyseated_R) 
+
+            elif sock == portenta_socket:
+                dat, addr = sock.recvfrom(1024)
+                (is_portenta_ok,) = struct.unpack('?', dat[0])
+                portenta_heartbeat_publisher.publish(is_portenta_ok)
+                portenta_socket_timestamp = get_time_now_in_ms()
 
         rate.sleep()
