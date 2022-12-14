@@ -279,13 +279,13 @@ class RobotCommander:
         self._display_message('Executing engage_brake')
         rate = rospy.Rate(50)
 
-        #Pitch check
+        # #Pitch check
         # if abs(self.pitch) < 4 /180*math.pi:
         #     self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
         #     let_script_runs = False
         #     return        
 
-        # Send speed to zero before braking
+        # #Send speed to zero before braking
         # while self.robot_speed > 0.1 and let_script_runs:
         #     # self._send_velocity_command_using_radius(0)
         #     self._display_message("WARNING: Robot speed still active before brake")
@@ -310,17 +310,15 @@ class RobotCommander:
                 engage_brake_timeout = True
                 break
 
-            if self.brake_status !=2 and (time.time() - t1) < time_check: #Allow motor rollback time if brake doesn't engage all the way
-                pass
-            elif self.brake_status == 2: #Exit while loop if brake is fully engaged
+            if self.brake_status == 2: #Exit while loop if brake is fully engaged
                 break
-            if (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
-                t1 = time.time()
+            elif (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
                 self.brake_command_publisher.publish(False)
                 # print("Sleep 1 second" + '\n')
                 time.sleep(1)
                 self.brake_command_publisher.publish(True)
                 # print("Sleep 2 seconds" + '\n')
+                t1 = time.time()
             rate.sleep()
 
         if self.brake_status == 2: #Once brake fully engaged, wait 0.5 seconds and then disable motors
@@ -354,13 +352,16 @@ class RobotCommander:
         #While loop to block code until Ardino says brake is disengaged via UDP 
         while self.brake_status != 1 and let_script_runs:
             rate.sleep()
+            self._send_velocity_command_using_radius(0.025)
             if (time.time() - t0) > timeout: #Timeout disengage brake when it fails
                 disengage_brake_timeout = True
                 break
 
         if self.brake_status == 1: #Exit function if brake fully disengaged
+            self._send_velocity_command_using_radius(0)
             return
         elif disengage_brake_timeout == True: #If function times out, abort test and send message to the gui
+            self._send_velocity_command_using_radius(0)
             let_script_runs = False #Abort test
             self._display_message('Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
