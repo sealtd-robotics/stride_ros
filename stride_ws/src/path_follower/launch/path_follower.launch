@@ -1,3 +1,3 @@
 <launch>
-  <node pkg="path_follower" type="follower.py" name="path_follower" output="screen" cwd="node"/>
+  <node pkg="path_follower" type="follower.py" name="path_follower" output="screen" cwd="node" respawn="true"/>
 </launch>

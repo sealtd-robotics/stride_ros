@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="drive_mechanism" type="differential_drive.py" name="differential_drive" output="screen">
+  <node pkg="drive_mechanism" type="differential_drive.py" name="differential_drive" output="screen" respawn="true">
     <rosparam file="$(find drive_mechanism)/../../params/params.yaml" command="load"/>
   </node>
 </launch>
