@@ -58,6 +58,7 @@ class RosInterface:
             "robotTemperature": 0,
             "batteryTemperature": 0,
             "batteryVoltage": 0,
+            "portentaHeartbeat": True,
             "motorControllers": {
                 "leftFront": {
                     "state": 0,
@@ -137,6 +138,7 @@ class RosInterface:
         rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/robot_commander/command_message', String, self.subscriber_callback_10, queue_size=20)
         rospy.Subscriber('/overseer/error_message', String, self.subscriber_callback_11, queue_size=20)
+        rospy.Subscriber('/portenta_heartbeat', Bool, self.subscriber_callback_12, queue_size=1)
 
         # GPS Subcribers
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -254,6 +256,9 @@ class RosInterface:
     def subscriber_callback_11(self, msg):
         error_message = json.dumps({'type': 'errorMessage', 'errorMessage': msg.data}, ensure_ascii = False).encode('utf8')
         reactor.callFromThread(self.websocket.sendMessage, error_message, False)
+
+    def subscriber_callback_12(self, msg):
+        self.robotState['portentaHeartbeat'] = msg.data
 
     # Motor Controller Callbacks
     # Left Front
@@ -501,7 +506,9 @@ class MyServerProtocol(WebSocketServerProtocol):
             with open(folder + message['filename'], 'w+') as f:
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_script_publisher.publish()
-
+        elif message['type'] == '/gui/reset_micro_controller':
+            pass
+        
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
         MyServerProtocol.websocket_client_count -= 1
