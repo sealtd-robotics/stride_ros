@@ -507,7 +507,7 @@ class MyServerProtocol(WebSocketServerProtocol):
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_script_publisher.publish()
         elif message['type'] == '/gui/reset_micro_controller':
-            pass
+            os.system('sudo ' + os.getcwd() + '/reset_portenta.sh')
         
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
