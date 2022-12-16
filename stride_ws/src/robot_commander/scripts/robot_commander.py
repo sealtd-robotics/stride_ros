@@ -314,10 +314,8 @@ class RobotCommander:
                 break
             elif (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
                 self.brake_command_publisher.publish(False)
-                # print("Sleep 1 second" + '\n')
                 time.sleep(1)
                 self.brake_command_publisher.publish(True)
-                # print("Sleep 2 seconds" + '\n')
                 t1 = time.time()
             rate.sleep()
 
@@ -455,7 +453,6 @@ class RobotCommander:
 
     def brake_status_callback(self, msg):
         self.brake_status = msg.data
-        # print("callback brake status: " + str(self.brake_status))
 
     def left_brake_callback(self, msg):
         self.fully_seated_L = msg.data
