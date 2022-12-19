@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-    <include file="$(find networking)/launch/networking.launch" />
-    <!-- <include file="$(find overseer)/launch/overseer.launch" /> -->
-    <include file="$(find robot_commander)/launch/robot_commander.launch" />
-</launch>

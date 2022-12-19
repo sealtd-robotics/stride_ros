@@ -154,7 +154,8 @@ if __name__ == "__main__":
             elif sock == portenta_socket:
                 dat, addr = sock.recvfrom(1024)
                 (is_portenta_ok,) = struct.unpack('?', dat[0])
-                portenta_heartbeat_publisher.publish(is_portenta_ok)
+                portenta_heartbeat_publisher.publish(is_portenta_ok) #Publish arduino heartbeat state
+
                 portenta_socket_timestamp = get_time_now_in_ms()
 
         rate.sleep()
