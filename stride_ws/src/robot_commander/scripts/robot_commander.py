@@ -19,6 +19,7 @@ from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
 from shared_tools.overseer_states_constants import *
+from check_script import *
 
 # Global control robot commander across threads
 
@@ -36,6 +37,10 @@ class RobotCommander:
         self.limiter_initial_speed = 0
         self.brake_command = 0
         self.brake_status = 3
+
+        self.wheel_lock = rospy.get_param('wheel_lock', False)
+        self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
+        self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -60,10 +65,12 @@ class RobotCommander:
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
-        #solenoid breake subscribers
-        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-        rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
-        rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+        if self.wheel_lock:
+            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+            rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+            rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+        else:
+            self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
         # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
@@ -275,8 +282,16 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
-        time.sleep(0.1)
         self._display_message('Executing engage_brake')
+        time.sleep(0.1)
+
+        if not self.wheel_lock:
+            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            time.sleep(0.1)
+            self.brake_to_stop(self.default_decel_rate)
+            let_script_runs = False
+            return
+
         rate = rospy.Rate(50)
 
         # #Pitch check
@@ -330,8 +345,16 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
-        time.sleep(0.1)    
         self._display_message('Executing disengage_brake')
+        time.sleep(0.1)  
+
+        if not self.wheel_lock:
+            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            time.sleep(0.1)
+            self.brake_to_stop(self.default_decel_rate)
+            let_script_runs = False
+            return
+
         rate = rospy.Rate(50)
 
         #Enable motors before disengaging
@@ -469,6 +492,8 @@ class Receptionist:
         self.is_script_okay = False
         self.overseer_state = 0
 
+        self.brake = rospy.get_param('wheel_lock', False)
+
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)
         self.script_name_publisher = rospy.Publisher('/path_follower/script_name', String, queue_size=1, latch=True)
@@ -492,6 +517,7 @@ class Receptionist:
                 filepath = py_files[0]   
 
                 self.filename = os.path.basename(filepath)
+                self.is_script_okay = check_script(self.script_folder + self.filename, self.brake)
                 self.script_name_publisher.publish(self.filename)
 
     def start_custom_script(self):
