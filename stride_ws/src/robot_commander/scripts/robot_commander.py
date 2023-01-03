@@ -34,6 +34,7 @@ dash_line = "----------------------"
 
 class RobotCommander:
     def __init__(self):
+        self.reverse_speed_goal = rospy.get_param('~reverse_speed_goal')
         self.current_path_index = 0
         self.max_path_index = -1
         self.path_intervals = []
@@ -106,7 +107,7 @@ class RobotCommander:
                     r.sleep()
                 else:
                     if is_starting_decel: 
-                        d = sum(self.path_intervals[ 0 : self.current_path_index ])
+                        d = sum(self.path_intervals[0 : self.current_path_index])
                         a = current_velocity**2 / (2*d) #vf^2 = vi^2 + 2*a*d
                         is_starting_decel = False
 
