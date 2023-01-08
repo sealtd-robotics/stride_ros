@@ -7,42 +7,45 @@ def has_method(o, name):
 def check_script(script_name, brake = False):
     f = open(script_name, "r")
     name = None
+    return_text = "OK"
 
     for line in f:
         stripped_line = line.strip()
-        if line in ['\n', '\r\n', '']:
+        if stripped_line in ['\n', '\r\n', '']: #ignore empty lines
             continue
 
-        if stripped_line.startswith('#'):
+        if stripped_line.startswith('#'): # ignore commented line
             continue
 
-        if stripped_line.startswith('print'):
+        if stripped_line.startswith('print'): #ignore print
             continue
 
         if not name:
-            a = line.split('=')
+            a = stripped_line.split('=')
 
             if len(a) > 1 and a[1].strip() == 'RobotCommander()':
                 name = a[0].strip()
                 continue
             else:
-                print('not rc')
-                return False
+                return_text = "WARN: Did not find object initiated with RobotCommander() as first line. Test will be aborted."
+                return return_text
 
-        n = line.split('.')
+        n = stripped_line.split('.')
 
         if len(n) > 1 and n[0].strip() == name:
             f, args = n[1].strip().split('(')
             if not has_method(RobotCommander, f):
-                return False
+                return_text = "WARN: Does not support command %s. Test will be aborted." % f
+                return return_text
 
             if (f == 'engage_brake_hill' or f == 'disengage_brake_hill') and not brake:
-                print('Brake function does not support')
-                return False
+                return_text = "WARN: Test script contains brake command. This is a non-brake platform. Test will be aborted."
+                return return_text
         else:
-            return False
+            return_text = "WARN: Incorrect format command \"%s\". Test will be aborted." % line
+            return return_text
 
-    return True
+    return "OK"
 
 
 if __name__ == '__main__':

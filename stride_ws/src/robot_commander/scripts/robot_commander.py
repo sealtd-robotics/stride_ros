@@ -509,6 +509,7 @@ class Receptionist:
 
         # !!!! Need to add syntax checking !!!!
         self.is_script_okay = True
+        result = "OK"
         # !!!!
 
         if os.path.exists(self.script_folder):
@@ -517,7 +518,12 @@ class Receptionist:
                 filepath = py_files[0]   
 
                 self.filename = os.path.basename(filepath)
-                self.is_script_okay = check_script(self.script_folder + self.filename, self.brake)
+                result = check_script(self.script_folder + self.filename, self.brake)
+                if result == "OK":
+                    self.is_script_okay = True
+                else:
+                    self.is_script_okay = False
+                    command_message_publisher.publish(result)
                 self.script_name_publisher.publish(self.filename)
 
     def start_custom_script(self):
@@ -526,6 +532,9 @@ class Receptionist:
                 execfile(self.script_folder + self.filename)
             except Exception as error:
                 print(error)
+        else:
+            error_message = "ERROR: Invalid test script. Abort test."
+            command_message_publisher.publish(error_message)
 
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
