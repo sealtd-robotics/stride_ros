@@ -99,12 +99,8 @@ class RobotCommander:
             while self.current_path_index > 0 and let_script_runs:
                 if self.current_path_index >=  acceleration_distance:
                     velocity_input = math.copysign((min(abs(acceleration * (time.time()-initial_time_in_s)), abs(speed_goal))), speed_goal)
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep()
                 elif self.current_path_index >=  const_vel_distance:
                     velocity_input =  current_velocity
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep()
                 else:
                     if is_starting_decel: 
                         d = sum(self.path_intervals[0 : self.current_path_index])
@@ -112,23 +108,20 @@ class RobotCommander:
                         is_starting_decel = False
 
                     velocity_input = math.copysign(max(abs(current_velocity + a*period) , abs(minimum_decel_vel)), speed_goal) #current velocity is -ve
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep() 
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
                 current_velocity = velocity_input
                 
         else: #forward motion
-            acceleration_distance = total_distance_in_index/3
-            const_vel_distance = total_distance_in_index*2/3
+            distance_to_be_covered = total_distance_in_index-self.current_path_index 
+            acceleration_distance = self.current_path_index + distance_to_be_covered/3
+            const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
 
             while self.current_path_index < total_distance_in_index and let_script_runs:
                 if self.current_path_index <=  acceleration_distance:
                     velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep()
                 elif self.current_path_index <=  const_vel_distance:
                     velocity_input = current_velocity
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep()
                 else:
                     if is_starting_decel: 
                         d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
@@ -136,8 +129,8 @@ class RobotCommander:
                         is_starting_decel = False
 
                     velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
-                    self._send_velocity_command_using_radius(velocity_input)
-                    r.sleep() 
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
                 current_velocity = velocity_input
 
     def move_until_end_of_path(self, speed_goal, speed_rate):

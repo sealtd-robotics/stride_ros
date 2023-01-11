@@ -165,15 +165,15 @@ class PathFollower:
         self.path_intervals_publisher.publish(msg)
 
     def update_current_path_index(self):
-        if self.current_path_index == self.max_index:
+        if self.last_path_index == self.max_index:
             return
 
         # Find slope of line (m) connecting current index and the next index
-        x_cur = self.path_easts[self.current_path_index]
-        y_cur = self.path_norths[self.current_path_index]
+        x_cur = self.path_easts[self.last_path_index]
+        y_cur = self.path_norths[self.last_path_index]
 
-        x_next = self.path_easts[min(self.current_path_index + 1, self.max_index)]
-        y_next = self.path_norths[min(self.current_path_index + 1, self.max_index)]
+        x_next = self.path_easts[min(self.last_path_index + 1, self.max_index)]
+        y_next = self.path_norths[min(self.last_path_index + 1, self.max_index)]
         m = (y_next - y_cur) / (x_next - x_cur)
 
         # Slope of the perpendicular line to the original line
@@ -190,10 +190,10 @@ class PathFollower:
 
         # If the two above points are on different sides of the line
         if k_cur * k_robot < 0:
-            self.current_path_index += 1
+            self.last_path_index += 1
         
-        self.current_path_index_publisher.publish(self.current_path_index)
-        self.last_path_index = self.current_path_index
+        self.current_path_index_publisher.publish(self.last_path_index)
+        self.current_path_index = self.last_path_index
 
     def update_turning_radius(self):
         # Notes: Since angular velocity is positive for anti-clockwise, turning raidus is positive when it's on the robot's left side
@@ -348,7 +348,7 @@ if __name__ ==  '__main__':
             pf.update_path_index_return_to_start()
             pf.update_turning_radius_return_to_start()
             pf.turning_radius_publisher.publish(pf.turning_radius)
-        else:
+        elif pf.overseer_state not in (E_STOPPED, AUTO, RETURN_TO_START):
             pf.current_path_index = 0
             pf.current_path_index_publisher.publish(0)
             pf.turning_radius = 999
