@@ -37,7 +37,7 @@ def brake_command_callback(msg):
     global brake_command
     brake_command = msg.data
     brake_output = struct.pack('<?',brake_command)
-    brake_socket2.sendto(brake_output, ('195.0.0.231',54006))
+    brake_socket2.sendto(brake_output, ('195.0.0.232',54006))
 
 if __name__ == "__main__":
     node = rospy.init_node('udp_socket')
