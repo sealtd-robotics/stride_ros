@@ -1,3 +1,5 @@
 <launch>
-  <node pkg="robot_commander" type="robot_commander.py" name="robot_commander" output="screen" cwd="node" respawn="true" />
+  <node pkg="robot_commander" type="robot_commander.py" name="robot_commander" output="screen" cwd="node" respawn="true">
+    <rosparam file="$(find robot_commander)/../../params/params.yaml" command="load"/>
+  </node>
 </launch>
