@@ -5,13 +5,15 @@
 I. Build Workspace
 II. How to run on target robot?
 III. Vehicle info output
-IV. Collect data
-V. Directory Structure
+IV. Updating Code
+V. Collect data
+VI. Directory Structure
 
 ---
 
 
 ## I. Build Workspace
+This section details how to set up the workspace for STRIDE. Meant for developers familiar with Git. 
 
 ```
 cd ~
@@ -53,7 +55,27 @@ git push
 
 ## II. How to run on target robot?
 
-1. The manual approach
+This section details setting up STRIDE's GUI. STRIDE uses the auto approach by default. 
+
+1. The Auto approach
+
+   ***Note**: the services below are designed for SEA's provided hardware running on STRIDE.*
+   &nbsp;
+   Enable the systemd services to take care of the steps above. So everytime the robot is booted up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
+
+   ```
+   sudo ./system/enable_webserver.sh
+   sudo ./system/enable_services.sh
+   ```
+
+   To disable all services and remove systemd services
+
+   ```
+   sudo ./system/disable_webserver.sh
+   sudo ./system/disable_services.sh
+   ```
+
+2. The manual approach
 
    Spin up the webserver first to get access to gui:
 
@@ -71,29 +93,23 @@ git push
    roslaunch top_level top_level.launch
    ```
 
-2. The Auto approach
-
-   ***Note**: the services below are designed for SEA's provided hardware running on Stride.*
-   &nbsp;
-   Enable the systemd services to take care of the steps above. So everytime the robot is booted up, it will automatically spin up webserver, set up can bus and roslaunch top level file within target robot.
-
-   ```
-   sudo ./system/enable_webserver.sh
-   sudo ./system/enable_services.sh
-   ```
-
-   To disable all services and remove systemd services
-
-   ```
-   sudo ./system/disable_webserver.sh
-   sudo ./system/disable_services.sh
-   ```
-
 ## III. Vehicle info output
 
-   This is for the target vehicle that needs to sync with Stride in test. We provide a solution to read GPS from the vehicle and output vehicle's gps information to our network.
+   This is for the target vehicle that needs to sync with STRIDE in test. We provide a solution to read GPS from the vehicle and output vehicle's gps information to our network. Vehicle boxes are set up as autoboot. 
+
+   1. The Auto approach
+
+      Enable the systemd services to configure CAN bus and roslaunch `target_vehicle.launch` at boot.
+      ```
+      sudo ./system/enable_target_services.sh
+      ```
+
+      To disable the services above:
+      ```
+      sudo ./system/disable_target_services.sh
+      ```
    
-   1. The manual approach
+   2. The manual approach
       Make sure to enable CAN bus:
       ```
       sudo ./system/can_setup.sh
@@ -103,33 +119,118 @@ git push
       roslaunch top_level target_vehicle.launch
       ```
 
-   2. The Auto approach
+## IV. Updating code
+This section details how to put code updates onto STRIDE.
 
-      Enable the systemd services to configurate CAN bus and roslaunch `target_vehicle.launch` at boot.
-      ```
-      sudo ./system/enable_target_services.sh
-      ```
+**For a standard release, do the following:**
+1. Navigate the GitHub for STRIDE to "Releases" and download the zip file for the desired code version. 
+2. Connect computer to STRIDE's rocket network
+3. Navigate to where the zip file was downloaded and then copy it to STRIDE
+   
+   **Syntax:** 
+   ```
+   cd  <filepath>
+   scp -r stride_ros-1.0.0.zip nvidia@<Robot IP Address>:
+   ```
 
-      To disable the services above:
-      ```
-      sudo ./system/disable_target_services.sh
-      ```
+   **Example:** 
+   ```
+   cd home/stride
+   scp -r stride_ros-1.0.0.zip nvidia@195.0.0.10:
+   ```
+4. ssh into Stride.
+   
+   **Syntax:** 
+   ```
+   ssh nvidia@<STRIDE IP Address>
+   ```
 
-## IV. Collect Data
+   **Example:**
+   ``` 
+   ssh nvidia@195.0.0.10
+   ```
+5. Unzip the zip file.
+   
+   **Syntax:** 
+   ```
+   unzip <filename.zip>
+   ```
 
-When test is trigged with state AUTO (value 2) in `overseer/state` topic, `data_record_node` starts recording until the state is out of AUTO.
+   **Example:**
+   ``` 
+   unzip stride_ros-1.0.0.zip
+   ```
+6. Navigate to bash folder and run update_software.sh
+   
+   **Syntax:**
+   ``` 
+   cd <unzipped filename>/bash
+   ./update_software.sh
+   ```
 
-Other way to manually starts recording is by publish
+   **Example:**
+   ``` 
+   cd stride_ros-1.0.0/bash
+   ./update_software.sh
+   ```
+7. Rebuild the workspace
+   ```
+   ./build_ws.sh
+   ```
+
+**If the release requires changes outside of the src folder, then do the following: (The release will specify if this is needed instead)**
+1. Follow steps 1 through 5 the same as above.
+2. Remove the old stride_ros folder
+   ```
+   rm -rf stride_ros
+   ```
+3. Rename the unipped release to stride_ros
+   
+   **Syntax:**
+   ```
+   mv <unzipped filename> stride_ros
+   ```
+
+   **Example:**
+   ``` 
+   mv stride_ros-1.0.0 stride_ros
+   ```
+4. Follow step 7 from above
+
+**To update the parameters file, do the following:**
+1. In file explorer, navigate to the file params.yaml and open it.
+   stride_ros -> stride_ws -> params -> params.yaml
+2. Change the desired parameters and save the file.
+3. Connect computer to STRIDE's rocket network.
+4. Copy the params folder to STRIDE.
+   
+   **Syntax:**
+   ``` 
+   cd stride_ros/stride_ws
+   scp -r params/* nvidia@<STRIDE IP Address>:~/stride_ros/stride_ws/params
+   ```
+
+   **Example:**
+   ``` 
+   cd stride_ros/stride_ws
+   scp -r params/* nvidia@195.0.0.10:~/stride_ros/stride_ws/params
+   ```
+
+## V. Collect Data
+
+When a test is trigged with state AUTO (value 2) in the `overseer/state` topic, the `data_record_node` starts recording until the state is out of AUTO (will record from test start to test end). Data can then be downloaded from the GUI. Download this data before starting another test, or the data file will be overwritten. 
+
+A way to manually start a recording is as follows:
 `rostopic pub /cmd/record std_msgs/Bool true -1`
 
-To stop manual recording:
+To stop a manual recording:
 `rostopic pub /cmd/record std_msgs/Bool false -1`
 
-Manual record has higher priority than state mode previously. Once `/cmd/record` is published `true`, no other mode can turn it off until `/cmd/record` is published `false`. **Use carefully and don't forget to turn it off**
+Manual record has higher priority than state mode. Once `/cmd/record` is published `true`, no other mode can turn it off until `/cmd/record` is published `false`. This mode will allow for recording data outside of a test. **Use carefully and don't forget to turn it off.**
 
-Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data at each recording (either by ssh copy or using our web gui download feature), or it will be overwritten in the next recording.
+Data is saved in `stride_ros/stride_ws/test_log/data.csv`. Make sure to download the data after each recording (either by ssh copy or using our web GUI download feature), or it will be overwritten in the next recording.
 
-## V. Directory Structure
+## VI. Directory Structure
 
 ```
 .
@@ -138,7 +239,6 @@ Data is saved in `stride_ws/test_log/data.csv`. Make sure to download the data a
 ├── stride_gui_build                    # Binary build of our web gui
 ├── stride_ws                           # Main ROS workspace
 │   ├── custom_script                   # Where the test script is stored
-│   ├── gps_debug_log
 │   ├── params                          # Location to parameters and config files
 │   ├── path                            # Location to test path files
 │   ├── src
