@@ -11,6 +11,3 @@
 	path = stride_ws/src/oxford_gps_decoder
 	url = https://github.com/sealtd-robotics/oxford_gps_decoder.git
 	ignore = untracked
-[submodule "stride_ws/src/oxford_gps_eth"]
-	path = stride_ws/src/oxford_gps_eth
-	url = https://bitbucket.org/DataspeedInc/oxford_gps_eth.git
