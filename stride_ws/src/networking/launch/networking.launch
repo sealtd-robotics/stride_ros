@@ -1,6 +1,6 @@
 <launch>
-  <node pkg="networking" type="websocket_server.py" name="websocket_server" output="screen" cwd="node" />
-  <node pkg="networking" type="udp_socket.py" name="udp_socket" output="screen" cwd="node" />
-  <node pkg="networking" type="web_server_for_data.py" name="web_server_for_data" output="screen" cwd="node" />
+  <node pkg="networking" type="websocket_server.py" name="websocket_server" output="screen" cwd="node" respawn="true"/>
+  <node pkg="networking" type="udp_socket.py" name="udp_socket" output="screen" cwd="node" respawn="true"/>
+  <node pkg="networking" type="web_server_for_data.py" name="web_server_for_data" output="screen" cwd="node" respawn="true"/>
   <!-- <node pkg="networking" type="web_server_for_gui.py" name="web_server_for_gui" output="screen" cwd="node" /> -->
 </launch>

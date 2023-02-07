@@ -1,3 +1,3 @@
 <launch>
-  <node pkg="descender" type="descender.py" name="descender" output="screen"/>
+  <node pkg="descender" type="descender.py" name="descender" output="screen" respawn="true"/>
 </launch>
