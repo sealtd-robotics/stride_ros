@@ -75,12 +75,16 @@ class VehicleDataOutput():
 		s = ctx.socket(zmq.PUB)
 		s.bind("tcp://%s:50008" % self._ip)
 
+		# OxTS ROS1 driver for ethernet
+		# https://bitbucket.org/DataspeedInc/oxford_gps_eth/src/master/
 		rospy.Subscriber('gps/time_ref', TimeReference, self.time_reference_cb)
 		rospy.Subscriber('gps/fix', NavSatFix, self.global_pos_cb)
 		rospy.Subscriber('gps/vel', TwistWithCovarianceStamped, self.velocity_cb)
 		rospy.Subscriber('imu/data', Imu, self.imu_cb)
-		rospy.Subscriber('/gps/pos_type', String, self.correction_type_cb)
+		rospy.Subscriber('gps/pos_type', String, self.correction_type_cb)
+		rospy.Subscriber('gps/nav_status', String, self.gps_nav_status_cb)
 		
+		# CAN Bus
 		rospy.Subscriber('gps/utc_time', TimeReference, self.time_reference_cb)
 		rospy.Subscriber('gps/global_position', NavSatFix, self.global_pos_cb)
 		rospy.Subscriber('gps/velocity', VelocityGPS, self.gps_vel_cb)
@@ -142,6 +146,12 @@ class VehicleDataOutput():
 			self.data.gps_correction = PubMsg.GpsCorrection.DGPS_RTK_FLOAT
 		else:
 			self.data.gps_correction = PubMsg.GpsCorrection.GPS_DIFFERENTIAL
+
+	def gps_nav_status_cb(self, msg):
+		if msg.data == "READY":
+			self.data.gps_ready = True
+		else:
+			self.data.gps_ready = False
 
 	def gps_vel_cb(self, msg):
 		self.data.velocity = msg.forward
