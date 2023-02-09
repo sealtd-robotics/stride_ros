@@ -25,6 +25,7 @@ git submodule update --init --recursive
 
 ## OR if anything goes wrong and the git submodule command above does not work
 rm -rf stride_ws/src/oxford_gps_decoder
+rm -rf stride_ws/src/oxford_gps_eth
 rm -rf stride_ws/src/sbg_ros_driver
 git submodule init
 git submodule update
