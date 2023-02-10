@@ -118,8 +118,6 @@ class VehicleDataOutput():
 	def eth_gps_nav_status_cb(self, msg):
 		if msg.data == "READY":
 			self.data.gps_ready = True
-		else:
-			self.data.gps_ready = False
 
 	def can_velocity_cb(self, msg):
 		self.data.velocity = msg.forward
