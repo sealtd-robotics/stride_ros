@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # ========================================================================
-# Copyright (c) 2022, SEA Ltd.
+# Copyright (c) 2023, SEA Ltd.
 # All rights reserved.
 
 # This source code is licensed under the BSD-style license found in the
@@ -20,34 +20,13 @@ from proto_src import PubMsg
 import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from oxford_gps_decoder.msg import OxfordIMU, StatusGPS, VelocityGPS
-from geometry_msgs.msg import TwistWithCovarianceStamped
+# from geometry_msgs.msg import TwistWithCovarianceStamped # gps/vel topic msg type
 from std_msgs.msg import String
+from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from math import pi, degrees, sin, cos
 import threading
-import time
 import zmq
-
-
-def velocity_level(v_east, v_north, heading_rad):
-	"""
-	Output velocity forward and lateral.
-
-	Parameters:
-		v_east - velocity east (m/s)
-		v_north - velocity north (m/s)
-		heading_rad - heading (rad)
-	Return:
-		v_forward, v_lateral
-	"""
-
-	v_forward = v_north*cos(heading_rad) + v_east*sin(heading_rad)
-	v_lateral = -v_north*sin(heading_rad) + v_east*cos(heading_rad)
-
-	# v_forward = v_east * cos(heading_rad) + v_north * sin(heading_rad)
-	# v_lateral = -v_east * sin(heading_rad) + v_north * cos(heading_rad)
-
-	return v_forward, v_lateral
 
 
 class VehicleDataSet():
@@ -59,7 +38,6 @@ class VehicleDataSet():
 		self.gps_correction = 0
 		self.gps_ready = False
 		self.no_of_satellites = 0
-
 
 class VehicleDataOutput():
 	def __init__(self):
@@ -75,17 +53,21 @@ class VehicleDataOutput():
 		s = ctx.socket(zmq.PUB)
 		s.bind("tcp://%s:50008" % self._ip)
 
+		# OxTS ROS1 driver for ethernet
+		# https://bitbucket.org/DataspeedInc/oxford_gps_eth/src/master/
 		rospy.Subscriber('gps/time_ref', TimeReference, self.time_reference_cb)
 		rospy.Subscriber('gps/fix', NavSatFix, self.global_pos_cb)
-		rospy.Subscriber('gps/vel', TwistWithCovarianceStamped, self.velocity_cb)
-		rospy.Subscriber('imu/data', Imu, self.imu_cb)
-		rospy.Subscriber('/gps/pos_type', String, self.correction_type_cb)
+		rospy.Subscriber('gps/odom', Odometry, self.eth_velocity_cb)
+		rospy.Subscriber('imu/data', Imu, self.eth_imu_cb)
+		rospy.Subscriber('gps/pos_type', String, self.eth_correction_type_cb)
+		rospy.Subscriber('gps/nav_status', String, self.eth_gps_nav_status_cb)
 		
+		# CAN Bus
 		rospy.Subscriber('gps/utc_time', TimeReference, self.time_reference_cb)
 		rospy.Subscriber('gps/global_position', NavSatFix, self.global_pos_cb)
-		rospy.Subscriber('gps/velocity', VelocityGPS, self.gps_vel_cb)
-		rospy.Subscriber('gps/imu', OxfordIMU, self.gps_imu_cb)
-		rospy.Subscriber('gps/status', StatusGPS, self.gps_status_cb)
+		rospy.Subscriber('gps/velocity', VelocityGPS, self.can_velocity_cb)
+		rospy.Subscriber('gps/imu', OxfordIMU, self.can_imu_cb)
+		rospy.Subscriber('gps/status', StatusGPS, self.can_gps_status_cb)
 
 		rate = rospy.Rate(100)
 
@@ -108,34 +90,24 @@ class VehicleDataOutput():
 			rate.sleep()
 
 	def time_reference_cb(self, msg):
-		# print("Time thread ", threading.current_thread())
 		self.gps_time_msecs = int(msg.time_ref.to_nsec() * 1e-6)
 		self.last_get_time = rospy.Time.now()
 
 	def global_pos_cb(self, msg):
-		# print("Pos thread ", threading.current_thread())
 		self.data.longitude = msg.longitude
 		self.data.latitude = msg.latitude
 
-	def velocity_cb(self, msg):
-		""" y is north, and x is east"""
-		vel_north = msg.twist.twist.linear.y
-		vel_east = msg.twist.twist.linear.x
-		self.data.velocity, _ = velocity_level(vel_east, vel_north, self.data.heading)
+	def eth_velocity_cb(self, msg):
+		self.data.velocity = msg.twist.twist.linear.x
 
-
-	def imu_cb(self, msg):
+	def eth_imu_cb(self, msg):
 		ori = msg.orientation
 		roll, pitch, yaw = euler_from_quaternion([ori.x, ori.y, ori.z, ori.w])
-		# Convert angle from ENU to NED
-		# print(degrees(yaw))
 		self.data.heading = pi/2 - yaw
-		# self.data.heading = yaw
-
 		if self.data.heading < 0:
 			self.data.heading += 2*pi
 
-	def correction_type_cb(self, msg):
+	def eth_correction_type_cb(self, msg):
 		if msg.data == "RTK_INTEGER":
 			self.data.gps_correction = PubMsg.GpsCorrection.DGPS_RTK_INTERGER
 		elif msg.data == "RTK_FLOAT":
@@ -143,17 +115,45 @@ class VehicleDataOutput():
 		else:
 			self.data.gps_correction = PubMsg.GpsCorrection.GPS_DIFFERENTIAL
 
-	def gps_vel_cb(self, msg):
+	def eth_gps_nav_status_cb(self, msg):
+		if msg.data == "READY":
+			self.data.gps_ready = True
+
+	def can_velocity_cb(self, msg):
 		self.data.velocity = msg.forward
 
-	def gps_imu_cb(self, msg):
+	def can_imu_cb(self, msg):
 		self.data.heading = msg.orientation.z
 
-	def gps_status_cb(self, msg):
+	def can_gps_status_cb(self, msg):
 		self.data.gps_ready = msg.gps_ready
 		self.data.no_of_satellites = msg.no_of_satellites
 		self.data.gps_correction = msg.gps_status
+	
+	# if gps/vel topic is used, which gives data in ENU frame
+	def eth_enu_to_vb_velocity_cb(self, msg):
+		""" y is north, and x is east"""
+		vel_north = msg.twist.twist.linear.y
+		vel_east = msg.twist.twist.linear.x
+		self.data.velocity, _ = transform_velocity(vel_east, vel_north, self.data.heading)
 
+# Transforms velocity from ENU to Vehicle Body Frame
+def transform_velocity(v_east, v_north, heading_rad):
+	"""
+	Output velocity forward and lateral.
+
+	Parameters:
+		v_east - velocity east (m/s)
+		v_north - velocity north (m/s)
+		heading_rad - heading (rad)
+	Return:
+		v_forward, v_lateral
+	"""
+	v_forward = v_north*cos(heading_rad) + v_east*sin(heading_rad)
+	v_lateral = -v_north*sin(heading_rad) + v_east*cos(heading_rad)
+	# v_forward = v_east * cos(heading_rad) + v_north * sin(heading_rad)
+	# v_lateral = -v_east * sin(heading_rad) + v_north * cos(heading_rad)
+	return v_forward, v_lateral
 
 if __name__ == '__main__':
 	try:

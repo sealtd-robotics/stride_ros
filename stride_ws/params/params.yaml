@@ -20,7 +20,7 @@ bustype: "socketcan"
 bitrate: 1000000
 
 ### drive_mechanism
-wheel_sep: 0.545 # seperation between left and right wheels in meters
+wheel_sep: 0.545 # separation between left and right wheels in meters
 
 left_wheel_radius: 0.022 # in meters
 right_wheel_radius: 0.022 # in meters
