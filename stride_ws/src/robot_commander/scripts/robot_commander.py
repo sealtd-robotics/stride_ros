@@ -42,6 +42,7 @@ class RobotCommander:
         self.robot_heading = -1
         self.turning_radius = 999
         self.limiter_initial_speed = 0
+        self.target_gps_ready = False
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -160,11 +161,15 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing move_until_index')
         if index > self.max_path_index:
             let_script_runs = False
-            print("Input index must not exceed max path index.")
+            self._display_message("Aborting Test: Input index must not exceed max path index.")
             return
-        self._display_message('Executing move_until_index')
+        elif index < self.current_path_index:
+            let_script_runs = False
+            self._display_message('Aborting Test: Attempting to move to index that has already been passed.')
+            return
         rate = rospy.Rate(50)
         initial_time = time.time()
         initial_speed = self.limiter_initial_speed
@@ -196,6 +201,7 @@ class RobotCommander:
             lower_bound = (heading_radian - tolerance_radian) % -(2*math.pi)
             upper_bound = (heading_radian + tolerance_radian) % -(2*math.pi)
 
+        angular_velocity = angular_velocity * (np.pi / 180)
         pose2d = Pose2D()
         pose2d.x = 0
         pose2d.theta = -angular_velocity
@@ -221,11 +227,16 @@ class RobotCommander:
         global let_script_runs
         if not let_script_runs:
             return
+        self._display_message('Executing decel_to_stop_at_index')
         if stop_index > self.max_path_index:
             let_script_runs = False
-            print("Input stop index must not exceed max path index.")
+            self._display_message("Aborting Test: Input stop index must not exceed max path index.")
             return
-        self._display_message('Executing decel_to_stop_at_index')
+        elif stop_index < self.current_path_index:
+            let_script_runs = False
+            self._display_message('Aborting Test: Attempting to stop at index that has already been passed.')
+            return
+        
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50
@@ -273,6 +284,7 @@ class RobotCommander:
         Return:
             n/a
         """
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing wait_for_vehicle_position')
@@ -288,15 +300,19 @@ class RobotCommander:
                     break
                 else:
                     #TO-DO: target vehicle is not at the correct direction
-                    print("Vehicle approaches at wrong direction, handle this error. End test.")
-                    break
+                    self._display_message("Aborting Test: Vehicle approaches at wrong direction.")
+                    let_script_runs = False
+                    return
             rate.sleep()
 
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
+            let_script_runs = False
+            return
 
     def wait_for_vehicle_velocity(self, velocity):
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing wait_for_vehicle_velocity')
@@ -307,7 +323,9 @@ class RobotCommander:
         
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            print("ERROR: Something wrong. Target GPS not ready, handle this error.End test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
+            let_script_runs = False
+            return
 
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):
