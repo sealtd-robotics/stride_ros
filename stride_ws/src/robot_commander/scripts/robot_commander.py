@@ -164,11 +164,11 @@ class RobotCommander:
         self._display_message('Executing move_until_index')
         if index > self.max_path_index:
             let_script_runs = False
-            self._display_message("Input index must not exceed max path index.")
+            self._display_message("Aborting Test: Input index must not exceed max path index.")
             return
         elif index < self.current_path_index:
             let_script_runs = False
-            self._display_message('Attempting to move to index that has already been passed. Aborting Test.')
+            self._display_message('Aborting Test: Attempting to move to index that has already been passed.')
             return
         rate = rospy.Rate(50)
         initial_time = time.time()
@@ -230,11 +230,11 @@ class RobotCommander:
         self._display_message('Executing decel_to_stop_at_index')
         if stop_index > self.max_path_index:
             let_script_runs = False
-            self._display_message("Input stop index must not exceed max path index.")
+            self._display_message("Aborting Test: Input stop index must not exceed max path index.")
             return
         elif stop_index < self.current_path_index:
             let_script_runs = False
-            self._display_message('Attempting to stop at index that has already been passed. Aborting Test.')
+            self._display_message('Aborting Test: Attempting to stop at index that has already been passed.')
             return
         
         self.stop_index_publisher.publish(stop_index)
@@ -300,14 +300,14 @@ class RobotCommander:
                     break
                 else:
                     #TO-DO: target vehicle is not at the correct direction
-                    self._display_message("Error: Vehicle approaches at wrong direction. Aborting test.")
+                    self._display_message("Aborting Test: Vehicle approaches at wrong direction.")
                     let_script_runs = False
                     return
             rate.sleep()
 
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            self._display_message("ERROR: Target GPS is not ready. Aborting test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
 
@@ -323,7 +323,7 @@ class RobotCommander:
         
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            self._display_message("ERROR: Target GPS is not ready.  Aborting test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
 
