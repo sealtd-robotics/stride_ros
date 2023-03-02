@@ -197,7 +197,7 @@ void DataRecorderSub::ConvertBin2Csv() {
     if (inFile.is_open())
     {
         std::ofstream outFile (export_path + "/data.csv");
-        outFile << std::fixed << std::setprecision(10); // set precision for double
+        outFile << std::fixed << std::setprecision(7); // set precision for double and float
         DataFrame temp;
         std::string dem = ",";
 
