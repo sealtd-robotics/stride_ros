@@ -66,7 +66,7 @@ class RosInterface:
             "robotTemperature": 0,
             "batteryTemperature": 0,
             "batteryVoltage": 0,
-            "temp_error_word": 0,
+            "tempErrorWord": 0,
             "motorControllers": {
                 "leftFront": {
                     "state": 0,
@@ -234,7 +234,7 @@ class RosInterface:
         self.robotState['batteryVoltage'] = round(msg.data, 2)
 
     def temp_error_word_callback(self, msg):
-        self.robotState['temp_error_word'] = msg.data
+        self.robotState['tempErrorWord'] = msg.data
 
     def subscriber_callback_8(self, msg):
         self.robotState['targetVehicle']['latitude'] = msg.latitude

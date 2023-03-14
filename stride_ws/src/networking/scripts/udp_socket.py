@@ -96,11 +96,11 @@ if __name__ == "__main__":
                 battery_voltage = voltage_divider * 3.3 / 1024 * 8.745056384    # convert from digital to voltage of voltage divider, then to battery voltage
 
                 # Robot and battery temperature error word
-                if robot_temperature_averaged > 140 & battery_temperature_averaged > 140:
+                if robot_temperature_averaged > 140 and battery_temperature_averaged > 140:
                     temp_error_word = 3
-                elif robot_temperature_averaged <= 140 & battery_temperature_averaged > 140:
+                elif robot_temperature_averaged <= 140 and battery_temperature_averaged > 85:
                     temp_error_word = 2
-                elif robot_temperature_averaged > 140 & battery_temperature_averaged <= 140:
+                elif robot_temperature_averaged > 140 and battery_temperature_averaged <= 140:
                     temp_error_word = 1
                 else:
                     temp_error_word = 0

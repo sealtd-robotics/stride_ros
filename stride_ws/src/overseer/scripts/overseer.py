@@ -35,9 +35,10 @@ from tf.transformations import euler_from_quaternion
 
 
 class ErrorHandler:
-    def __init__(self, mcs, gui, handheld):
+    def __init__(self, mcs, gui, temp, handheld):
         self.mcs = mcs
         self.gui = gui
+        self.temp = temp
         self.handheld = handheld
 
         # Publishers
@@ -59,6 +60,12 @@ class ErrorHandler:
                 errors = errors + "{} is_heartbeat_timeout: {}\n".format(mc.name, is_heartbeat_timeout)
                 has_error = True
         
+        # Robot/Battery Temp Errors
+        temp_error_word = temp.temp_error_word
+        if temp_error_word !=0:
+            errors = errors + "Temperature error_word: {}\n".format(temp_error_word)
+            has_error = True
+
         # GUI
         is_gui_heartbeat_timeout = gui.is_heartbeat_timeout
         if is_gui_heartbeat_timeout == True:
@@ -125,6 +132,14 @@ class MotorController:
 
     def set_wheel_rpm_actual(self, msg):
         self.wheel_rpm_actual = msg.data
+
+class TempError:
+    def __init__(self):
+        self.temp_error_word = 0
+        rospy.Subscriber('temp_error_word', Int32, self.set_temp_error_word)
+
+    def set_temp_error_word(self, msg):
+        self.temp_error_word = msg.data
 
 class Gui:
     def __init__(self):
@@ -282,9 +297,10 @@ if __name__ ==  '__main__':
     mc_rb = MotorController('right_back', 'Motor Controller 4')
     mcs = [mc_lf, mc_lb, mc_rf, mc_rb]
 
+    temp = TempError()
     gui = Gui()
     handheld = Handheld()
-    error_handler = ErrorHandler(mcs, gui, handheld)
+    error_handler = ErrorHandler(mcs, gui, temp, handheld)
     rc = RobotCommander()
     gps = Gps()
     # robot = Robot()
