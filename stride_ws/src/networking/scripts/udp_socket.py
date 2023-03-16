@@ -98,7 +98,7 @@ if __name__ == "__main__":
                 # Robot and battery temperature error word
                 if robot_temperature_averaged > 140 and battery_temperature_averaged > 140:
                     temp_error_word = 3
-                elif robot_temperature_averaged <= 140 and battery_temperature_averaged > 85:
+                elif robot_temperature_averaged <= 140 and battery_temperature_averaged > 140:
                     temp_error_word = 2
                 elif robot_temperature_averaged > 140 and battery_temperature_averaged <= 140:
                     temp_error_word = 1
