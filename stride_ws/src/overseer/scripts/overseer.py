@@ -63,7 +63,7 @@ class ErrorHandler:
         # Robot/Battery Temp Errors
         temp_error_word = temp.temp_error_word
         if temp_error_word !=0:
-            errors = errors + "Temperature error_word: {}\n".format(temp_error_word)
+            errors = errors + "Robot temperature is too high. Please let it cool. \n"
             has_error = True
 
         # GUI
