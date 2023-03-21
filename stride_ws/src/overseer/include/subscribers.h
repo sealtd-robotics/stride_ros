@@ -179,8 +179,8 @@ private:
                                 "adj_rpm_L", "adj_rpm_R",
                                 "actual_current_RL(A)", "actual_current_RR(A)",
                                 "actual_current_FL(A)", "actual_current_FR(A)",
-                                "winding_temp_RL(C)", "winding_temp_RR(C)",
-                                "winding_temp_FL(C)", "winding_temp_FR(C)",
+                                "winding_temp_RL(F)", "winding_temp_RR(F)",
+                                "winding_temp_FL(F)", "winding_temp_FR(F)",
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)"};
 

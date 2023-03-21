@@ -161,6 +161,7 @@ class MotorControllerNode:
 
         # 1
         winding_temperature = tpdo2[1].raw
+        winding_temperature = (winding_temperature * (9/5)) + 32
         self.winding_temperature_publisher.publish(winding_temperature)
         self.winding_temperature = winding_temperature
 
