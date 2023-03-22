@@ -72,9 +72,9 @@ void DataRecorderSub::SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& 
 }
 
 void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg) {
-    df_.acc_x = msg->accel.x * 9.81;
-    df_.acc_y = msg->accel.y * 9.81;
-    df_.acc_z = msg->accel.z * 9.81;
+    df_.acc_x = msg->accel.x / 9.81;
+    df_.acc_y = msg->accel.y / 9.81;
+    df_.acc_z = msg->accel.z / 9.81;
     df_.yaw_rate_rads = msg->gyro.z;
 
 }
