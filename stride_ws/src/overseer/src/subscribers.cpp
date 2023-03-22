@@ -227,9 +227,9 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.yaw_deg << dem;
                 outFile << temp.roll_deg << dem;
                 outFile << temp.pitch_deg << dem;
-                outFile << temp.acc_x_mss << dem;
-                outFile << temp.acc_y_mss << dem;
-                outFile << temp.acc_z_mss << dem;
+                outFile << temp.acc_x << dem;
+                outFile << temp.acc_y << dem;
+                outFile << temp.acc_z << dem;
                 outFile << temp.yaw_rate_rads << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;

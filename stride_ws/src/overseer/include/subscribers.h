@@ -164,7 +164,7 @@ private:
 
 
     std::string csv_header[60] = {"utc_time(millisec)", 
-                                "gnss_satellites", "diff_age (ms)", "RTK_status",
+                                "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
