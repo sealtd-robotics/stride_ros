@@ -32,9 +32,9 @@ void DataRecorderSub::InitializeSubscribers() {
     
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
-    record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
-    motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
-    robot_temperature_sub_  = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
+    record_cmd_sub_ = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
+    motors_rpm_cmd_sub_ = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
+    robot_temperature_sub_ = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
     desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
     battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
@@ -269,7 +269,7 @@ void DataRecorderSub::ConvertBin2Csv() {
 }
 
 MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) : 
-                            motor_name_(name), current_(0), rpm_(0) {
+    motor_name_(name), current_(0), rpm_(0) {
     char c_name[100];
     sprintf(c_name, "/motor_controller/%s/motor_current_draw", motor_name_.c_str());
     motor_current_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorCurrentCallback, this);
