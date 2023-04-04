@@ -23,17 +23,17 @@ target_heading = 228 # Vehicle heading in degrees. Used in wait_for_vehicle_posi
 target_velocity = 3 # Vehicle speed in m/s. Used in wait_for_vehicle_velocity().
 
 ### Trigger using subject vehicle position and heading
-rc.move_until_index(2, 0.1 * 9.81, 45) #Move at 2 m/s with 0.1g acceleration to index 45
+rc.move_until_index(2, 0.1, 45) #Move at 2 m/s with 0.1g acceleration to index 45
 rc.decel_to_stop_at_index(50) #Decelerate and stop at index 50
 rc.wait_for_vehicle_position(target_lat, target_long, target_heading) #Wait for vehicle to trigger desired position/heading
-rc.move_until_index(2, 0.1 * 9.81, 95) #Move at 2 m/s with 0.1g acceleration to index 95
+rc.move_until_index(2, 0.1, 95) #Move at 2 m/s with 0.1g acceleration to index 95
 rc.decel_to_stop_at_index(100) #Decelerate and stop at index 100
 ## End test
 
 ### Trigger using subject vehicle velocity
-# rc.move_until_index(2, 0.1 * 9.81, 45) #Move at 2 m/s with 0.1g acceleration to index 45
+# rc.move_until_index(2, 0.1, 45) #Move at 2 m/s with 0.1g acceleration to index 45
 # rc.decel_to_stop_at_index(50) #Decelerate and stop at index 50
 # rc.wait_for_vehicle_velocity(target_velocity) #Wait for vehicle to reach desired velocity
-# rc.move_until_index(2, 0.1 * 9.81, 95) #Move at 2 m/s with 0.1g acceleration to index 95
+# rc.move_until_index(2, 0.1, 95) #Move at 2 m/s with 0.1g acceleration to index 95
 # rc.decel_to_stop_at_index(100) #Decelerate and stop at index 100
 ## End test

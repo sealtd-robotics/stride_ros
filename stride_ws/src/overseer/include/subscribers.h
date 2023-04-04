@@ -61,9 +61,9 @@ typedef struct
     float roll_deg;
     float pitch_deg;
     float yaw_deg;
-    double acc_x_mss;
-    double acc_y_mss;
-    double acc_z_mss;
+    double acc_x;
+    double acc_y;
+    double acc_z;
     float yaw_rate_rads;
     float cross_track_error_m;
     float desired_omega_rads;
@@ -164,11 +164,11 @@ private:
 
 
     std::string csv_header[60] = {"utc_time(millisec)", 
-                                "gnss_satellites", "diff_age", "RTK_status",
+                                "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
-                                "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)", 
+                                "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", 
                                 "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 

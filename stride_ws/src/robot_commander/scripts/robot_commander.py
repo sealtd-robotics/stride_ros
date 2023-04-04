@@ -85,6 +85,7 @@ class RobotCommander:
         self.velocity_command_publisher.publish(pose2d)
 
     def _rate_limiter(self, speed_goal, acceleration, total_distance_in_index):
+        acceleration = acceleration * 9.81
         initial_time_in_s = time.time()
         current_velocity = 0
         is_starting_decel = True
@@ -135,6 +136,7 @@ class RobotCommander:
                 current_velocity = velocity_input
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
@@ -142,6 +144,7 @@ class RobotCommander:
         self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
 
     def brake_to_stop(self, speed_rate):
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing brake_to_stop')
@@ -158,6 +161,7 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
+        speed_rate = speed_rate * 9.81
         global let_script_runs
         if not let_script_runs:
             return
@@ -261,6 +265,7 @@ class RobotCommander:
         self.stop_index_publisher.publish(999999)
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_beginning_of_path')
