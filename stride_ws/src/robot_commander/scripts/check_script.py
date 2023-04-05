@@ -20,6 +20,9 @@ def check_script(script_name, brake = False):
         if stripped_line.startswith('print'): #ignore print
             continue
 
+        if stripped_line.startswith('target'): 
+            continue
+
         if not name:
             a = stripped_line.split('=')
 

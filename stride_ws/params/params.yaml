@@ -38,5 +38,5 @@ decel_rate: 0.3 # to use as default
 accel_rate: 0.3 # to use as default
 
 ### IPs
-mcu_ip: "195.0.0.231" # onboard mcu
-target_ip: "195.0.0.61" # subject vehicle
+mcu_ip: "195.0.0.230" # onboard mcu
+target_ip: "195.0.0.60" # subject vehicle
