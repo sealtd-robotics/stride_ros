@@ -227,7 +227,11 @@ class Gps:
 class Brake: 
     def __init__(self):
         self.brake_status = 3
-        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        self.has_brake = rospy.get_param('has_brake', False)
+        if self.has_brake:
+            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        else:
+            self.brake_status = 1
 
     def brake_status_callback(self, msg):
         self.brake_status = msg.data

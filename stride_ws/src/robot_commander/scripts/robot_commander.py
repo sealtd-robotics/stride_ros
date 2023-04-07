@@ -38,7 +38,7 @@ class RobotCommander:
         self.brake_command = 0
         self.brake_status = 3
 
-        self.wheel_lock = rospy.get_param('wheel_lock', False)
+        self.has_brake = rospy.get_param('has_brake', False)
         self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
         self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
 
@@ -48,7 +48,6 @@ class RobotCommander:
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
         self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
-        # self.disable_motor_publisher.publish(False) # in case this node crashes when disable_motor in can_interface.py is still True
         self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
         # Subscribers
@@ -65,7 +64,7 @@ class RobotCommander:
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
-        if self.wheel_lock:
+        if self.has_brake:
             rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
             rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
             rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
@@ -73,8 +72,8 @@ class RobotCommander:
             self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
-        # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
-        #     time.sleep(0.1)
+        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
+            time.sleep(0.1)
 
     def _display_message(self, message):
         print(message)
@@ -285,7 +284,7 @@ class RobotCommander:
         self._display_message('Executing engage_brake')
         time.sleep(0.1)
 
-        if not self.wheel_lock:
+        if not self.has_brake:
             self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
             time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
@@ -348,7 +347,7 @@ class RobotCommander:
         self._display_message('Executing disengage_brake')
         time.sleep(0.1)  
 
-        if not self.wheel_lock:
+        if not self.has_brake:
             self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
             time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
@@ -492,7 +491,7 @@ class Receptionist:
         self.is_script_okay = False
         self.overseer_state = 0
 
-        self.brake = rospy.get_param('wheel_lock', False)
+        self.brake = rospy.get_param('has_brake', False)
 
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)

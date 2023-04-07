@@ -49,6 +49,7 @@ if __name__ == "__main__":
 
     #Brake subsriber
     rospy.Subscriber('/brake_command', Bool, brake_command_callback, queue_size=1)
+    has_brake = rospy.get_param('has_brake', False)
 
     # Publishers
     robot_temperature_publisher = rospy.Publisher('/robot_temperature', Int32, queue_size=1)
@@ -151,9 +152,12 @@ if __name__ == "__main__":
                 brake_status, fullyseated_L, fullyseated_R = struct.unpack('3B',dat[0:3]) 
                 
                 #publish vars from arduino
-                brake_status_publisher.publish(brake_status)   
-                fullyseated_L_publisher.publish(fullyseated_L)    
-                fullyseated_R_publisher.publish(fullyseated_R) 
+                if has_brake:
+                    brake_status_publisher.publish(brake_status)   
+                    fullyseated_L_publisher.publish(fullyseated_L)    
+                    fullyseated_R_publisher.publish(fullyseated_R) 
+                else:
+                    brake_status_publisher.publish(1)
 
             elif sock == portenta_socket:
                 dat, addr = sock.recvfrom(1024)
