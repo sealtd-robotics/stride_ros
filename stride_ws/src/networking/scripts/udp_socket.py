@@ -11,7 +11,6 @@ import threading
 from collections import deque
 import struct
 
-brake_command = False
 
 def get_time_now_in_ms():
     epoch = datetime.utcfromtimestamp(0)
@@ -34,16 +33,23 @@ def monitor_portenta_heartbeat():
         time.sleep(0.2)
 
 def brake_command_callback(msg):
-    global brake_command
     brake_command = msg.data
     brake_output = struct.pack('<?',brake_command)
-    brake_socket2.sendto(brake_output, ('195.0.0.232',54006))
+    brake_socket2.sendto(brake_output, (mcu_ip, 54006))
 
 if __name__ == "__main__":
     node = rospy.init_node('udp_socket')
 
+    mcu_ip = '195.0.0.231'
+   
+    try:
+        mcu_ip = rospy.get_param('mcu_ip')
+    except:
+        rospy.logerr("MCU IP is not defined. Check parameters.")
+
     #Brake subsriber
     rospy.Subscriber('/brake_command', Bool, brake_command_callback, queue_size=1)
+    has_brake = rospy.get_param('has_brake', False)
 
     # Publishers
     robot_temperature_publisher = rospy.Publisher('/robot_temperature', Int32, queue_size=1)
@@ -129,10 +135,9 @@ if __name__ == "__main__":
 
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
-                (estop_byte,) = struct.unpack('B', dat[2])
-                is_estop_pressed_1 = estop_byte & 1
+                (estop_state,) = struct.unpack('B',dat[0:1])
+                is_estop_pressed_1 = estop_state & 1
                 estop_publisher1.publish(is_estop_pressed_1)
-
                 estop_socket1_timestamp = get_time_now_in_ms()
                 
             elif sock == estop_socket2:
@@ -147,9 +152,12 @@ if __name__ == "__main__":
                 brake_status, fullyseated_L, fullyseated_R = struct.unpack('3B',dat[0:3]) 
                 
                 #publish vars from arduino
-                brake_status_publisher.publish(brake_status)   
-                fullyseated_L_publisher.publish(fullyseated_L)    
-                fullyseated_R_publisher.publish(fullyseated_R) 
+                if has_brake:
+                    brake_status_publisher.publish(brake_status)   
+                    fullyseated_L_publisher.publish(fullyseated_L)    
+                    fullyseated_R_publisher.publish(fullyseated_R) 
+                else:
+                    brake_status_publisher.publish(1)
 
             elif sock == portenta_socket:
                 dat, addr = sock.recvfrom(1024)

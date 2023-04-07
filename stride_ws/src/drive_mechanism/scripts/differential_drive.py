@@ -18,12 +18,12 @@ class DifferentialDrive:
     radian_per_sec_to_rpm = 9.54929658551
 
     def __init__(self):
-        self.wheel_sep = rospy.get_param('~wheel_sep')
-        self.left_wheel_radius = rospy.get_param('~left_wheel_radius')
-        self.right_wheel_radius = rospy.get_param('~right_wheel_radius')
-        self.k_l = rospy.get_param('~k_l')
-        self.k_r = rospy.get_param('~k_r')
-        self.P_corr = rospy.get_param('~P_corr')
+        self.wheel_sep = rospy.get_param('wheel_sep')
+        self.left_wheel_radius = rospy.get_param('left_wheel_radius')
+        self.right_wheel_radius = rospy.get_param('right_wheel_radius')
+        self.k_l = rospy.get_param('k_l')
+        self.k_r = rospy.get_param('k_r')
+        self.P_corr = rospy.get_param('P_corr')
         
         self.overseer_state = 0
 

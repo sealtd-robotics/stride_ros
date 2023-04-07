@@ -20,9 +20,9 @@ from shared_tools.overseer_states_constants import *
 
 class MotorControllerNode:
     def __init__(self, node, topic_name):
-        self.gear_ratio = rospy.get_param('~gear_ratio')
-        self.rated_current = rospy.get_param('~rated_current')
-        self.peak_current = rospy.get_param('~peak_current')
+        self.gear_ratio = rospy.get_param('gear_ratio')
+        self.rated_current = rospy.get_param('rated_current')
+        self.peak_current = rospy.get_param('peak_current')
         self.error_word = 0
         self.winding_temperature = 0
         self.state = 0
@@ -183,19 +183,19 @@ class MotorControllerNetwork:
         self.brake_status = 3
         self.previous_state = -1
         # Get motor controller parameters
-        mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
-        mc_lb_node_id = rospy.get_param('~mc_lb_node_id') # motor controller at left back
-        mc_rf_node_id = rospy.get_param('~mc_rf_node_id') # motor controller at right front
-        mc_rb_node_id = rospy.get_param('~mc_rb_node_id') # motor controller at right back
-        local_node_id = rospy.get_param('~local_node_id')
+        mc_lf_node_id = rospy.get_param('mc_lf_node_id') # motor controller at left front
+        mc_lb_node_id = rospy.get_param('mc_lb_node_id') # motor controller at left back
+        mc_rf_node_id = rospy.get_param('mc_rf_node_id') # motor controller at right front
+        mc_rb_node_id = rospy.get_param('mc_rb_node_id') # motor controller at right back
+        local_node_id = rospy.get_param('local_node_id')
 
-        mc_eds_path = rospy.get_param('~mc_eds_path')
-        local_eds_path = rospy.get_param('~local_eds_path')
+        mc_eds_path = rospy.get_param('mc_eds_path')
+        local_eds_path = rospy.get_param('local_eds_path')
 
         # Get CAN parameters
-        channel = rospy.get_param('~channel')
-        bustype = rospy.get_param('~bustype')
-        bitrate = rospy.get_param('~bitrate')
+        channel = rospy.get_param('channel')
+        bustype = rospy.get_param('bustype')
+        bitrate = rospy.get_param('bitrate')
 
         # Create CanOpen network
         self.network = canopen.Network()

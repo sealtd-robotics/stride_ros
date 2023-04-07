@@ -1,5 +1,5 @@
 <launch>
   <node pkg="can_interface" type="motor_controller_network.py" name="can_interface" output="screen" cwd="node" respawn="true">
-    <rosparam file="$(find can_interface)/../../params/params.yaml" command="load"/>
+    <!-- <rosparam file="$(find can_interface)/../../params/params.yaml" command="load"/> -->
   </node>
 </launch>
