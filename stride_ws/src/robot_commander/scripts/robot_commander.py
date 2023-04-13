@@ -72,8 +72,8 @@ class RobotCommander:
             self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
-        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
-            time.sleep(0.1)
+        # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
+        #     time.sleep(0.1)
 
     def _display_message(self, message):
         print(message)
@@ -294,17 +294,17 @@ class RobotCommander:
         rate = rospy.Rate(50)
 
         # #Pitch check
-        if abs(self.pitch) < 4 /180*math.pi:
-            self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
-            let_script_runs = False
-            return        
+        # if abs(self.pitch) < 4 /180*math.pi:
+        #     self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
+        #     let_script_runs = False
+        #     return        
 
         # #Send speed to zero before braking
-        while self.robot_speed > 0.1 and let_script_runs:
-            # self._send_velocity_command_using_radius(0)
-            self._display_message("WARNING: Robot speed still active before brake")
-            self.brake_to_stop(0.1*9.81)
-            rate.sleep()
+        # while self.robot_speed > 0.1 and let_script_runs:
+        #     # self._send_velocity_command_using_radius(0)
+        #     self._display_message("WARNING: Robot speed still active before brake")
+        #     self.brake_to_stop(0.1*9.81)
+        #     rate.sleep()
 
         # Tell Arduino via UDP to engage brake 
         self.brake_command = True

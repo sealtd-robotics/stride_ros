@@ -60,6 +60,7 @@ if __name__ == "__main__":
     brake_status_publisher = rospy.Publisher('/brake_status', Int32, queue_size = 1)
     fullyseated_L_publisher = rospy.Publisher('/fullyseated_L', Int32, queue_size = 1)
     fullyseated_R_publisher = rospy.Publisher('/fullyseated_R', Int32, queue_size = 1)
+    has_brake_publisher = rospy.Publisher('/has_brake', Bool, queue_size = 1)
     portenta_heartbeat_publisher = rospy.Publisher('/portenta_heartbeat', Bool, queue_size = 1)
 
     # for finding moving average
@@ -153,10 +154,12 @@ if __name__ == "__main__":
                 
                 #publish vars from arduino
                 if has_brake:
+                    has_brake_publisher.publish(has_brake)
                     brake_status_publisher.publish(brake_status)   
                     fullyseated_L_publisher.publish(fullyseated_L)    
                     fullyseated_R_publisher.publish(fullyseated_R) 
                 else:
+                    has_brake_publisher.publish(has_brake)
                     brake_status_publisher.publish(1)
 
             elif sock == portenta_socket:

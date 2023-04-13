@@ -119,6 +119,7 @@ class RosInterface:
                 "gps_correction_type": 0,
             },
             "mechanicalBrake": {
+                "hasBrake": False,
                 "brakeStatus": 0,
                 "fullyseated_L": 0,
                 "fullyseated_R": 0,
@@ -152,6 +153,7 @@ class RosInterface:
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
 
         #Brake subscribers
+        rospy.Subscriber('/has_brake', Bool, self.has_brake_callback, queue_size=1)
         rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
         rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
         rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
@@ -396,7 +398,8 @@ class RosInterface:
     def right_brake_callback(self, msg):
         self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
         
-
+    def has_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['hasBrake'] = msg.data
 
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
