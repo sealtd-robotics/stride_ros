@@ -520,6 +520,7 @@ class Receptionist:
                 result = check_script(self.script_folder + self.filename, self.brake)
                 if result == "OK":
                     self.is_script_okay = True
+                    command_message_publisher.publish("Script is OK to run.")
                 else:
                     self.is_script_okay = False
                     command_message_publisher.publish(result)
