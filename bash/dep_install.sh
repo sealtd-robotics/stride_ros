@@ -8,6 +8,7 @@ sudo apt-get install build-essential libssl-dev libffi-dev python-dev
 rosdep install --from-paths src --ignore-src -r -y
 sudo apt install ros-melodic-tf
 sudo apt install ros-melodic-tf2-geometry-msgs
+sudo apt install ros-melodic-gps-common #OxTS ROS1 driver
 
 python -m pip install --upgrade setuptools
 python -m pip install --upgrade pip

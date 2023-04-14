@@ -1,6 +1,7 @@
 canopen==1.1.0
+txaio==1.0.0
 autobahn==0.10.3
-twisted==20.3.0
+twisted==16.0.0
 protobuf==3.17.3
 pyzmq==19.0.2
 pyserial==3.5

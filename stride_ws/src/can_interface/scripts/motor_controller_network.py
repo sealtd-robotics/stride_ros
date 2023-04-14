@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 # Abbreviations
 # mcn: MotorControllerNetwork
 # mc: motor controller
@@ -150,6 +158,7 @@ class MotorControllerNode:
 
         # 1
         winding_temperature = tpdo2[1].raw
+        winding_temperature = (winding_temperature * (9/5)) + 32
         self.winding_temperature_publisher.publish(winding_temperature)
         self.winding_temperature = winding_temperature
 

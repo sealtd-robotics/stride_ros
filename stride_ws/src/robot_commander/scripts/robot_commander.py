@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 from __future__ import division
 from socket import setdefaulttimeout
 import rospy
@@ -28,6 +36,7 @@ dash_line = "----------------------"
 
 class RobotCommander:
     def __init__(self):
+        self.reverse_speed_goal = rospy.get_param('~reverse_speed_goal')
         self.current_path_index = 0
         self.max_path_index = -1
         self.path_intervals = []
@@ -41,6 +50,8 @@ class RobotCommander:
         self.has_brake = rospy.get_param('has_brake', False)
         self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
         self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
+        
+        self.target_gps_ready = False
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -91,8 +102,60 @@ class RobotCommander:
 
         self.velocity_command_publisher.publish(pose2d)
 
+    def _rate_limiter(self, speed_goal, acceleration, total_distance_in_index):
+        acceleration = acceleration * 9.81
+        initial_time_in_s = time.time()
+        current_velocity = 0
+        is_starting_decel = True
+        frequency = 50 #hz
+        period = 1/frequency
+        r = rospy.Rate(frequency) 
+        minimum_decel_vel = 0.3 #m/s
+       
+        if speed_goal < 0: #reverse motion
+            acceleration_distance =  total_distance_in_index*2/3 
+            const_vel_distance = total_distance_in_index/3
+
+            while self.current_path_index > 0 and let_script_runs:
+                if self.current_path_index >=  acceleration_distance:
+                    velocity_input = math.copysign((min(abs(acceleration * (time.time()-initial_time_in_s)), abs(speed_goal))), speed_goal)
+                elif self.current_path_index >=  const_vel_distance:
+                    velocity_input =  current_velocity
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[0 : self.current_path_index])
+                        a = current_velocity**2 / (2*d) #vf^2 = vi^2 + 2*a*d
+                        is_starting_decel = False
+
+                    velocity_input = math.copysign(max(abs(current_velocity + a*period) , abs(minimum_decel_vel)), speed_goal) #current velocity is -ve
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
+                current_velocity = velocity_input
+                
+        else: #forward motion
+            distance_to_be_covered = total_distance_in_index-self.current_path_index 
+            acceleration_distance = self.current_path_index + distance_to_be_covered/3
+            const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
+
+            while self.current_path_index < total_distance_in_index and let_script_runs:
+                if self.current_path_index <=  acceleration_distance:
+                    velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
+                elif self.current_path_index <=  const_vel_distance:
+                    velocity_input = current_velocity
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
+                        a = current_velocity**2 / (2*d) 
+                        is_starting_decel = False
+
+                    velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
+                current_velocity = velocity_input
+
     def move_until_end_of_path(self, speed_goal, speed_rate):
         global let_script_runs
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
@@ -101,17 +164,12 @@ class RobotCommander:
             let_script_runs = False
             self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        rate = rospy.Rate(50)
 
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < self.max_path_index) and let_script_runs:
-            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-            self._send_velocity_command_using_radius(limited_speed)
-            rate.sleep()
+        self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
 
     def brake_to_stop(self, speed_rate):
         global let_script_runs
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing brake_to_stop')
@@ -133,6 +191,7 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
+        speed_rate = speed_rate * 9.81
         global let_script_runs
         if not let_script_runs:
             return
@@ -144,7 +203,11 @@ class RobotCommander:
             return
         if index > self.max_path_index:
             let_script_runs = False
-            self._display_message("Input index must not exceed max path index.")
+            self._display_message("Aborting Test: Input index must not exceed max path index.")
+            return
+        elif index < self.current_path_index:
+            let_script_runs = False
+            self._display_message('Aborting Test: Attempting to move to index that has already been passed.')
             return
         rate = rospy.Rate(50)
         initial_time = time.time()
@@ -183,6 +246,7 @@ class RobotCommander:
             lower_bound = (heading_radian - tolerance_radian) % -(2*math.pi)
             upper_bound = (heading_radian + tolerance_radian) % -(2*math.pi)
 
+        angular_velocity = angular_velocity * (np.pi / 180)
         pose2d = Pose2D()
         pose2d.x = 0
         pose2d.theta = -angular_velocity
@@ -216,8 +280,13 @@ class RobotCommander:
             return
         if stop_index > self.max_path_index:
             let_script_runs = False
-            self._display_message("Input stop index must not exceed max path index.")
+            self._display_message("Aborting Test: Input stop index must not exceed max path index.")
             return
+        elif stop_index < self.current_path_index:
+            let_script_runs = False
+            self._display_message('Aborting Test: Attempting to stop at index that has already been passed.')
+            return
+        
         self.stop_index_publisher.publish(stop_index)
 
         frequency = 50
@@ -243,6 +312,7 @@ class RobotCommander:
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         global let_script_runs
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_beginning_of_path')
@@ -252,24 +322,7 @@ class RobotCommander:
             self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
         self._display_message(dash_line)
-        rate = rospy.Rate(50)
-
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
-
-        while (self.current_path_index > 0) and let_script_runs:
-            if self.current_path_index < 5 and let_script_runs:
-                limited_speed = _find_rate_limited_speed(0.05, initial_time, -0.5, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
-            elif 5 <= self.current_path_index < 10 and let_script_runs:
-                limited_speed = _find_rate_limited_speed(0.1, initial_time, -1.0, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
-            else:
-                limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
+        self._rate_limiter(speed_goal, speed_rate, self.current_path_index)
 
     def sleep(self, seconds):
         if not let_script_runs:
@@ -396,6 +449,7 @@ class RobotCommander:
         Return:
             n/a
         """
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing wait_for_vehicle_position')
@@ -411,15 +465,19 @@ class RobotCommander:
                     break
                 else:
                     #TO-DO: target vehicle is not at the correct direction
-                    print("Vehicle approaches at wrong direction, handle this error. End test.")
-                    break
+                    self._display_message("Aborting Test: Vehicle approaches at wrong direction.")
+                    let_script_runs = False
+                    return
             rate.sleep()
 
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            print("ERROR: Something wrong. Target GPS not ready, handle this error. End test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
+            let_script_runs = False
+            return
 
     def wait_for_vehicle_velocity(self, velocity):
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing wait_for_vehicle_velocity')
@@ -430,7 +488,9 @@ class RobotCommander:
         
         if not self.target_gps_ready:
             #TO-DO: test failed due to target gps not valid, implement proper safety measure
-            print("ERROR: Something wrong. Target GPS not ready, handle this error.End test.")
+            self._display_message("Aborting Test: Target GPS is not ready.")
+            let_script_runs = False
+            return
 
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):

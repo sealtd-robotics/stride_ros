@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 # abbreviations
 # mc: motor controller
 
@@ -59,6 +67,7 @@ class RosInterface:
             "batteryTemperature": 0,
             "batteryVoltage": 0,
             "portentaHeartbeat": True,
+            "tempErrorWord": 0,
             "motorControllers": {
                 "leftFront": {
                     "state": 0,
@@ -135,6 +144,7 @@ class RosInterface:
         rospy.Subscriber('/robot_temperature', Int32, self.subscriber_callback_5, queue_size=1)
         rospy.Subscriber('/battery_temperature', Int32, self.subscriber_callback_6, queue_size=1)
         rospy.Subscriber('/battery_voltage', Float32, self.subscriber_callback_7, queue_size=1)
+        rospy.Subscriber('/temp_error_word', Int32, self.temp_error_word_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.subscriber_callback_8, queue_size=1)
         rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/robot_commander/command_message', String, self.subscriber_callback_10, queue_size=20)
@@ -238,6 +248,9 @@ class RosInterface:
 
     def subscriber_callback_7(self, msg):
         self.robotState['batteryVoltage'] = round(msg.data, 2)
+
+    def temp_error_word_callback(self, msg):
+        self.robotState['tempErrorWord'] = msg.data
 
     def subscriber_callback_8(self, msg):
         self.robotState['targetVehicle']['latitude'] = msg.latitude

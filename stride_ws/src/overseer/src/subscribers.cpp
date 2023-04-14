@@ -1,3 +1,11 @@
+// ========================================================================
+// Copyright (c) 2022, SEA Ltd.
+// All rights reserved.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree. 
+// ========================================================================
+
 #include <iostream>
 #include <subscribers.h>
 #include <math.h>
@@ -24,9 +32,9 @@ void DataRecorderSub::InitializeSubscribers() {
     
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
-    record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
-    motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
-    robot_temperature_sub_  = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
+    record_cmd_sub_ = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
+    motors_rpm_cmd_sub_ = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
+    robot_temperature_sub_ = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
     desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
     battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
@@ -71,9 +79,9 @@ void DataRecorderSub::SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& 
 }
 
 void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg) {
-    df_.acc_x_mss = msg->accel.x;
-    df_.acc_y_mss = msg->accel.y;
-    df_.acc_z_mss = msg->accel.z;
+    df_.acc_x = msg->accel.x / 9.81;
+    df_.acc_y = msg->accel.y / 9.81;
+    df_.acc_z = msg->accel.z / 9.81;
     df_.yaw_rate_rads = msg->gyro.z;
 
 }
@@ -216,7 +224,7 @@ void DataRecorderSub::ConvertBin2Csv() {
     if (inFile.is_open())
     {
         std::ofstream outFile (export_path + "/data.csv");
-        outFile << std::fixed << std::setprecision(10); // set precision for double
+        outFile << std::fixed << std::setprecision(7); // set precision for double and float
         DataFrame temp;
         std::string dem = ",";
 
@@ -246,9 +254,9 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.yaw_deg << dem;
                 outFile << temp.roll_deg << dem;
                 outFile << temp.pitch_deg << dem;
-                outFile << temp.acc_x_mss << dem;
-                outFile << temp.acc_y_mss << dem;
-                outFile << temp.acc_z_mss << dem;
+                outFile << temp.acc_x << dem;
+                outFile << temp.acc_y << dem;
+                outFile << temp.acc_z << dem;
                 outFile << temp.yaw_rate_rads << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
@@ -293,7 +301,7 @@ void DataRecorderSub::ConvertBin2Csv() {
 }
 
 MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) : 
-                            motor_name_(name), current_(0), rpm_(0) {
+    motor_name_(name), current_(0), rpm_(0) {
     char c_name[100];
     sprintf(c_name, "/motor_controller/%s/motor_current_draw", motor_name_.c_str());
     motor_current_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorCurrentCallback, this);

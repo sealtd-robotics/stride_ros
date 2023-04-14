@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 # Abbreviations
 # mc: motor controller
 # mcs: motor controllers (as a list)
@@ -26,9 +34,10 @@ from shared_tools.overseer_states_constants import *
 
 
 class ErrorHandler:
-    def __init__(self, mcs, gui, handheld):
+    def __init__(self, mcs, gui, temp, handheld):
         self.mcs = mcs
         self.gui = gui
+        self.temp = temp
         self.handheld = handheld
 
         # Publishers
@@ -50,6 +59,12 @@ class ErrorHandler:
                 errors = errors + "{} is_heartbeat_timeout: {}\n".format(mc.name, is_heartbeat_timeout)
                 has_error = True
         
+        # Robot/Battery Temp Errors
+        temp_error_word = temp.temp_error_word
+        if temp_error_word !=0:
+            errors = errors + "Robot temperature is too high. Please let it cool. \n"
+            has_error = True
+
         # GUI
         is_gui_heartbeat_timeout = gui.is_heartbeat_timeout
         if is_gui_heartbeat_timeout == True:
@@ -116,6 +131,14 @@ class MotorController:
 
     def set_wheel_rpm_actual(self, msg):
         self.wheel_rpm_actual = msg.data
+
+class TempError:
+    def __init__(self):
+        self.temp_error_word = 0
+        rospy.Subscriber('temp_error_word', Int32, self.set_temp_error_word)
+
+    def set_temp_error_word(self, msg):
+        self.temp_error_word = msg.data
 
 class Gui:
     def __init__(self):
@@ -261,9 +284,10 @@ if __name__ ==  '__main__':
     mc_rb = MotorController('right_back', 'Motor Controller 4')
     mcs = [mc_lf, mc_lb, mc_rf, mc_rb]
 
+    temp = TempError()
     gui = Gui()
     handheld = Handheld()
-    error_handler = ErrorHandler(mcs, gui, handheld)
+    error_handler = ErrorHandler(mcs, gui, temp, handheld)
     rc = RobotCommander()
     gps = Gps()
     brake = Brake()

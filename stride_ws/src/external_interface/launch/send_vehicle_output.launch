@@ -1,5 +1,5 @@
 <launch>
-  <param name="self_ip" type="str" value="195.0.0.62" />
+  <param name="self_ip" type="str" value="195.0.0.60" />
   <node pkg="external_interface" type="vehicle_output.py" name="send_vehicle_output" respawn="true" output="screen" />
-  <node pkg="external_interface" type="forwarding_rtk_correction.py" name="forward_rtk" respawn="true" output="screen" />
+  <!-- <node pkg="external_interface" type="forwarding_rtk_correction.py" name="forward_rtk" respawn="true" output="screen" /> -->
 </launch>

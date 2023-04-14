@@ -1,3 +1,11 @@
+// ========================================================================
+// Copyright (c) 2022, SEA Ltd.
+// All rights reserved.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree. 
+// ========================================================================
+
 #ifndef DATA_RECORDER_H
 #define DATA_RECORDER_H
 
@@ -53,9 +61,9 @@ typedef struct
     float roll_deg;
     float pitch_deg;
     float yaw_deg;
-    double acc_x_mss;
-    double acc_y_mss;
-    double acc_z_mss;
+    double acc_x;
+    double acc_y;
+    double acc_z;
     float yaw_rate_rads;
     float cross_track_error_m;
     float desired_omega_rads;
@@ -169,11 +177,11 @@ private:
 
 
     std::string csv_header[60] = {"utc_time(millisec)", 
-                                "gnss_satellites", "diff_age", "RTK_status",
+                                "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
-                                "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)", 
+                                "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", 
                                 "cte(m)", 
                                 "desired_omega(rad/s)",
                                 "desired_velocity(m/s)", 
@@ -184,8 +192,8 @@ private:
                                 "adj_rpm_L", "adj_rpm_R",
                                 "actual_current_RL(A)", "actual_current_RR(A)",
                                 "actual_current_FL(A)", "actual_current_FR(A)",
-                                "winding_temp_RL(C)", "winding_temp_RR(C)",
-                                "winding_temp_FL(C)", "winding_temp_FR(C)",
+                                "winding_temp_RL(F)", "winding_temp_RR(F)",
+                                "winding_temp_FL(F)", "winding_temp_FR(F)",
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
                                 "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", 

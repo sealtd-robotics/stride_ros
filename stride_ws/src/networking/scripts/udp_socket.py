@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# ========================================================================
+# Copyright (c) 2022, SEA Ltd.
+# All rights reserved.
+
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. 
+# ========================================================================
+
 from socket import socket, AF_INET, SOCK_DGRAM
 import struct
 import time
@@ -50,6 +58,7 @@ if __name__ == "__main__":
     #Brake subsriber
     rospy.Subscriber('/brake_command', Bool, brake_command_callback, queue_size=1)
     has_brake = rospy.get_param('has_brake', False)
+    temp_error_word = 0
 
     # Publishers
     robot_temperature_publisher = rospy.Publisher('/robot_temperature', Int32, queue_size=1)
@@ -62,6 +71,7 @@ if __name__ == "__main__":
     fullyseated_R_publisher = rospy.Publisher('/fullyseated_R', Int32, queue_size = 1)
     has_brake_publisher = rospy.Publisher('/has_brake', Bool, queue_size = 1)
     portenta_heartbeat_publisher = rospy.Publisher('/portenta_heartbeat', Bool, queue_size = 1)
+    temp_error_word_publisher = rospy.Publisher('/temp_error_word', Int32, queue_size =1)
 
     # for finding moving average
     robot_temperature_history  = deque([70] * 20)
@@ -103,7 +113,7 @@ if __name__ == "__main__":
     portenta_heartbeat_thread.start()
 
     socket_list = [sensors_socket, estop_socket1, estop_socket2, brake_socket, portenta_socket]
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
         # read_sockets gives a list of sockets that have data available to be read. This prevents recvfrom() from blocking indefinitely if no data coming.
@@ -130,9 +140,21 @@ if __name__ == "__main__":
                 # battery_voltage
                 battery_voltage = voltage_divider * 3.3 / 1024 * 8.745056384    # convert from digital to voltage of voltage divider, then to battery voltage
 
+                # Robot and battery temperature error word
+                if robot_temperature_averaged > 140 and battery_temperature_averaged > 140:
+                    temp_error_word = 3
+                elif robot_temperature_averaged <= 140 and battery_temperature_averaged > 140:
+                    temp_error_word = 2
+                elif robot_temperature_averaged > 140 and battery_temperature_averaged <= 140:
+                    temp_error_word = 1
+                else:
+                    temp_error_word = 0
+
+                #publishers
                 robot_temperature_publisher.publish(robot_temperature_averaged)
                 battery_temperature_publisher.publish(battery_temperature_averaged)
                 battery_voltage_publisher.publish(battery_voltage)
+                temp_error_word_publisher.publish(temp_error_word)
 
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
