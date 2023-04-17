@@ -262,7 +262,7 @@ class Brake:
 def should_descend(mcs, pitch):
     hot = False
     for mc in mcs:
-        if mc.winding_temperature >= 105: # Set to less than 115C, which is the warning temperature. 
+        if mc.winding_temperature >= 221: #Temp is in Fahrenheit
             hot = True
 
     should_descend = hot and abs(pitch) > 6 /180*math.pi
