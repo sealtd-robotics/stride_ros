@@ -158,7 +158,8 @@ if __name__ == "__main__":
 
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
-                (estop_state,) = struct.unpack('B',dat[0:1])
+                (estop_state,) = struct.unpack('B',dat[0:1])  # New estop
+                # (estop_state,) = struct.unpack('B', dat[2]) # Old estop
                 is_estop_pressed_1 = estop_state & 1
                 estop_publisher1.publish(is_estop_pressed_1)
                 estop_socket1_timestamp = get_time_now_in_ms()
