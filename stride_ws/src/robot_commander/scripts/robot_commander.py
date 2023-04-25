@@ -83,8 +83,8 @@ class RobotCommander:
             self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
-        # while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
-        #     time.sleep(0.1)
+        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
+            time.sleep(0.1)
 
     def _display_message(self, message):
         print(message)
@@ -155,7 +155,6 @@ class RobotCommander:
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
         global let_script_runs
-        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
@@ -312,7 +311,6 @@ class RobotCommander:
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
         global let_script_runs
-        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing move_until_beginning_of_path')
