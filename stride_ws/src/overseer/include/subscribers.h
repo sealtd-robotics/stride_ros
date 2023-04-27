@@ -176,7 +176,7 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[60] = {"utc_time(millisec)", 
+    std::string csv_header[60] = {"utc_time(ms)", 
                                 "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
