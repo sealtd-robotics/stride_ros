@@ -33,7 +33,11 @@ def _shutdown():
 def main():
     rospy.init_node('get_vehicle_input')
     rospy.on_shutdown(_shutdown)
-    target_ip = rospy.get_param("target_ip")
+    target_ip = "195.0.0.61"
+    try:
+        target_ip = rospy.get_param("target_ip")
+    except:
+        rospy.logerr("Target ip param is not defined. Check parameters.")
     pub = rospy.Publisher('/target', TargetVehicle, queue_size=1)
 
     output_msg = PubMsg()

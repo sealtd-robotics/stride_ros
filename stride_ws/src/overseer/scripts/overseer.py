@@ -31,7 +31,6 @@ import enum
 import threading
 from datetime import datetime
 from shared_tools.overseer_states_constants import *
-from tf.transformations import euler_from_quaternion
 
 
 class ErrorHandler:
@@ -247,39 +246,27 @@ class Gps:
         self.pitch = msg.angle.y
         time.sleep(0.1)
 
-# For Meredith's descend condition:
-# Remember to Initialize this class in main!!!!!!!
-# class Robot:
-#     def __init__(self):
-#         self.commanded_v = 0
-#         rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
+#brake class with callback function
+class Brake: 
+    def __init__(self):
+        self.brake_status = 3
+        self.has_brake = rospy.get_param('has_brake', False)
+        if self.has_brake:
+            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        else:
+            self.brake_status = 1
 
-#     def velocity_command_callback(self, pose2d):
-#         self.commanded_v = pose2d.x
-
+    def brake_status_callback(self, msg):
+        self.brake_status = msg.data
 
 def should_descend(mcs, pitch):
     hot = False
     for mc in mcs:
-        if mc.winding_temperature >= 105: # Set to less than 115C, which is the warning temperature. 
+        if mc.winding_temperature >= 221: #Temp is in Fahrenheit
             hot = True
 
     should_descend = hot and abs(pitch) > 6 /180*math.pi
     return should_descend
-
-# For Meredith's descend condition:
-# Remember to change the arguments!!!!!!!!!
-# def should_descend(mcs, pitch, commanded_v):
-#     max_temp = 0
-#     for mc in mcs:
-#         max_temp = max(mc.winding_temperature, max_temp)
-    
-#     should_descend = False
-#     if abs(pitch) > 6 /180*math.pi:
-#         if max_temp > 115 or (max_temp > 105 and commanded_v == 0):
-#             should_descend = True
-    
-#     return should_descend
 
 def abs_max_wheel_rpm_actual(mcs):
     max_rpm = 0
@@ -303,6 +290,7 @@ if __name__ ==  '__main__':
     error_handler = ErrorHandler(mcs, gui, temp, handheld)
     rc = RobotCommander()
     gps = Gps()
+    brake = Brake()
     # robot = Robot()
 
     # initial state
@@ -343,17 +331,17 @@ if __name__ ==  '__main__':
 
         # Stopped
         elif state == STOPPED:
-            if gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
+            if gui.is_enable_manual_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = MANUAL
-            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50: # bring robot to stop before descending
+            elif should_descend(mcs, gps.pitch) and abs_max_wheel_rpm_actual(mcs) < 50 and brake.brake_status == 1: # bring robot to stop before descending
                 state = DESCENDING
-            elif gui.is_idle_clicked:
+            elif gui.is_idle_clicked and brake.brake_status == 1:
                 state = IDLE
-            elif gui.is_return_to_start_clicked:
+            elif gui.is_return_to_start_clicked and brake.brake_status == 1:
                 state = RETURN_TO_START
 
         # Decending
@@ -367,13 +355,13 @@ if __name__ ==  '__main__':
         elif state == IDLE:
             if gui.is_stop_clicked:
                 state = STOPPED
-            elif gui.is_enable_manual_clicked and not error_handler.has_error(state, False):
+            elif gui.is_enable_manual_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = MANUAL
-            elif gui.is_start_following_clicked and not error_handler.has_error(state, False):
+            elif gui.is_start_following_clicked and not error_handler.has_error(state, False) and brake.brake_status == 1:
                 state = AUTO
             elif handheld.is_estop_pressed:
                 state = E_STOPPED
-            elif gui.is_return_to_start_clicked:
+            elif gui.is_return_to_start_clicked and brake.brake_status == 1:
                 state = RETURN_TO_START
 
         # Return to start

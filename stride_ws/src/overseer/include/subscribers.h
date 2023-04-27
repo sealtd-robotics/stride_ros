@@ -95,6 +95,12 @@ typedef struct
     float vehicle_latitude;
     float vehicle_longitude;
     float vehicle_heading;
+    bool brake_command;
+    int brake_status;
+    int fully_seated_L;
+    int fully_seated_R;
+    bool disable_motors;
+
 } DataFrame;
 
 class MotorInfoSub {
@@ -157,6 +163,13 @@ private:
     DataFrame df_;
     std::ofstream wf;
 
+    //Mechanical Brake
+    ros::Subscriber brake_command_sub_;
+    ros::Subscriber brake_status_sub_;
+    ros::Subscriber fully_seated_L_sub_;
+    ros::Subscriber fully_seated_R_sub_;
+    ros::Subscriber disable_motors_sub_;
+
     bool recording = false;
     bool record_command_on = false;
     bool convert_to_csv = true;
@@ -182,7 +195,9 @@ private:
                                 "winding_temp_RL(F)", "winding_temp_RR(F)",
                                 "winding_temp_FL(F)", "winding_temp_FR(F)",
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
-                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)"};
+                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
+                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", 
+                                "disable_motors"};
 
 public:    
     std::string export_path = "";
@@ -206,6 +221,11 @@ public:
     void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
     void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
     void TargetVehicleCallback(const external_interface::TargetVehicle::ConstPtr& msg);
+    void BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg);
+    void BrakeStatusCallback(const std_msgs::Int32::ConstPtr& msg);
+    void LeftBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
+    void RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
+    void DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);

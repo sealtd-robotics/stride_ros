@@ -66,6 +66,7 @@ class RosInterface:
             "robotTemperature": 0,
             "batteryTemperature": 0,
             "batteryVoltage": 0,
+            "portentaHeartbeat": True,
             "tempErrorWord": 0,
             "motorControllers": {
                 "leftFront": {
@@ -125,7 +126,14 @@ class RosInterface:
                 "velocity": 0,
                 "gps_ready": False,
                 "gps_correction_type": 0,
-            }
+            },
+            "mechanicalBrake": {
+                "hasBrake": False,
+                "brakeStatus": 0,
+                "fullyseated_L": 0,
+                "fullyseated_R": 0,
+            },
+
         }
         
         # Subscribers
@@ -141,6 +149,7 @@ class RosInterface:
         rospy.Subscriber('/csv_converted', Empty, self.subscriber_callback_9, queue_size=1)
         rospy.Subscriber('/robot_commander/command_message', String, self.subscriber_callback_10, queue_size=20)
         rospy.Subscriber('/overseer/error_message', String, self.subscriber_callback_11, queue_size=20)
+        rospy.Subscriber('/portenta_heartbeat', Bool, self.subscriber_callback_12, queue_size=1)
 
         # GPS Subcribers
         rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
@@ -152,6 +161,12 @@ class RosInterface:
         rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_gnss_pos_callback, queue_size=1)
         rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_imu_callback, queue_size=1)
+
+        #Brake subscribers
+        rospy.Subscriber('/has_brake', Bool, self.has_brake_callback, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+        rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
         
 
         # Motor Controller Subscribers
@@ -209,6 +224,7 @@ class RosInterface:
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
         self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
         self.return_to_start_publisher = rospy.Publisher('/gui/return_to_start_clicked', Empty, queue_size=1)
+        self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
         
     # Callbacks
     def subscriber_callback_1(self, msg):
@@ -255,6 +271,9 @@ class RosInterface:
     def subscriber_callback_11(self, msg):
         error_message = json.dumps({'type': 'errorMessage', 'errorMessage': msg.data}, ensure_ascii = False).encode('utf8')
         reactor.callFromThread(self.websocket.sendMessage, error_message, False)
+
+    def subscriber_callback_12(self, msg):
+        self.robotState['portentaHeartbeat'] = msg.data
 
     # Motor Controller Callbacks
     # Left Front
@@ -382,6 +401,18 @@ class RosInterface:
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
 
+    # # Brake Callbacks
+    def brake_status_callback(self, msg):
+        self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
+
+    def left_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['fullyseated_L'] = msg.data
+
+    def right_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
+        
+    def has_brake_callback(self, msg):
+        self.robotState['mechanicalBrake']['hasBrake'] = msg.data
 
 class MyServerProtocol(WebSocketServerProtocol):
     # All connections will share the class variables
@@ -441,6 +472,8 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.joystick_publisher.publish(stick)
         elif message['type'] == '/gui/stop_clicked':
             MyServerProtocol.ros_interface.stop_clicked_publisher.publish()
+        elif message['type'] == '/gui/release_mechanical_brake_clicked':
+            MyServerProtocol.ros_interface.brake_command_publisher.publish(False)
         elif message['type'] == '/gui/enable_manual_clicked':
             MyServerProtocol.ros_interface.enable_manual_publisher.publish()
         elif message['type'] == '/gui/idle_clicked':
@@ -489,7 +522,9 @@ class MyServerProtocol(WebSocketServerProtocol):
             with open(folder + message['filename'], 'w+') as f:
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_script_publisher.publish()
-
+        elif message['type'] == '/gui/reset_micro_controller':
+            os.system('sudo ' + os.getcwd() + '/reset_portenta.sh')
+        
     def onClose(self, wasClean, code, reason):
         self.is_connected = False
         MyServerProtocol.websocket_client_count -= 1
