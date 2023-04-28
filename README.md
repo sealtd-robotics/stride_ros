@@ -125,7 +125,7 @@ This section details how to put code updates onto STRIDE.
 
 **For a standard release, do the following:**
 1. Navigate the GitHub for STRIDE to "Releases" and download the zip file for the desired code version. 
-2. Connect computer to STRIDE's rocket network, trun STRIDE on, and open a terminal.
+2. Connect computer to STRIDE's rocket network, turn STRIDE on, and open a terminal.
 3. Navigate to where the zip file was downloaded and then copy it to STRIDE using the following terminal command:
    
    **Syntax:** 
