@@ -125,8 +125,8 @@ This section details how to put code updates onto STRIDE.
 
 **For a standard release, do the following:**
 1. Navigate the GitHub for STRIDE to "Releases" and download the zip file for the desired code version. 
-2. Connect computer to STRIDE's rocket network
-3. Navigate to where the zip file was downloaded and then copy it to STRIDE
+2. Connect computer to STRIDE's rocket network, trun STRIDE on, and open a terminal.
+3. Navigate to where the zip file was downloaded and then copy it to STRIDE using the following terminal command:
    
    **Syntax:** 
    ```
@@ -179,6 +179,8 @@ This section details how to put code updates onto STRIDE.
    ./build_ws.sh
    ```
 
+8. Power cycle the STRIDE for the changes to take effect.
+
 **If the release requires changes outside of the src folder, then do the following: (The release will specify if this is needed instead)**
 1. Follow steps 1 through 5 the same as above.
 2. Remove the old stride_ros folder
@@ -196,14 +198,14 @@ This section details how to put code updates onto STRIDE.
    ``` 
    mv stride_ros-1.0.0 stride_ros
    ```
-4. Follow step 7 from above
+4. Follow step 7 and 8 from above
 
 **To update the parameters file, do the following:**
 1. In file explorer, navigate to the file params.yaml and open it.
    stride_ros -> stride_ws -> params -> params.yaml
 2. Change the desired parameters and save the file.
-3. Connect computer to STRIDE's rocket network.
-4. Copy the params folder to STRIDE.
+3. Connect computer to STRIDE's rocket network, turn on STRIDE, and open a terminal.
+4. Copy the params folder to STRIDE with the following terminal command:
    
    **Syntax:**
    ``` 
@@ -216,6 +218,7 @@ This section details how to put code updates onto STRIDE.
    cd stride_ros/stride_ws
    scp -r params/* nvidia@195.0.0.10:~/stride_ros/stride_ws/params
    ```
+5. Power cycle the STRIDE for the changes to take effect.
 
 ## V. Collect Data
 

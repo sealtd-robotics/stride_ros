@@ -100,6 +100,10 @@ typedef struct
     int fully_seated_L;
     int fully_seated_R;
     bool disable_motors;
+    int motor_error_code_RL;
+    int motor_error_code_RR;
+    int motor_error_code_FL;
+    int motor_error_code_FR;
 
 } DataFrame;
 
@@ -183,21 +187,18 @@ private:
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
                                 "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", 
                                 "cte(m)", 
-                                "desired_omega(rad/s)",
-                                "desired_velocity(m/s)", 
+                                "desired_omega(rad/s)", "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
                                 "actual_rpm_RR", "desired_rpm_RR",
                                 "actual_rpm_FL", "desired_rpm_FL",
                                 "actual_rpm_FR", "desired_rpm_FR",
                                 "adj_rpm_L", "adj_rpm_R",
-                                "actual_current_RL(A)", "actual_current_RR(A)",
-                                "actual_current_FL(A)", "actual_current_FR(A)",
-                                "winding_temp_RL(F)", "winding_temp_RR(F)",
-                                "winding_temp_FL(F)", "winding_temp_FR(F)",
+                                "actual_current_RL(A)", "actual_current_RR(A)", "actual_current_FL(A)", "actual_current_FR(A)",
+                                "winding_temp_RL(F)", "winding_temp_RR(F)", "winding_temp_FL(F)", "winding_temp_FR(F)",
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
-                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", 
-                                "disable_motors"};
+                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors",
+                                "error_code_RL", "error_code_RR", "error_code_FL", "error_code_FR" };
 
 public:    
     std::string export_path = "";

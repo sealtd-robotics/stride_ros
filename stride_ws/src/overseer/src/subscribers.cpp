@@ -290,7 +290,11 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.brake_status << dem;
                 outFile << temp.fully_seated_L << dem;
                 outFile << temp.fully_seated_R << dem;
-                outFile << temp.disable_motors << dem << "\n";
+                outFile << temp.disable_motors << dem;
+                outFile << temp.motor_error_code_RL << dem;
+                outFile << temp.motor_error_code_RR << dem;
+                outFile << temp.motor_error_code_FL << dem;
+                outFile << temp.motor_error_code_FR << dem << "\n";
             }
         }
         outFile.close();
