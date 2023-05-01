@@ -354,7 +354,7 @@ class RobotCommander:
         while self.robot_speed > 0.1 and let_script_runs:
             # self._send_velocity_command_using_radius(0)
             self._display_message("WARNING: Robot speed still active before brake")
-            self.brake_to_stop(0.1*9.81)
+            self.brake_to_stop(0.1)
             rate.sleep()
 
         # Tell Arduino via UDP to engage brake 
