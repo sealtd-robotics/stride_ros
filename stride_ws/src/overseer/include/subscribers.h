@@ -86,6 +86,10 @@ typedef struct
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
     int motor_winding_temp_FR;
+    int motor_error_code_RL;
+    int motor_error_code_RR;
+    int motor_error_code_FL;
+    int motor_error_code_FR;
     float batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
@@ -100,11 +104,7 @@ typedef struct
     int fully_seated_L;
     int fully_seated_R;
     bool disable_motors;
-    int motor_error_code_RL;
-    int motor_error_code_RR;
-    int motor_error_code_FL;
-    int motor_error_code_FR;
-
+   
 } DataFrame;
 
 class MotorInfoSub {
@@ -195,10 +195,10 @@ private:
                                 "adj_rpm_L", "adj_rpm_R",
                                 "actual_current_RL(A)", "actual_current_RR(A)", "actual_current_FL(A)", "actual_current_FR(A)",
                                 "winding_temp_RL(F)", "winding_temp_RR(F)", "winding_temp_FL(F)", "winding_temp_FR(F)",
+                                "error_code_RL", "error_code_RR", "error_code_FL", "error_code_FR", 
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
-                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors",
-                                "error_code_RL", "error_code_RR", "error_code_FL", "error_code_FR" };
+                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors" };
 
 public:    
     std::string export_path = "";

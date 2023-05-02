@@ -212,6 +212,11 @@ void DataRecorderSub::WriteBinary() {
         df_.motor_winding_temp_RR = motor_RR->GetTemperature();
         df_.motor_winding_temp_FL = motor_FL->GetTemperature();
         df_.motor_winding_temp_FR = motor_FR->GetTemperature();
+        df_.motor_error_code_RL = motor_RL->GetError();
+        df_.motor_error_code_RR = motor_RR->GetError();
+        df_.motor_error_code_FL = motor_FL->GetError();
+        df_.motor_error_code_FR = motor_FR->GetError();
+
         wf.write( (char *) &df_, sizeof(DataFrame));
 }
 
@@ -279,6 +284,10 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_RR << dem;
                 outFile << temp.motor_winding_temp_FL << dem;
                 outFile << temp.motor_winding_temp_FR << dem;
+                outFile << temp.motor_error_code_RL << dem;
+                outFile << temp.motor_error_code_RR << dem;
+                outFile << temp.motor_error_code_FL << dem;
+                outFile << temp.motor_error_code_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem ;
@@ -290,11 +299,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.brake_status << dem;
                 outFile << temp.fully_seated_L << dem;
                 outFile << temp.fully_seated_R << dem;
-                outFile << temp.disable_motors << dem;
-                outFile << temp.motor_error_code_RL << dem;
-                outFile << temp.motor_error_code_RR << dem;
-                outFile << temp.motor_error_code_FL << dem;
-                outFile << temp.motor_error_code_FR << dem << "\n";
+                outFile << temp.disable_motors << dem << "\n";
             }
         }
         outFile.close();
@@ -338,6 +343,7 @@ void MotorInfoSub::MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg
 
 void MotorInfoSub::MotorErrorCallback(const std_msgs::Int32::ConstPtr& msg) {
     error_ = msg->data;
+    // std::cout << "error = " << error_ << std::endl;
 }
 
 float MotorInfoSub::GetCurrent() {
