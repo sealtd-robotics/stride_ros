@@ -23,8 +23,8 @@ from shared_tools.overseer_states_constants import *
 
 class Joystick:
     def __init__(self):
-        self.v_max = rospy.get_param('~v_max')
-        self.w_max_spin_in_place = rospy.get_param('~w_max_spin_in_place') # max angular velocity when spinning in place
+        self.v_max = rospy.get_param('v_max')
+        self.w_max_spin_in_place = rospy.get_param('w_max_spin_in_place') # max angular velocity when spinning in place
 
         self.overseer_state = 0
 

@@ -32,14 +32,21 @@ void DataRecorderSub::InitializeSubscribers() {
     
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
-    record_cmd_sub_      = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
-    motors_rpm_cmd_sub_  = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
-    robot_temperature_sub_  = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
+    record_cmd_sub_ = nh_.subscribe("/cmd/record", 1, &DataRecorderSub::RecordCommandCallback, this);
+    motors_rpm_cmd_sub_ = nh_.subscribe("/wheel_rpm_command", 1, &DataRecorderSub::MotorsRpmCmdCallback, this);
+    robot_temperature_sub_ = nh_.subscribe("/robot_temperature", 1, &DataRecorderSub::RobotTemperatureCallback, this);
     desired_velocity_sub_ = nh_.subscribe("/robot_velocity_command", 1, &DataRecorderSub::DesiredVelocityCallback, this);
     battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &DataRecorderSub::BatteryVoltageCallback, this);
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
     cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
     target_vehicle_sub_ = nh_.subscribe("/target", 1, &DataRecorderSub::TargetVehicleCallback, this);
+
+    //Mechanical Brake info
+    brake_command_sub_ = nh_.subscribe("/brake_command", 1, &DataRecorderSub::BrakeCommandCallback, this);
+    brake_status_sub_ = nh_.subscribe("/brake_status", 1, &DataRecorderSub::BrakeStatusCallback, this);
+    fully_seated_L_sub_ = nh_.subscribe("/fullyseated_L", 1, &DataRecorderSub::LeftBrakeCallback, this);
+    fully_seated_R_sub_ = nh_.subscribe("/fullyseated_R", 1, &DataRecorderSub::RightBrakeCallback, this);
+    disable_motors_sub_ = nh_.subscribe("/robot_commander/disable_motor", 1, &DataRecorderSub::DisableMotorsCallback, this);
     
     // motor_RL = new MotorInfoSub(&nh_, "left_back");
     motor_RL = std::make_shared<MotorInfoSub>(&nh_, "left_back");
@@ -72,9 +79,9 @@ void DataRecorderSub::SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& 
 }
 
 void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg) {
-    df_.acc_x_mss = msg->accel.x;
-    df_.acc_y_mss = msg->accel.y;
-    df_.acc_z_mss = msg->accel.z;
+    df_.acc_x = msg->accel.x / 9.81;
+    df_.acc_y = msg->accel.y / 9.81;
+    df_.acc_z = msg->accel.z / 9.81;
     df_.yaw_rate_rads = msg->gyro.z;
 
 }
@@ -146,6 +153,26 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_heading = msg -> heading;
 }
 
+void DataRecorderSub::BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
+    df_.brake_command = msg -> data;
+}
+
+void DataRecorderSub::BrakeStatusCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.brake_status = msg -> data;
+}
+
+void DataRecorderSub::LeftBrakeCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.fully_seated_L = msg -> data;
+}
+
+void DataRecorderSub::RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg) {
+    df_.fully_seated_R = msg -> data;
+}
+
+void DataRecorderSub::DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg) {
+    df_.disable_motors = msg -> data;
+}
+
 int DataRecorderSub::SetupRecording() {
     wf.open(export_path + "/data.bin", std::ios::out | std::ios::binary);
     if (!wf.is_open()) {
@@ -185,6 +212,11 @@ void DataRecorderSub::WriteBinary() {
         df_.motor_winding_temp_RR = motor_RR->GetTemperature();
         df_.motor_winding_temp_FL = motor_FL->GetTemperature();
         df_.motor_winding_temp_FR = motor_FR->GetTemperature();
+        df_.motor_error_code_RL = motor_RL->GetError();
+        df_.motor_error_code_RR = motor_RR->GetError();
+        df_.motor_error_code_FL = motor_FL->GetError();
+        df_.motor_error_code_FR = motor_FR->GetError();
+
         wf.write( (char *) &df_, sizeof(DataFrame));
 }
 
@@ -227,9 +259,9 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.yaw_deg << dem;
                 outFile << temp.roll_deg << dem;
                 outFile << temp.pitch_deg << dem;
-                outFile << temp.acc_x_mss << dem;
-                outFile << temp.acc_y_mss << dem;
-                outFile << temp.acc_z_mss << dem;
+                outFile << temp.acc_x << dem;
+                outFile << temp.acc_y << dem;
+                outFile << temp.acc_z << dem;
                 outFile << temp.yaw_rate_rads << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
@@ -252,13 +284,22 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.motor_winding_temp_RR << dem;
                 outFile << temp.motor_winding_temp_FL << dem;
                 outFile << temp.motor_winding_temp_FR << dem;
+                outFile << temp.motor_error_code_RL << dem;
+                outFile << temp.motor_error_code_RR << dem;
+                outFile << temp.motor_error_code_FL << dem;
+                outFile << temp.motor_error_code_FR << dem;
                 outFile << temp.batt_voltage << dem;
                 outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem ;
                 outFile << temp.vehicle_speed << dem;
                 outFile << temp.vehicle_latitude << dem;
                 outFile << temp.vehicle_longitude << dem;
-                outFile << temp.vehicle_heading << dem << "\n";
+                outFile << temp.vehicle_heading << dem;
+                outFile << temp.brake_command << dem;
+                outFile << temp.brake_status << dem;
+                outFile << temp.fully_seated_L << dem;
+                outFile << temp.fully_seated_R << dem;
+                outFile << temp.disable_motors << dem << "\n";
             }
         }
         outFile.close();
@@ -269,7 +310,7 @@ void DataRecorderSub::ConvertBin2Csv() {
 }
 
 MotorInfoSub::MotorInfoSub(ros::NodeHandle* nh, std::string name) : 
-                            motor_name_(name), current_(0), rpm_(0) {
+    motor_name_(name), current_(0), rpm_(0) {
     char c_name[100];
     sprintf(c_name, "/motor_controller/%s/motor_current_draw", motor_name_.c_str());
     motor_current_sub_ = nh->subscribe(std::string(c_name), 1, &MotorInfoSub::MotorCurrentCallback, this);
@@ -302,6 +343,7 @@ void MotorInfoSub::MotorWindingTempCallback(const std_msgs::Int32::ConstPtr& msg
 
 void MotorInfoSub::MotorErrorCallback(const std_msgs::Int32::ConstPtr& msg) {
     error_ = msg->data;
+    // std::cout << "error = " << error_ << std::endl;
 }
 
 float MotorInfoSub::GetCurrent() {

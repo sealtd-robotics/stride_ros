@@ -19,15 +19,15 @@
 rc = RobotCommander()
 
 ### Method 1 using indices
-rc.move_until_index(2, 0.1 * 9.81, 93) #Move at 2 m/s with 0.1g acceleration until index 93.
+rc.move_until_index(2, 0.1, 93) #Move at 2 m/s with 0.1g acceleration until index 93.
 rc.decel_to_stop_at_index(98) #Decelerate to stop at index 98. (Recommended to put stop index 1-2 points ahead of path end)
 ## End of test
 
 ### Method 2: Use brake_to_stop() instead of decel_to_stop()
-# rc.move_until_index(2, 0.1 * 9.81, 93) #Move at 2 m/s with 0.1g acceleration until index 93.
+# rc.move_until_index(2, 0.1, 93) #Move at 2 m/s with 0.1g acceleration until index 93.
 # rc.brake_to_stop(0.1 * 9.81) #Brake with 0.1g deceleration
 ## End of test
 
 ### Method 3 without using indices
-# rc.move_until_end_of_path(2, 0.1 * 9.81) #Move until end of path at 2m/s and 0.1g acceleration
+# rc.move_until_end_of_path(2, 0.1) #Move until end of path at 2m/s and 0.1g acceleration
 ## End of test

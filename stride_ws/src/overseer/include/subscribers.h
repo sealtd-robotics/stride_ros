@@ -61,9 +61,9 @@ typedef struct
     float roll_deg;
     float pitch_deg;
     float yaw_deg;
-    double acc_x_mss;
-    double acc_y_mss;
-    double acc_z_mss;
+    double acc_x;
+    double acc_y;
+    double acc_z;
     float yaw_rate_rads;
     float cross_track_error_m;
     float desired_omega_rads;
@@ -86,6 +86,10 @@ typedef struct
     int motor_winding_temp_RR;
     int motor_winding_temp_FL;
     int motor_winding_temp_FR;
+    int motor_error_code_RL;
+    int motor_error_code_RR;
+    int motor_error_code_FL;
+    int motor_error_code_FR;
     float batt_voltage;
     uint16_t batt_amp;
     uint8_t batt_soc;
@@ -95,6 +99,12 @@ typedef struct
     float vehicle_latitude;
     float vehicle_longitude;
     float vehicle_heading;
+    bool brake_command;
+    int brake_status;
+    int fully_seated_L;
+    int fully_seated_R;
+    bool disable_motors;
+   
 } DataFrame;
 
 class MotorInfoSub {
@@ -157,32 +167,38 @@ private:
     DataFrame df_;
     std::ofstream wf;
 
+    //Mechanical Brake
+    ros::Subscriber brake_command_sub_;
+    ros::Subscriber brake_status_sub_;
+    ros::Subscriber fully_seated_L_sub_;
+    ros::Subscriber fully_seated_R_sub_;
+    ros::Subscriber disable_motors_sub_;
+
     bool recording = false;
     bool record_command_on = false;
     bool convert_to_csv = true;
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[60] = {"utc_time(millisec)", 
-                                "gnss_satellites", "diff_age", "RTK_status",
+    std::string csv_header[60] = {"utc_time(ms)", 
+                                "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
-                                "Ax(m/s^2)", "Ay(m/s^2)","Az(m/s^2)", "yaw_rate(rad/s)", 
+                                "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", 
                                 "cte(m)", 
-                                "desired_omega(rad/s)",
-                                "desired_velocity(m/s)", 
+                                "desired_omega(rad/s)", "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
                                 "actual_rpm_RR", "desired_rpm_RR",
                                 "actual_rpm_FL", "desired_rpm_FL",
                                 "actual_rpm_FR", "desired_rpm_FR",
                                 "adj_rpm_L", "adj_rpm_R",
-                                "actual_current_RL(A)", "actual_current_RR(A)",
-                                "actual_current_FL(A)", "actual_current_FR(A)",
-                                "winding_temp_RL(C)", "winding_temp_RR(C)",
-                                "winding_temp_FL(C)", "winding_temp_FR(C)",
+                                "actual_current_RL(A)", "actual_current_RR(A)", "actual_current_FL(A)", "actual_current_FR(A)",
+                                "winding_temp_RL(F)", "winding_temp_RR(F)", "winding_temp_FL(F)", "winding_temp_FR(F)",
+                                "error_code_RL", "error_code_RR", "error_code_FL", "error_code_FR", 
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
-                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)"};
+                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
+                                "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors" };
 
 public:    
     std::string export_path = "";
@@ -206,6 +222,11 @@ public:
     void BatteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
     void BatteryTemperatureCallback(const std_msgs::Int32::ConstPtr& msg);
     void TargetVehicleCallback(const external_interface::TargetVehicle::ConstPtr& msg);
+    void BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg);
+    void BrakeStatusCallback(const std_msgs::Int32::ConstPtr& msg);
+    void LeftBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
+    void RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
+    void DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);

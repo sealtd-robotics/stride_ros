@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 
 <launch>
+    <!--Parameters-->
+    <rosparam command="load" file="$(find top_level)../../params/params.yaml" />
+
     <include file="$(find networking)/launch/networking.launch" />
     <include file="$(find can_interface)/launch/can_interface.launch" />
     <include file="$(find drive_mechanism)/launch/drive_mechanism.launch" />

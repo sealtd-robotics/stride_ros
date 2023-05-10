@@ -32,5 +32,14 @@ P_corr: 18
 v_max: 1.5 # max linear velocity in m/s (5.6 almost max speed, 3 is good)
 w_max_spin_in_place: 2 # max angular velocity when spinning in place in rad/s (5 is fast, 2 is good)
 
+### Brake
+has_brake: false # IMPORTANT: make sure your hardware can support this before setting to 'true'!!!
+decel_rate: 0.1 # to use as default. Unit is g.
+accel_rate: 0.1 # to use as default. Unit is g.
+
+### IPs
+mcu_ip: "195.0.0.220" # onboard mcu
+target_ip: "195.0.0.60" # subject vehicle
+
 # Return to Start
 reverse_speed_goal: -1.5 #m/s

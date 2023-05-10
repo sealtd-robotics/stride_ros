@@ -1,0 +1,9 @@
+[Unit]
+Description=GPIO service
+After=multi-user.target
+
+[Service]
+ExecStart=/home/%p/stride_ros/system/gpio.sh
+
+[Install]
+WantedBy=multi-user.target

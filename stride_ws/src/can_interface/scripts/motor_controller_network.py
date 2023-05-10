@@ -28,9 +28,9 @@ from shared_tools.overseer_states_constants import *
 
 class MotorControllerNode:
     def __init__(self, node, topic_name):
-        self.gear_ratio = rospy.get_param('~gear_ratio')
-        self.rated_current = rospy.get_param('~rated_current')
-        self.peak_current = rospy.get_param('~peak_current')
+        self.gear_ratio = rospy.get_param('gear_ratio')
+        self.rated_current = rospy.get_param('rated_current')
+        self.peak_current = rospy.get_param('peak_current')
         self.error_word = 0
         self.winding_temperature = 0
         self.state = 0
@@ -70,9 +70,6 @@ class MotorControllerNode:
         self.wheel_rpm_actual_publisher = rospy.Publisher('/motor_controller/{}/wheel_rpm_actual'.format(self.topic_name), Float32, queue_size=10)
         self.error_word_publisher = rospy.Publisher('/motor_controller/{}/error_word'.format(self.topic_name), Int32, queue_size=10)
         self.winding_temperature_publisher = rospy.Publisher('/motor_controller/{}/winding_temperature'.format(self.topic_name), Int32, queue_size=10)
-
-        # Subscribers
-        # rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
 
         # Heartbeat timeout thread
         self.heartbeat_thread = threading.Thread(target=self.monitor_heartbeat)
@@ -161,6 +158,7 @@ class MotorControllerNode:
 
         # 1
         winding_temperature = tpdo2[1].raw
+        winding_temperature = (winding_temperature * (9/5)) + 32
         self.winding_temperature_publisher.publish(winding_temperature)
         self.winding_temperature = winding_temperature
 
@@ -183,26 +181,30 @@ class MotorControllerNetwork:
         self.overseer_state = 0
         self.does_brake_when_stopped = False
         self.ambient_temperature_F = 72
+        self.disable_motor = False
 
         self.left_front_rpm = 0
         self.left_back_rpm = 0
         self.right_front_rpm = 0
         self.right_back_rpm = 0
 
+        self.brake_command = 0
+        self.brake_status = 3
+        self.previous_state = -1
         # Get motor controller parameters
-        mc_lf_node_id = rospy.get_param('~mc_lf_node_id') # motor controller at left front
-        mc_lb_node_id = rospy.get_param('~mc_lb_node_id') # motor controller at left back
-        mc_rf_node_id = rospy.get_param('~mc_rf_node_id') # motor controller at right front
-        mc_rb_node_id = rospy.get_param('~mc_rb_node_id') # motor controller at right back
-        local_node_id = rospy.get_param('~local_node_id')
+        mc_lf_node_id = rospy.get_param('mc_lf_node_id') # motor controller at left front
+        mc_lb_node_id = rospy.get_param('mc_lb_node_id') # motor controller at left back
+        mc_rf_node_id = rospy.get_param('mc_rf_node_id') # motor controller at right front
+        mc_rb_node_id = rospy.get_param('mc_rb_node_id') # motor controller at right back
+        local_node_id = rospy.get_param('local_node_id')
 
-        mc_eds_path = rospy.get_param('~mc_eds_path')
-        local_eds_path = rospy.get_param('~local_eds_path')
+        mc_eds_path = rospy.get_param('mc_eds_path')
+        local_eds_path = rospy.get_param('local_eds_path')
 
         # Get CAN parameters
-        channel = rospy.get_param('~channel')
-        bustype = rospy.get_param('~bustype')
-        bitrate = rospy.get_param('~bitrate')
+        channel = rospy.get_param('channel')
+        bustype = rospy.get_param('bustype')
+        bitrate = rospy.get_param('bitrate')
 
         # Create CanOpen network
         self.network = canopen.Network()
@@ -236,6 +238,9 @@ class MotorControllerNetwork:
         rospy.Subscriber('/overseer/state', Int32, self.set_overseer_state)
         rospy.Subscriber('/gui/brake_when_stopped_toggled', Empty, self.toggle_does_brake_when_stopped)
         rospy.Subscriber('/robot_temperature', Int32, self.set_ambient_temperature, queue_size=1)
+        rospy.Subscriber('/robot_commander/disable_motor', Bool, self.set_disable_motor, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/brake_command', Bool, self.brake_command_callback, queue_size=1)
 
         # Thread to continuously publish brake_when_stopped boolean
         self.mcn_thread_1 = threading.Thread(target=self.publish_does_brake_when_stopped)
@@ -279,6 +284,19 @@ class MotorControllerNetwork:
                 rospy.logerr("Ignore this error when power-cycling motor controllers. The relax_motors function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)
                 continue
+    
+    def relax_motors_while_braking(self):
+        nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
+        interval = 0.25
+
+        # relax the motor that draws the most current
+        while self.brake_status !=2 and self.overseer_state == AUTO:
+            time.sleep(interval)
+            max_current_node = nodes[0]
+            for i in range(1,4):
+                if max_current_node.current < nodes[i].current:
+                    max_current_node = nodes[i]
+            max_current_node.disable_enable_power()
 
     def set_overseer_state(self, msg):
         self.overseer_state = msg.data
@@ -293,6 +311,15 @@ class MotorControllerNetwork:
     
     def set_ambient_temperature(self, msg):
         self.ambient_temperature_F = msg.data
+
+    def set_disable_motor(self, msg):
+        self.disable_motor = msg.data
+
+    def brake_command_callback(self,msg):
+        self.brake_command = msg.data
+
+    def brake_status_callback(self,msg):
+        self.brake_status = msg.data
 
     def update_ambient_temperature(self):
         while True:
@@ -364,7 +391,6 @@ class MotorControllerNetwork:
                     self.mc_rf_node.spin(self.right_front_rpm)
                     self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == E_STOPPED:
-                    # self.quick_stop_all_motors()
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
                 elif self.overseer_state == MANUAL:
@@ -386,18 +412,26 @@ class MotorControllerNetwork:
                         self.mc_rf_node.spin(self.right_front_rpm)
                         self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == AUTO:
-                    self.enable_power_for_all_motors()
-
-                    self.mc_lf_node.spin(self.left_front_rpm)
-                    self.mc_lb_node.spin(self.left_back_rpm)
-                    self.mc_rf_node.spin(self.right_front_rpm)
-                    self.mc_rb_node.spin(self.right_back_rpm)
+                    if self.previous_state != self.overseer_state:
+                        self.disable_motor = False
+                    if self.disable_motor:
+                        self.quick_stop_all_motors()
+                    else:
+                        if self.brake_command == True and self.brake_status != 2:
+                            self.relax_motors_while_braking()
+                        else:
+                            self.enable_power_for_all_motors()
+                            self.mc_lf_node.spin(self.left_front_rpm)
+                            self.mc_lb_node.spin(self.left_back_rpm)
+                            self.mc_rf_node.spin(self.right_front_rpm)
+                            self.mc_rb_node.spin(self.right_back_rpm)
                 elif self.overseer_state == IDLE:
                     if self.is_any_measured_wheel_rpm_above_this(450):
                         self.enable_power_for_all_motors()
                         self.send_zero_rpm_to_all_motors()
                     else:
                         self.quick_stop_all_motors()
+                self.previous_state = self.overseer_state
             except Exception as error:
                 rospy.logerr("Ignore this error when power-cycling motor controllers. The drive function from a thread of motor_controller_network.py raised an error, which says %s", error)
                 time.sleep(1)

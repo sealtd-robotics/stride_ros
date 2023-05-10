@@ -17,10 +17,10 @@
 rc = RobotCommander()
 
 ### Function Calls
-rc.move_until_index(2, 0.1 * 9.81, 50) #Move at 2 m/s with 0.1g acceleration until index 50.
+rc.move_until_index(2, 0.1, 50) #Move at 2 m/s with 0.1g acceleration until index 50.
 ## If a specific stopping point is desired, use decel_to_stop_at_index(). Otherwise, brake_to_stop() will work here too.
 rc.decel_to_stop_at_index(55) #Decelerate and stop at index 55
 rc.sleep(2) #Stop for 2 seconds
 ## The below function can be replaced with other path following function calls for the desired operation. Ex) move_until_index() followed by decel_to_stop_at_index()
-rc.move_until_end_of_path(2, 0.1 * 9.81) # Move until end of path at 2 m/s with 0.1g acceleration.
+rc.move_until_end_of_path(2, 0.1) # Move until end of path at 2 m/s with 0.1g acceleration.
 ## End of Test

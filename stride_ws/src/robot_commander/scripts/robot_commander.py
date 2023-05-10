@@ -9,6 +9,7 @@
 # ========================================================================
 
 from __future__ import division
+from socket import setdefaulttimeout
 import rospy
 import time
 import threading
@@ -26,6 +27,7 @@ from external_interface.msg import TargetVehicle
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
 from shared_tools.overseer_states_constants import *
+from check_script import *
 
 # Global control robot commander across threads
 
@@ -42,6 +44,13 @@ class RobotCommander:
         self.robot_heading = -1
         self.turning_radius = 999
         self.limiter_initial_speed = 0
+        self.brake_command = 0
+        self.brake_status = 3
+
+        self.has_brake = rospy.get_param('has_brake', False)
+        self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
+        self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
+        
         self.target_gps_ready = False
 
         # Publishers
@@ -49,6 +58,8 @@ class RobotCommander:
         self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
         self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
         self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
+        self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
+        self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
         # Subscribers
         rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
@@ -63,6 +74,13 @@ class RobotCommander:
 
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
+
+        if self.has_brake:
+            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+            rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+            rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+        else:
+            self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
         while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
@@ -85,6 +103,7 @@ class RobotCommander:
         self.velocity_command_publisher.publish(pose2d)
 
     def _rate_limiter(self, speed_goal, acceleration, total_distance_in_index):
+        acceleration = acceleration * 9.81
         initial_time_in_s = time.time()
         current_velocity = 0
         is_starting_decel = True
@@ -135,16 +154,29 @@ class RobotCommander:
                 current_velocity = velocity_input
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
-        self._display_message(dash_line)
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
+
         self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
 
     def brake_to_stop(self, speed_rate):
+        global let_script_runs
+        speed_rate = speed_rate * 9.81
         if not let_script_runs:
             return
         self._display_message('Executing brake_to_stop')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
         rate = rospy.Rate(50)
         speed_goal = 0
 
@@ -158,10 +190,16 @@ class RobotCommander:
             rate.sleep()
 
     def move_until_index(self, speed_goal, speed_rate, index):
+        speed_rate = speed_rate * 9.81
         global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing move_until_index')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
         if index > self.max_path_index:
             let_script_runs = False
             self._display_message("Aborting Test: Input index must not exceed max path index.")
@@ -180,9 +218,15 @@ class RobotCommander:
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing rotate_until_heading')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
         if heading >= 0:
             heading = heading % 360
         else:
@@ -228,6 +272,11 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing decel_to_stop_at_index')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
         if stop_index > self.max_path_index:
             let_script_runs = False
             self._display_message("Aborting Test: Input stop index must not exceed max path index.")
@@ -261,9 +310,15 @@ class RobotCommander:
         self.stop_index_publisher.publish(999999)
 
     def move_until_beginning_of_path(self, speed_goal, speed_rate):
+        global let_script_runs
         if not let_script_runs:
             return
         self._display_message('Executing move_until_beginning_of_path')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
         self._display_message(dash_line)
         self._rate_limiter(speed_goal, speed_rate, self.current_path_index)
 
@@ -272,6 +327,114 @@ class RobotCommander:
             return
         self._display_message('Executing sleep')
         time.sleep(seconds)
+
+    def engage_brake_hill(self):
+        global let_script_runs
+        if not let_script_runs:
+            return
+        self._display_message('Executing engage_brake')
+        time.sleep(0.1)
+
+        if not self.has_brake:
+            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            time.sleep(0.1)
+            self.brake_to_stop(self.default_decel_rate)
+            let_script_runs = False
+            return
+
+        rate = rospy.Rate(50)
+
+        #Pitch check
+        if abs(self.pitch) < 4 /180*math.pi:
+            self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
+            let_script_runs = False
+            return        
+
+        #Send speed to zero before braking
+        while self.robot_speed > 0.1 and let_script_runs:
+            # self._send_velocity_command_using_radius(0)
+            self._display_message("WARNING: Robot speed still active before brake")
+            self.brake_to_stop(0.1)
+            rate.sleep()
+
+        # Tell Arduino via UDP to engage brake 
+        self.brake_command = True
+        self.brake_command_publisher.publish(self.brake_command)
+
+        #Timeout info
+        engage_brake_timeout = False
+        timeout = 50 
+        t0 = time.time()
+        
+        #While loop to block code until Arduino says brake is engaged via UDP 
+        time.sleep(0.2)
+        t1 = time.time()
+        time_check = 5 #Time for motors to be able to relax
+        while self.brake_status != 2 and let_script_runs: 
+            if (time.time() - t0) > timeout: #Timeout engage brake when it fails
+                engage_brake_timeout = True
+                break
+
+            if self.brake_status == 2: #Exit while loop if brake is fully engaged
+                break
+            elif (time.time() - t1) > time_check: #If rollback doesn't engage brake, disengage then reengage brake
+                self.brake_command_publisher.publish(False)
+                time.sleep(1)
+                self.brake_command_publisher.publish(True)
+                t1 = time.time()
+            rate.sleep()
+
+        if self.brake_status == 2: #Once brake fully engaged, wait 0.5 seconds and then disable motors
+            time.sleep(0.5)  
+            self.disable_motor_publisher.publish(True) 
+        elif engage_brake_timeout == True: #If timeout occurs
+            let_script_runs = False #Abort test. State will be STOPPED
+            self._display_message("Engage brake failed") #Warning message to gui 
+
+    def disengage_brake_hill(self):
+        global let_script_runs
+        if not let_script_runs:
+            return
+        self._display_message('Executing disengage_brake')
+        time.sleep(0.1)  
+
+        if not self.has_brake:
+            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            time.sleep(0.1)
+            self.brake_to_stop(self.default_decel_rate)
+            let_script_runs = False
+            return
+
+        rate = rospy.Rate(50)
+
+        #Enable motors before disengaging
+        self.disable_motor_publisher.publish(False)
+        time.sleep(0.1)
+
+        #Tell arduino to disengage brake
+        self.brake_command = False 
+        self.brake_command_publisher.publish(self.brake_command)
+
+        #Timeout info
+        disengage_brake_timeout = False
+        timeout = 2
+        t0 = time.time()
+
+        #While loop to block code until Ardino says brake is disengaged via UDP 
+        while self.brake_status != 1 and let_script_runs:
+            rate.sleep()
+            self._send_velocity_command_using_radius(0.025)
+            if (time.time() - t0) > timeout: #Timeout disengage brake when it fails
+                disengage_brake_timeout = True
+                break
+
+        if self.brake_status == 1: #Exit function if brake fully disengaged
+            self._send_velocity_command_using_radius(0)
+            return
+        elif disengage_brake_timeout == True: #If function times out, abort test and send message to the gui
+            self._send_velocity_command_using_radius(0)
+            let_script_runs = False #Abort test
+            self._display_message('Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
@@ -352,6 +515,7 @@ class RobotCommander:
 
     def gps_sbg_euler_callback(self, msg):
         self.robot_heading = msg.angle.z
+        self.pitch = msg.angle.y
 
     def gps_sbg_nav_callback(self, msg):
         self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
@@ -367,6 +531,15 @@ class RobotCommander:
     def turning_radius_callback(self, msg):
         self.turning_radius = msg.data
 
+    def brake_status_callback(self, msg):
+        self.brake_status = msg.data
+
+    def left_brake_callback(self, msg):
+        self.fully_seated_L = msg.data
+
+    def right_brake_callback(self, msg):
+        self.fully_seated_R = msg.data
+
 class Receptionist:
     def __init__(self):
         self.script_folder = "../../../custom_script/"
@@ -375,6 +548,8 @@ class Receptionist:
         self.previous_state = -1
         self.is_script_okay = False
         self.overseer_state = 0
+
+        self.brake = rospy.get_param('has_brake', False)
 
         # Publishers
         self.is_script_running_publisher = rospy.Publisher('/robot_commander/is_script_running', Bool, queue_size=10)
@@ -391,6 +566,7 @@ class Receptionist:
 
         # !!!! Need to add syntax checking !!!!
         self.is_script_okay = True
+        result = "OK"
         # !!!!
 
         if os.path.exists(self.script_folder):
@@ -399,6 +575,13 @@ class Receptionist:
                 filepath = py_files[0]   
 
                 self.filename = os.path.basename(filepath)
+                result = check_script(self.script_folder + self.filename, self.brake)
+                if result == "OK":
+                    self.is_script_okay = True
+                    command_message_publisher.publish("Script is OK to run.")
+                else:
+                    self.is_script_okay = False
+                    command_message_publisher.publish(result)
                 self.script_name_publisher.publish(self.filename)
 
     def start_custom_script(self):
@@ -407,6 +590,9 @@ class Receptionist:
                 execfile(self.script_folder + self.filename)
             except Exception as error:
                 print(error)
+        else:
+            error_message = "ERROR: Invalid test script. Abort test."
+            command_message_publisher.publish(error_message)
 
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
