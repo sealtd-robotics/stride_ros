@@ -216,6 +216,27 @@ class RobotCommander:
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
+    def accel_to_distance(self, speed_goal, distance_goal, P_gain = 1):
+        global let_script_runs
+        if not let_script_runs:
+            return
+        self._display_message('Executing accel_to_distance')
+        acceleration_mps = np.square(speed_goal) / (2 * distance_goal* P_gain)
+        speed_rate = acceleration_mps / 9.81
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            return
+        
+        rate = rospy.Rate(50)
+        initial_time = time.time()
+        initial_speed = self.limiter_initial_speed
+        while (self.current_path_index < self.max_path_index) and let_script_runs:
+            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            self._send_velocity_command_using_radius(limited_speed)
+            rate.sleep()
+
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
         global let_script_runs
