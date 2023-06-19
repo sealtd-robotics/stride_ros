@@ -131,10 +131,42 @@ class RobotCommander:
                 self._send_velocity_command_using_radius(velocity_input)
                 r.sleep() 
                 current_velocity = velocity_input
+
+    def _rate_limit_to_distance(self, speed_goal, acceleration, distance_goal, total_distance_in_index):
+        acceleration = acceleration * 9.81
+        initial_time_in_s = time.time()
+        current_velocity = 0
+        is_starting_decel = True
+        frequency = 50 #hz
+        period = 1/frequency
+        r = rospy.Rate(frequency) 
+        minimum_decel_vel = 0.3 #m/s
+
+        index_dist = distance_goal / 0.3
+       
+        if speed_goal < 0: #reverse motion
+            acceleration_distance =  total_distance_in_index*2/3 
+            const_vel_distance = total_distance_in_index/3
+
+            while self.current_path_index > 0 and let_script_runs:
+                if self.current_path_index >=  acceleration_distance:
+                    velocity_input = math.copysign((min(abs(acceleration * (time.time()-initial_time_in_s)), abs(speed_goal))), speed_goal)
+                elif self.current_path_index >=  const_vel_distance:
+                    velocity_input =  current_velocity
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[0 : self.current_path_index])
+                        a = current_velocity**2 / (2*d) #vf^2 = vi^2 + 2*a*d
+                        is_starting_decel = False
+
+                    velocity_input = math.copysign(max(abs(current_velocity + a*period) , abs(minimum_decel_vel)), speed_goal) #current velocity is -ve
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
+                current_velocity = velocity_input
                 
         else: #forward motion
             distance_to_be_covered = total_distance_in_index-self.current_path_index 
-            acceleration_distance = self.current_path_index + distance_to_be_covered/3
+            acceleration_distance = self.current_path_index + (index_dist - self.current_path_index)/3
             const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
 
             while self.current_path_index < total_distance_in_index and let_script_runs:
@@ -222,20 +254,13 @@ class RobotCommander:
             return
         self._display_message('Executing accel_to_distance')
         acceleration_mps = np.square(speed_goal) / (2 * distance_goal* P_gain)
-        speed_rate = acceleration_mps / 9.81
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
-        
-        rate = rospy.Rate(50)
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
-        while (self.current_path_index < self.max_path_index) and let_script_runs:
-            limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-            self._send_velocity_command_using_radius(limited_speed)
-            rate.sleep()
+
+        self._rate_limit_to_distance(speed_goal, acceleration_mps, distance_goal, self.max_path_index)
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):

@@ -38,8 +38,8 @@ decel_rate: 0.1 # to use as default. Unit is g.
 accel_rate: 0.1 # to use as default. Unit is g.
 
 ### IPs
-mcu_ip: "195.0.0.232" # onboard mcu
-target_ip: "195.0.0.62" # subject vehicle
+mcu_ip: "195.0.0.220" # onboard mcu
+target_ip: "195.0.0.60" # subject vehicle
 
 # Return to Start
 reverse_speed_goal: -1.5 #m/s
