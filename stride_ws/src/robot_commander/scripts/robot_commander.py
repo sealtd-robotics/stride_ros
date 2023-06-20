@@ -131,6 +131,27 @@ class RobotCommander:
                 self._send_velocity_command_using_radius(velocity_input)
                 r.sleep() 
                 current_velocity = velocity_input
+                
+        else: #forward motion
+            distance_to_be_covered = total_distance_in_index-self.current_path_index 
+            acceleration_distance = self.current_path_index + distance_to_be_covered/3
+            const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
+
+            while self.current_path_index < total_distance_in_index and let_script_runs:
+                if self.current_path_index <=  acceleration_distance:
+                    velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
+                elif self.current_path_index <=  const_vel_distance:
+                    velocity_input = current_velocity
+                else:
+                    if is_starting_decel: 
+                        d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
+                        a = current_velocity**2 / (2*d) 
+                        is_starting_decel = False
+
+                    velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
+                self._send_velocity_command_using_radius(velocity_input)
+                r.sleep() 
+                current_velocity = velocity_input
 
     def _rate_limit_to_distance(self, speed_goal, acceleration, distance_goal, total_distance_in_index):
         acceleration = acceleration * 9.81
@@ -166,7 +187,7 @@ class RobotCommander:
                 
         else: #forward motion
             distance_to_be_covered = total_distance_in_index-self.current_path_index 
-            acceleration_distance = self.current_path_index + (index_dist - self.current_path_index)/3
+            acceleration_distance = self.current_path_index + distance_to_be_covered/3
             const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
 
             while self.current_path_index < total_distance_in_index and let_script_runs:
