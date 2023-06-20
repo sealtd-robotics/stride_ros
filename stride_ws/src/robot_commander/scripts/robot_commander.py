@@ -187,7 +187,7 @@ class RobotCommander:
                 
         else: #forward motion
             distance_to_be_covered = total_distance_in_index-self.current_path_index 
-            acceleration_distance = self.current_path_index + distance_to_be_covered/3
+            acceleration_distance = self.current_path_index + (index_dist - self.current_path_index)
             const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
 
             while self.current_path_index < total_distance_in_index and let_script_runs:
@@ -274,14 +274,16 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing accel_to_distance')
-        acceleration_mps = np.square(speed_goal) / (2 * distance_goal* P_gain)
+        speed_goal = speed_goal * (1000/3600) #Convert km/hr to m/s
+        acceleration_mps2 = np.square(speed_goal) / (2 * distance_goal* P_gain)
+        acceleration_g = acceleration_mps2 / 9.81
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Brake not disengaged. Movement blocked and test aborted.")
             return
 
-        self._rate_limit_to_distance(speed_goal, acceleration_mps, distance_goal, self.max_path_index)
+        self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, self.max_path_index)
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
