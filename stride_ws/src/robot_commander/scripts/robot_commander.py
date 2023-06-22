@@ -153,7 +153,7 @@ class RobotCommander:
                 r.sleep() 
                 current_velocity = velocity_input
 
-    def _rate_limit_to_distance(self, speed_goal, acceleration, distance_goal, total_distance_in_index):
+    def _rate_limit_to_distance(self, speed_goal, acceleration, distance_goal, total_distance_in_index): #For accel_to_distance() motion.
         acceleration = acceleration * 9.81
         initial_time_in_s = time.time()
         current_velocity = 0
@@ -165,46 +165,26 @@ class RobotCommander:
 
         index_dist = distance_goal / 0.3
        
-        if speed_goal < 0: #reverse motion
-            acceleration_distance =  total_distance_in_index*2/3 
-            const_vel_distance = total_distance_in_index/3
+        #Forward motion
+        distance_to_be_covered = total_distance_in_index-self.current_path_index 
+        acceleration_distance = self.current_path_index + (index_dist - self.current_path_index)
+        const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
 
-            while self.current_path_index > 0 and let_script_runs:
-                if self.current_path_index >=  acceleration_distance:
-                    velocity_input = math.copysign((min(abs(acceleration * (time.time()-initial_time_in_s)), abs(speed_goal))), speed_goal)
-                elif self.current_path_index >=  const_vel_distance:
-                    velocity_input =  current_velocity
-                else:
-                    if is_starting_decel: 
-                        d = sum(self.path_intervals[0 : self.current_path_index])
-                        a = current_velocity**2 / (2*d) #vf^2 = vi^2 + 2*a*d
-                        is_starting_decel = False
+        while self.current_path_index < total_distance_in_index and let_script_runs:
+            if self.current_path_index <=  acceleration_distance:
+                velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
+            elif self.current_path_index <=  const_vel_distance:
+                velocity_input = current_velocity
+            else:
+                if is_starting_decel: 
+                    d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
+                    a = current_velocity**2 / (2*d) 
+                    is_starting_decel = False
 
-                    velocity_input = math.copysign(max(abs(current_velocity + a*period) , abs(minimum_decel_vel)), speed_goal) #current velocity is -ve
-                self._send_velocity_command_using_radius(velocity_input)
-                r.sleep() 
-                current_velocity = velocity_input
-                
-        else: #forward motion
-            distance_to_be_covered = total_distance_in_index-self.current_path_index 
-            acceleration_distance = self.current_path_index + (index_dist - self.current_path_index)
-            const_vel_distance = self.current_path_index + distance_to_be_covered*2/3
-
-            while self.current_path_index < total_distance_in_index and let_script_runs:
-                if self.current_path_index <=  acceleration_distance:
-                    velocity_input = min(acceleration * (time.time()-initial_time_in_s), speed_goal)
-                elif self.current_path_index <=  const_vel_distance:
-                    velocity_input = current_velocity
-                else:
-                    if is_starting_decel: 
-                        d = sum(self.path_intervals[self.current_path_index : total_distance_in_index])
-                        a = current_velocity**2 / (2*d) 
-                        is_starting_decel = False
-
-                    velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
-                self._send_velocity_command_using_radius(velocity_input)
-                r.sleep() 
-                current_velocity = velocity_input
+                velocity_input = max(current_velocity - a*period, minimum_decel_vel) 
+            self._send_velocity_command_using_radius(velocity_input)
+            r.sleep() 
+            current_velocity = velocity_input
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
         global let_script_runs
@@ -214,7 +194,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
 
         self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
@@ -228,7 +208,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
         rate = rospy.Rate(50)
         speed_goal = 0
@@ -251,7 +231,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
         if index > self.max_path_index:
             let_script_runs = False
@@ -280,7 +260,11 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
+            return
+        if speed_goal < 0 or distance_goal < 0: #If entered speed goal is negative
+            let_script_runs = False
+            self._display_message('Aborting Test: Please enter a positive value for the speed and distance goals.')
             return
 
         self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, self.max_path_index)
@@ -294,7 +278,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
         if heading >= 0:
             heading = heading % 360
@@ -344,7 +328,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
         if stop_index > self.max_path_index:
             let_script_runs = False
@@ -386,7 +370,7 @@ class RobotCommander:
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
-            self._display_message("Brake not disengaged. Movement blocked and test aborted.")
+            self._display_message("Aborting Test: Brake not disengaged.")
             return
         self._display_message(dash_line)
         self._rate_limiter(speed_goal, speed_rate, self.current_path_index)
@@ -405,7 +389,7 @@ class RobotCommander:
         time.sleep(0.1)
 
         if not self.has_brake:
-            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            self._display_message('Aborting Test: Is this a brake-supported platform? Check parameters.')
             time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
             let_script_runs = False
@@ -415,7 +399,7 @@ class RobotCommander:
 
         #Pitch check
         if abs(self.pitch) < 4 /180*math.pi:
-            self._display_message("Pitch not great enough to engage brake.") #Print to GUI 
+            self._display_message("Aborting Test: Pitch not great enough to engage brake.") #Print to GUI 
             let_script_runs = False
             return        
 
@@ -458,7 +442,7 @@ class RobotCommander:
             self.disable_motor_publisher.publish(True) 
         elif engage_brake_timeout == True: #If timeout occurs
             let_script_runs = False #Abort test. State will be STOPPED
-            self._display_message("Engage brake failed") #Warning message to gui 
+            self._display_message("Aborting Test: Engage brake failed") #Warning message to gui 
 
     def disengage_brake_hill(self):
         global let_script_runs
@@ -468,7 +452,7 @@ class RobotCommander:
         time.sleep(0.1)  
 
         if not self.has_brake:
-            self._display_message('Error: Is this a brake-supported platform? Check parameters. Stop and Abort.')
+            self._display_message('Aborting Test: Is this a brake-supported platform? Check parameters.')
             time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
             let_script_runs = False
@@ -503,7 +487,7 @@ class RobotCommander:
         elif disengage_brake_timeout == True: #If function times out, abort test and send message to the gui
             self._send_velocity_command_using_radius(0)
             let_script_runs = False #Abort test
-            self._display_message('Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
+            self._display_message('Aborting Test: Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
     def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
         """
