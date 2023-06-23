@@ -542,6 +542,49 @@ class RobotCommander:
             self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
+        
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long):
+        global let_script_runs
+        if not let_script_runs:
+            return
+        self._display_message('Executing vehicle_compensation')
+        time.sleep(0.1)
+        if self.brake_status != 1: #Block function if brake isn't fully disengaged
+            let_script_runs = False
+            self._display_message("Aborting Test: Brake not disengaged.")
+            return
+
+        #Initialize variables
+        stride_vel_adj = 0
+        new_stride_vel = 0
+
+        #Calculate distance to collision point.
+        stride_dist_to_index = np.sqrt(np.square(intersection_lat - self.stride_latitude) + np.sqaure(intersection_long - self.stride_longitude))
+        sv_dist_to_index = np.sqrt(np.square(intersection_lat - self.target_latitude) + np.sqaure(intersection_long - self.target_longitude))
+
+        #Calculate time to collision point.
+        stride_ttc = stride_dist_to_index / self.robot_speed
+        sv_ttc = sv_dist_to_index / self.target_velocity
+
+        while (self.current_path_index < self.max_path_index) and let_script_runs:
+            if not self.target_gps_ready:
+                self._display_message("Aborting Test: Target GPS is not ready.")
+                let_script_runs = False
+                return
+            else:
+                if self.robot_speed < speed_goal:
+                    self._rate_limiter(speed_goal, speed_rate, self.max_path_index) 
+                else:
+                    if stride_ttc < sv_ttc: #Lower Stride's speed
+                        stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+                        new_stride_vel = self.robot_speed - stride_vel_adj
+                        self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
+                    elif stride_ttc > sv_ttc: #Raise Stride's speed
+                        stride_vel_adj = stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+                        new_stride_vel = self.robot_speed + stride_vel_adj
+                        self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
+                    else: #Keep Stride's speed constant
+                        self._rate_limiter(self.robot_speed, speed_rate, self.max_path_index) 
 
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):
@@ -572,6 +615,8 @@ class RobotCommander:
 
     def gps_sbg_nav_callback(self, msg):
         self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
+        self.stride_latitude = msg.latitude
+        self.stride_longitude = msg.longitude
 
     def target_callback(self, msg):
         self.target_heading = msg.heading
