@@ -543,7 +543,7 @@ class RobotCommander:
             let_script_runs = False
             return
         
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long):
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehcile_int_long):
         global let_script_runs
         if not let_script_runs:
             return
@@ -560,7 +560,7 @@ class RobotCommander:
 
         #Calculate distance to collision point.
         stride_dist_to_index = np.sqrt(np.square(intersection_lat - self.stride_latitude) + np.sqaure(intersection_long - self.stride_longitude))
-        sv_dist_to_index = np.sqrt(np.square(intersection_lat - self.target_latitude) + np.sqaure(intersection_long - self.target_longitude))
+        sv_dist_to_index = np.sqrt(np.square(vehicle_int_lat - self.target_latitude) + np.sqaure(vehcile_int_long - self.target_longitude))
 
         #Calculate time to collision point.
         stride_ttc = stride_dist_to_index / self.robot_speed
