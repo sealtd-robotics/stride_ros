@@ -28,6 +28,7 @@ from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
 from shared_tools.overseer_states_constants import *
 from check_script import *
+from math import cos, pi, sin
 
 # Global control robot commander across threads
 
@@ -46,6 +47,8 @@ class RobotCommander:
         self.limiter_initial_speed = 0
         self.brake_command = 0
         self.brake_status = 3
+        self.target_latitude = 0
+        self.target_longitude = 0
 
         self.has_brake = rospy.get_param('has_brake', False)
         self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
@@ -185,6 +188,20 @@ class RobotCommander:
             self._send_velocity_command_using_radius(velocity_input)
             r.sleep() 
             current_velocity = velocity_input
+
+    
+    def _LL2NE(self, RefLat, RefLong, latitude, longitude): #Some conversion formula obtained from GeneSys documentation
+        e = 0.0818191908426; #Some constant
+        R = 6378137; #Some constant
+
+        #Scale factor for longitude (deg) to East (m)
+        Efactor = cos(RefLat*pi/180)*pi/180*R/ np.sqrt(1-np.square((sin(RefLat*pi/180)))* e ** 2)
+        #Scale factor for latitude (deg) to North (m)
+        Nfactor = (1-e**2)*R/((1-(np.square(sin(RefLat*pi/180))*e**2))*np.sqrt(1-(np.square(sin(RefLat*pi/180))*e**2)))*pi/180
+
+        col1 = Efactor * (longitude - RefLong)  #Apply east scale factor and put into column variable
+        col2 = Nfactor * (latitude - RefLat)    #Apply north scale factor and put into column variable
+        return col1, col2   #Return values from each column as their own variable
 
     def move_until_end_of_path(self, speed_goal, speed_rate):
         global let_script_runs
@@ -543,7 +560,7 @@ class RobotCommander:
             let_script_runs = False
             return
         
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehcile_int_long):
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long):
         global let_script_runs
         if not let_script_runs:
             return
@@ -553,37 +570,74 @@ class RobotCommander:
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
             return
+        rospy.Rate(50)
         
         #Initialize variables
         stride_vel_adj = 0
         new_stride_vel = 0
-
-        #Calculate distance to collision point.
-        stride_dist_to_index = np.sqrt(np.square(intersection_lat - self.stride_latitude) + np.sqaure(intersection_long - self.stride_longitude))
-        sv_dist_to_index = np.sqrt(np.square(vehicle_int_lat - self.target_latitude) + np.sqaure(vehcile_int_long - self.target_longitude))
-
-        #Calculate time to collision point.
-        stride_ttc = stride_dist_to_index / self.robot_speed
-        sv_ttc = sv_dist_to_index / self.target_velocity
+        # initial_time = time.time()
+        # initial_speed = self.limiter_initial_speed
         
+        #reference lat/long
+        Ref_lat_stride = intersection_lat
+        Ref_long_stride = intersection_long
+        Ref_lat_vehicle = vehicle_int_lat
+        Ref_long_vehicle = vehicle_int_long
+          
         if not self.target_gps_ready:
             self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
         else:
-            if self.robot_speed < speed_goal:
-                self._rate_limiter(speed_goal, speed_rate, self.max_path_index) 
-            else:
-                if stride_ttc < sv_ttc: #Lower Stride's speed
-                    stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = self.robot_speed - stride_vel_adj
-                    self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
-                elif stride_ttc > sv_ttc: #Raise Stride's speed
-                    stride_vel_adj = stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = self.robot_speed + stride_vel_adj
-                    self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
-                else: #Keep Stride's speed constant
-                    self._rate_limiter(self.robot_speed, speed_rate, self.max_path_index) 
+            while self.current_path_index < self.max_path_index and let_script_runs:
+                #Constantly convert Stride and vehicle lat/long values to east/north.
+                stride_east, stride_north = self._LL2NE(Ref_lat_stride, Ref_long_stride, self.stride_latitude, self.stride_longitude)
+                vehicle_east, vehicle_north = self._LL2NE(Ref_lat_vehicle, Ref_long_vehicle, self.target_latitude, self.target_longitude)
+
+                initial_time = time.time()
+                initial_speed = self.limiter_initial_speed
+                
+                #Calculate distance to collision point.
+                stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
+                sv_dist_to_index = np.sqrt(np.square(vehicle_east) + np.square(vehicle_north)) #North/East (m)
+                # print("Stride dist to collision = " + str(stride_dist_to_index))
+                # print("Vehicle dist to collision = " + str(sv_dist_to_index))
+                
+                #Calculate time to collision point.
+                stride_ttc = stride_dist_to_index / self.robot_speed
+                sv_ttc = sv_dist_to_index / self.target_velocity
+                print("Stride time to collision = " + str(stride_ttc))
+                print("Vehicle time to collision = " + str(stride_ttc))
+                print("----------------------------------------------------------------------")
+
+                time.sleep(0.5)
+
+                if self.robot_speed < speed_goal:
+                    # print("STRIDE goes into 1st if")
+                    # self._rate_limiter(speed_goal, speed_rate, self.max_path_index) 
+                    limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+                    self._send_velocity_command_using_radius(limited_speed)
+                else:
+                    if stride_ttc < sv_ttc: #Lower Stride's speed
+                        # print("STRIDE goes into 1st cond")
+                        stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+                        new_stride_vel = self.robot_speed - stride_vel_adj
+                        # self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
+                        self._send_velocity_command_using_radius(limited_speed)
+                    elif stride_ttc > sv_ttc: #Raise Stride's speed
+                        # print("STRIDE goes into 2nd cond")
+                        stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+                        new_stride_vel = self.robot_speed + stride_vel_adj
+                        # self._rate_limiter(new_stride_vel, speed_rate, self.max_path_index) 
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
+                        self._send_velocity_command_using_radius(limited_speed)
+                    else: #Keep Stride's speed constant
+                        # print("STRIDE goes into 3rd cond")
+                        # self._rate_limiter(self.robot_speed, speed_rate, self.max_path_index) 
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, self.robot_speed, initial_speed)
+                        self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
 
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):
