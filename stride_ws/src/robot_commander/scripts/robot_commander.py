@@ -573,6 +573,7 @@ class RobotCommander:
         rospy.Rate(50)
         
         #Initialize variables
+        speed_rate = speed_rate * 9.81
         stride_vel_adj = 0
         new_stride_vel = 0
         initial_time = time.time()
@@ -589,9 +590,10 @@ class RobotCommander:
             let_script_runs = False
             return
         else:
-            if self.robot_speed < speed_goal:
+            while self.robot_speed < speed_goal and let_script_runs:
                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
                 self._send_velocity_command_using_radius(limited_speed)
+                rate.sleep()
 
             while self.current_path_index < self.max_path_index and let_script_runs:
                 #Constantly convert Stride and vehicle lat/long values to east/north.
@@ -604,38 +606,25 @@ class RobotCommander:
                 #Calculate distance to collision point.
                 stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
                 sv_dist_to_index = np.sqrt(np.square(vehicle_east) + np.square(vehicle_north)) #North/East (m)
-                # print("Stride dist to collision = " + str(stride_dist_to_index))
-                # print("Vehicle dist to collision = " + str(sv_dist_to_index))
                 
                 #Calculate time to collision point.
                 stride_ttc = stride_dist_to_index / self.robot_speed
                 sv_ttc = sv_dist_to_index / self.target_velocity
-                print("Stride time to collision = " + str(stride_ttc))
-                print("Vehicle time to collision = " + str(stride_ttc))
-                print("----------------------------------------------------------------------")
 
+                #Delay for loop
                 time.sleep(0.5)
 
-                # if self.robot_speed < speed_goal:
-                #     # print("STRIDE goes into 1st if")
-                #     # self._rate_limiter(speed_goal, speed_rate, self.max_path_index) 
-                #     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-                #     self._send_velocity_command_using_radius(limited_speed)
-                # else:
                 if stride_ttc < sv_ttc: #Lower Stride's speed
-                    # print("STRIDE goes into 1st cond")
                     stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
                     new_stride_vel = self.robot_speed - stride_vel_adj
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
                     self._send_velocity_command_using_radius(limited_speed)
                 elif stride_ttc > sv_ttc: #Raise Stride's speed
-                    # print("STRIDE goes into 2nd cond")
                     stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
                     new_stride_vel = self.robot_speed + stride_vel_adj
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
                     self._send_velocity_command_using_radius(limited_speed)
                 else: #Keep Stride's speed constant
-                    # print("STRIDE goes into 3rd cond") 
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, self.robot_speed, initial_speed)
                     self._send_velocity_command_using_radius(limited_speed)
                 rate.sleep()
