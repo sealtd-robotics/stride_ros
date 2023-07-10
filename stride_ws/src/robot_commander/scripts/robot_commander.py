@@ -573,11 +573,13 @@ class RobotCommander:
         rospy.Rate(50)
         
         #Initialize variables
-        speed_rate = speed_rate * 9.81
-        stride_vel_adj = 0
-        new_stride_vel = 0
-        initial_time = time.time()
-        initial_speed = self.limiter_initial_speed
+        speed_rate = speed_rate * 9.81 #Convert g to m/s^2
+        stride_vel_adj = 0 #m/s
+        new_stride_vel = 0 #m/s
+        minimum_velocity = 0.1 #m/s
+        euro_ncap_speed_tol = 0.2 * (1000/3600) #0.2 kph speed tolerance to m/s 
+        lower_vel_threshold = speed_goal - euro_ncap_speed_tol
+        upper_vel_threshold = speed_goal + euro_ncap_speed_tol - 0.033
         
         #reference lat/long
         Ref_lat_stride = intersection_lat
@@ -590,18 +592,20 @@ class RobotCommander:
             let_script_runs = False
             return
         else:
-            while self.robot_speed < speed_goal and let_script_runs:
+            
+            initial_time = time.time()
+            initial_speed = self.limiter_initial_speed
+            while self.robot_speed < speed_goal and let_script_runs: #Get up to speed before applying speed adjustments.
                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
                 self._send_velocity_command_using_radius(limited_speed)
                 rate.sleep()
 
+            # initial_time = time.time()
+            # initial_speed = self.limiter_initial_speed
             while self.current_path_index < self.max_path_index and let_script_runs:
                 #Constantly convert Stride and vehicle lat/long values to east/north.
                 stride_east, stride_north = self._LL2NE(Ref_lat_stride, Ref_long_stride, self.stride_latitude, self.stride_longitude)
                 vehicle_east, vehicle_north = self._LL2NE(Ref_lat_vehicle, Ref_long_vehicle, self.target_latitude, self.target_longitude)
-
-                initial_time = time.time()
-                initial_speed = self.limiter_initial_speed
                 
                 #Calculate distance to collision point.
                 stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
@@ -616,17 +620,17 @@ class RobotCommander:
 
                 if stride_ttc < sv_ttc: #Lower Stride's speed
                     stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = self.robot_speed - stride_vel_adj
+                    new_stride_vel = max(self.robot_speed - stride_vel_adj, lower_vel_threshold)
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
-                    self._send_velocity_command_using_radius(limited_speed)
+                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
                 elif stride_ttc > sv_ttc: #Raise Stride's speed
                     stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = self.robot_speed + stride_vel_adj
+                    new_stride_vel = min(self.robot_speed + stride_vel_adj, upper_vel_threshold)
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
-                    self._send_velocity_command_using_radius(limited_speed)
+                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
                 else: #Keep Stride's speed constant
                     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, self.robot_speed, initial_speed)
-                    self._send_velocity_command_using_radius(limited_speed)
+                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
                 rate.sleep()
 
     # Subscriber Callbacks
