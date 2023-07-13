@@ -3,7 +3,7 @@ Description=%p roscore service
 
 [Service]
 User=root
-ExecStart=/bin/bash -c "source /home/%p/.bashrc; /opt/ros/%p/bin/roscore"
+ExecStart=/bin/bash -c "source /opt/ros/%p/setup.bash; /opt/ros/%p/bin/roscore"
 
 [Install]
 WantedBy=multi-user.target
