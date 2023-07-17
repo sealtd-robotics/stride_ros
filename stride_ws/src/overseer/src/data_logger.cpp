@@ -12,7 +12,7 @@
 int main(int argc, char **argv) {
     ros::init(argc, argv, "data logger");
     ros::NodeHandle nh;
-    int r = 50;
+    int r = 100;
     ros::param::get("~record_rate", r);
 
     ros::Rate rate(r);

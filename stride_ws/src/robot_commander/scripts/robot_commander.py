@@ -55,7 +55,7 @@ class RobotCommander:
         self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
         
         self.target_gps_ready = False
-        # self.vehicle_comp = False
+        self.vehicle_comp = False
 
         # Publishers
         self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
@@ -275,7 +275,7 @@ class RobotCommander:
         speed_goal = speed_goal * (1000/3600) #Convert km/hr to m/s
         acceleration_mps2 = np.square(speed_goal) / (2 * distance_goal* P_gain)
         acceleration_g = acceleration_mps2 / 9.81
-        # index_dist = distance_goal / 0.3
+        index_dist = distance_goal / 0.3
         time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
@@ -286,11 +286,10 @@ class RobotCommander:
             self._display_message('Aborting Test: Please enter a positive value for the speed and distance goals.')
             return
 
-        # if self.vehicle_comp == True:
-        #     self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, index_dist)
-        # else:
-        self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, self.max_path_index)
-        # self.brake_to_stop(self.default_decel_rate)
+        if self.vehicle_comp == True:
+            self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, index_dist)
+        else:
+            self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, self.max_path_index)
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
     def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
@@ -566,7 +565,8 @@ class RobotCommander:
             let_script_runs = False
             return
         
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long):
+    # def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long):
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long, distance_goal, P_gain=1):
         global let_script_runs
         if not let_script_runs:
             return
@@ -579,7 +579,7 @@ class RobotCommander:
         rospy.Rate(50)
         
         #Initialize variables
-        # self.vehicle_comp = True
+        self.vehicle_comp = True
         speed_rate = speed_rate * 9.81 #Convert g to m/s^2
         stride_vel_adj = 0 #m/s
         new_stride_vel = 0 #m/s
@@ -587,6 +587,7 @@ class RobotCommander:
         euro_ncap_speed_tol = 0.2 * (1000/3600) #0.2 kph speed tolerance to m/s 
         lower_vel_threshold = speed_goal - euro_ncap_speed_tol + 0.033
         upper_vel_threshold = speed_goal
+        speed_goal_kph = speed_goal *(3600/1000)
         
         #reference lat/long
         Ref_lat_stride = intersection_lat
@@ -602,14 +603,12 @@ class RobotCommander:
             
             initial_time = time.time()
             initial_speed = self.limiter_initial_speed
-            # self.accel_to_distance(speed_goal, distance_goal, P_gain)
+            self.accel_to_distance(speed_goal_kph, distance_goal, P_gain)
             while self.robot_speed < speed_goal and let_script_runs: #Get up to speed before applying speed adjustments.
                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
                 self._send_velocity_command_using_radius(limited_speed)
                 rate.sleep()
 
-            # initial_time = time.time()
-            # initial_speed = self.limiter_initial_speed
             while self.current_path_index < self.max_path_index and let_script_runs:
                 #Constantly convert Stride and vehicle lat/long values to east/north.
                 stride_east, stride_north = self._LL2NE(Ref_lat_stride, Ref_long_stride, self.stride_latitude, self.stride_longitude)
