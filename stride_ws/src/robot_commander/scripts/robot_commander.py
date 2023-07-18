@@ -564,9 +564,8 @@ class RobotCommander:
             self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
-        
-    # def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long):
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, vehicle_int_lat, vehicle_int_long, distance_goal, P_gain=1):
+
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, distance_goal, P_gain=1):
         global let_script_runs
         if not let_script_runs:
             return
@@ -590,10 +589,8 @@ class RobotCommander:
         speed_goal_kph = speed_goal *(3600/1000)
         
         #reference lat/long
-        Ref_lat_stride = intersection_lat
-        Ref_long_stride = intersection_long
-        Ref_lat_vehicle = vehicle_int_lat
-        Ref_long_vehicle = vehicle_int_long
+        Ref_lat = intersection_lat
+        Ref_long = intersection_long
         
         if not self.target_gps_ready:
             self._display_message("Aborting Test: Target GPS is not ready.")
@@ -604,15 +601,16 @@ class RobotCommander:
             initial_time = time.time()
             initial_speed = self.limiter_initial_speed
             self.accel_to_distance(speed_goal_kph, distance_goal, P_gain)
-            while self.robot_speed < speed_goal and let_script_runs: #Get up to speed before applying speed adjustments.
-                limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-                self._send_velocity_command_using_radius(limited_speed)
-                rate.sleep()
+            # while self.robot_speed < speed_goal and let_script_runs: #Get up to speed before applying speed adjustments.
+            #     print('This was needed.')
+            #     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
+            #     self._send_velocity_command_using_radius(limited_speed)
+            #     rate.sleep()
 
             while self.current_path_index < self.max_path_index and let_script_runs:
                 #Constantly convert Stride and vehicle lat/long values to east/north.
-                stride_east, stride_north = self._LL2NE(Ref_lat_stride, Ref_long_stride, self.stride_latitude, self.stride_longitude)
-                vehicle_east, vehicle_north = self._LL2NE(Ref_lat_vehicle, Ref_long_vehicle, self.target_latitude, self.target_longitude)
+                stride_east, stride_north = self._LL2NE(Ref_lat, Ref_long, self.stride_latitude, self.stride_longitude)
+                vehicle_east, vehicle_north = self._LL2NE(Ref_lat, Ref_long, self.target_latitude, self.target_longitude)
                 
                 #Calculate distance to collision point.
                 stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
