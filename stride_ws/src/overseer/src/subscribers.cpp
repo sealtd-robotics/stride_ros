@@ -83,6 +83,8 @@ void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& 
     df_.acc_y = msg->accel.y / 9.81;
     df_.acc_z = msg->accel.z / 9.81;
     df_.yaw_rate_rads = msg->gyro.z;
+    df_.roll_rate_deg = radToDeg(msg->gyro.x);
+    df_.pitch_rate_deg = radToDeg(msg->gyro.y);
 
 }
 
@@ -263,6 +265,8 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.acc_y << dem;
                 outFile << temp.acc_z << dem;
                 outFile << temp.yaw_rate_rads << dem;
+                outFile << temp.roll_rate_deg << dem;
+                outFile << temp.pitch_rate_deg << dem;
                 outFile << temp.cross_track_error_m << dem;
                 outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
