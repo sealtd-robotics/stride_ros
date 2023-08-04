@@ -65,6 +65,7 @@ typedef struct
     double acc_y;
     double acc_z;
     float yaw_rate_rads;
+    float yaw_rate_deg;
     float roll_rate_deg;
     float pitch_rate_deg;
     float cross_track_error_m;
@@ -187,7 +188,7 @@ private:
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
-                                "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", "roll_rate(deg/s)", "pitch_rate(deg/s)", 
+                                "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", "yaw_rate(deg/s)", "roll_rate(deg/s)", "pitch_rate(deg/s)", 
                                 "cte(m)", 
                                 "desired_omega(rad/s)", "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
