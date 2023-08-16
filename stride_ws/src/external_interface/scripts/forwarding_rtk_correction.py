@@ -11,15 +11,23 @@
 import socket
 import serial
 import rospy
+import struct
 
 if __name__ == '__main__':
+    multicast_group = ('234.5.6.7')
+    
     rospy.init_node('rtk_forwarding')
     ser = serial.Serial("/dev/ttyTHS2")
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind(("", 54009))
+    s.bind(("", 54008))
+
+    group = socket.inet_aton(multicast_group)
+    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
     while not rospy.is_shutdown():
-        data, _ = s.recvfrom(1024)
+        data, address = s.recvfrom(1024)
+        print(data)
         ser.write(data)
 
