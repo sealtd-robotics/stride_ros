@@ -53,12 +53,6 @@ def main():
         dat = s.recv()
         output_msg.Clear()
         output_msg.ParseFromString(dat)
-        # print("--------------------------")
-        # print("Heading deg: ",output_msg.heading_deg)
-        # print("Longitude deg: ", output_msg.longitude_deg)
-        # print("Latitude deg: ", output_msg.latitude_deg)
-        # print("Velocity m/s: ", output_msg.velocity_ms)
-        # print("Correction type: ", output_msg.gps_correction)
         msg = TargetVehicle()
         msg.heading = output_msg.heading_deg
         msg.longitude = output_msg.longitude_deg
@@ -67,6 +61,12 @@ def main():
         msg.gps_correction_type = output_msg.gps_correction + 1
         msg.gps_ready = output_msg.gps_ready
         msg.no_of_satellites = output_msg.no_of_satellites
+        msg.lateral_velocity = output_msg.lateral_velocity
+        msg.roll = output_msg.roll
+        msg.pitch = output_msg.pitch
+        msg.acceleration_x = output_msg.acceleration_x
+        msg.acceleration_y = output_msg.acceleration_y
+        msg.acceleration_z = output_msg.acceleration_z
         pub.publish(msg)
 
 

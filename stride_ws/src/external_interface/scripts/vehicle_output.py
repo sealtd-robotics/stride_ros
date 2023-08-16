@@ -38,6 +38,12 @@ class VehicleDataSet():
 		self.gps_correction = 0
 		self.gps_ready = False
 		self.no_of_satellites = 0
+		self.lateral_velocity = 0
+		self.roll = 0
+		self.pitch = 0
+		self.acceleration_x = 0
+		self.acceleration_y = 0
+		self.acceleration_z = 0
 
 class VehicleDataOutput():
 	def __init__(self):
@@ -85,6 +91,12 @@ class VehicleDataOutput():
 				output_msg.velocity_mps = self.data.velocity
 				output_msg.gps_ready = self.data.gps_ready
 				output_msg.no_of_satellites = self.data.no_of_satellites
+				output_msg.lateral_velocity = self.data.lateral_velocity
+				output_msg.roll = self.data.roll
+				output_msg.pitch = self.data.pitch
+				output_msg.acceleration_x = self.data.acceleration_x
+				output_msg.acceleration_y = self.data.acceleration_y
+				output_msg.acceleration_z = self.data.acceleration_z
 
 			s.send(output_msg.SerializeToString())
 			rate.sleep()
@@ -121,9 +133,15 @@ class VehicleDataOutput():
 
 	def can_velocity_cb(self, msg):
 		self.data.velocity = msg.forward
+		self.data.lateral_velocity = msg.lateral
 
 	def can_imu_cb(self, msg):
+		self.data.roll = msg.orientation.x
+		self.data.pitch = msg.orientation.y
 		self.data.heading = msg.orientation.z
+		self.data.acceleration_x = msg.linear_acceleration.x
+		self.data.acceleration_y = msg.linear_acceleration.y
+		self.data.acceleration_z = msg.linear_acceleration.z
 
 	def can_gps_status_cb(self, msg):
 		self.data.gps_ready = msg.gps_ready
@@ -151,8 +169,6 @@ def transform_velocity(v_east, v_north, heading_rad):
 	"""
 	v_forward = v_north*cos(heading_rad) + v_east*sin(heading_rad)
 	v_lateral = -v_north*sin(heading_rad) + v_east*cos(heading_rad)
-	# v_forward = v_east * cos(heading_rad) + v_north * sin(heading_rad)
-	# v_lateral = -v_east * sin(heading_rad) + v_north * cos(heading_rad)
 	return v_forward, v_lateral
 
 if __name__ == '__main__':

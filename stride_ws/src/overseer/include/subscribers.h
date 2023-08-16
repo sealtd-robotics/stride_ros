@@ -99,9 +99,15 @@ typedef struct
     int batt_temp;
     uint8_t robot_temp;
     float vehicle_speed;
+    float vehicle_lateral_speed;
     float vehicle_latitude;
     float vehicle_longitude;
     float vehicle_heading;
+    float vehicle_roll;
+    float vehicle_pitch;
+    float vehicle_accel_x;
+    float vehicle_accel_y;
+    float vehicle_accel_z;
     bool brake_command;
     int brake_status;
     int fully_seated_L;
@@ -183,7 +189,7 @@ private:
     double time_since_stop = ros::Time::now().toSec();
 
 
-    std::string csv_header[60] = {"utc_time(ms)", 
+    std::string csv_header[70] = {"utc_time(ms)", 
                                 "gnss_satellites", "diff_age(ms)", "RTK_status",
                                 "latitude(deg)", "longitude(deg)", "altitude(m)", 
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
@@ -200,7 +206,9 @@ private:
                                 "winding_temp_RL(F)", "winding_temp_RR(F)", "winding_temp_FL(F)", "winding_temp_FR(F)",
                                 "error_code_RL", "error_code_RR", "error_code_FL", "error_code_FR", 
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
-                                "vehicle_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", "vehicle_heading(deg)",
+                                "vehicle_speed(m/s)", "vehicle_lateral_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", 
+                                "vehicle_heading(deg)", "vehicle_roll(deg)", "vehicle_pitch(deg)", 
+                                "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)",
                                 "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors" };
 
 public:    
