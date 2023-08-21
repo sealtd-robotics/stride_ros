@@ -67,6 +67,7 @@ def main():
         msg.acceleration_x = output_msg.acceleration_x
         msg.acceleration_y = output_msg.acceleration_y
         msg.acceleration_z = output_msg.acceleration_z
+        msg.vehicle_brake = output_msg.vehicle_brake
         pub.publish(msg)
 
 

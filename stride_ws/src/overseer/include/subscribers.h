@@ -108,6 +108,7 @@ typedef struct
     float vehicle_accel_x;
     float vehicle_accel_y;
     float vehicle_accel_z;
+    bool vehicle_brake;
     bool brake_command;
     int brake_status;
     int fully_seated_L;
@@ -208,7 +209,7 @@ private:
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_lateral_speed(m/s)", "vehicle_latitude(deg)", "vehicle_longitude(deg)", 
                                 "vehicle_heading(deg)", "vehicle_roll(deg)", "vehicle_pitch(deg)", 
-                                "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)",
+                                "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)", "vehicle_brake",
                                 "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors" };
 
 public:    

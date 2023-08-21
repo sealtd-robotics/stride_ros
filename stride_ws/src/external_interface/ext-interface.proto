@@ -24,4 +24,5 @@ message PubMsg {
 	double acceleration_x = 11;
 	double acceleration_y = 12;
 	double acceleration_z = 13;
+	bool vehicle_brake = 14;
 }

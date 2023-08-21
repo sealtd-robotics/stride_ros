@@ -21,7 +21,7 @@ import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from oxford_gps_decoder.msg import OxfordIMU, StatusGPS, VelocityGPS
 # from geometry_msgs.msg import TwistWithCovarianceStamped # gps/vel topic msg type
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from math import pi, degrees, sin, cos
@@ -44,6 +44,7 @@ class VehicleDataSet():
 		self.acceleration_x = 0
 		self.acceleration_y = 0
 		self.acceleration_z = 0
+		self.vehicle_brake = False
 
 class VehicleDataOutput():
 	def __init__(self):
@@ -74,6 +75,7 @@ class VehicleDataOutput():
 		rospy.Subscriber('gps/velocity', VelocityGPS, self.can_velocity_cb)
 		rospy.Subscriber('gps/imu', OxfordIMU, self.can_imu_cb)
 		rospy.Subscriber('gps/status', StatusGPS, self.can_gps_status_cb)
+		rospy.Subscriber('/vehicle_brake', Bool, self.vehicle_brake_cb)
 
 		rate = rospy.Rate(100)
 
@@ -97,6 +99,7 @@ class VehicleDataOutput():
 				output_msg.acceleration_x = self.data.acceleration_x
 				output_msg.acceleration_y = self.data.acceleration_y
 				output_msg.acceleration_z = self.data.acceleration_z
+				output_msg.vehicle_brake = self.data.vehicle_brake
 
 			s.send(output_msg.SerializeToString())
 			rate.sleep()
@@ -154,6 +157,9 @@ class VehicleDataOutput():
 		vel_north = msg.twist.twist.linear.y
 		vel_east = msg.twist.twist.linear.x
 		self.data.velocity, _ = transform_velocity(vel_east, vel_north, self.data.heading)
+
+	def vehicle_brake_cb(self, msg):
+		self.data.vehicle_brake = msg.data
 
 # Transforms velocity from ENU to Vehicle Body Frame
 def transform_velocity(v_east, v_north, heading_rad):

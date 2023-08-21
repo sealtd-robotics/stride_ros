@@ -160,6 +160,7 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_accel_x = msg -> acceleration_x;
     df_.vehicle_accel_y = msg -> acceleration_y;
     df_.vehicle_accel_z = msg -> acceleration_z;
+    df_.vehicle_brake = msg -> vehicle_brake;
 }
 
 void DataRecorderSub::BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -313,6 +314,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vehicle_accel_x << dem;
                 outFile << temp.vehicle_accel_y << dem;
                 outFile << temp.vehicle_accel_z << dem;
+                outFile << temp.vehicle_brake << dem;
                 outFile << temp.brake_command << dem;
                 outFile << temp.brake_status << dem;
                 outFile << temp.fully_seated_L << dem;
