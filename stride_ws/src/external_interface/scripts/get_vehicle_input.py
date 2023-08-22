@@ -69,6 +69,7 @@ def main():
         msg.acceleration_z = output_msg.acceleration_z
         msg.vehicle_brake = output_msg.vehicle_brake
         pub.publish(msg)
+        rate.sleep()
 
 
 if __name__ == '__main__':
