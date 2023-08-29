@@ -100,8 +100,8 @@ typedef struct
     uint8_t robot_temp;
     float vehicle_speed;
     float vehicle_lateral_speed;
-    float vehicle_latitude;
-    float vehicle_longitude;
+    double vehicle_latitude;
+    double vehicle_longitude;
     float vehicle_heading;
     float vehicle_roll;
     float vehicle_pitch;
