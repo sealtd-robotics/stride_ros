@@ -401,7 +401,13 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing sleep')
-        time.sleep(seconds)
+        rate = rospy.Rate(50)
+        t0 = time.time()
+        time_check = seconds
+        while let_script_runs:
+            if ((time.time() - t0) > time_check):
+                break
+            rate.sleep()
 
     def engage_brake_hill(self):
         global let_script_runs
