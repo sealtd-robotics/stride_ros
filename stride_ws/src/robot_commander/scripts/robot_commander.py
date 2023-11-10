@@ -310,6 +310,12 @@ class RobotCommander:
         heading_radian = heading / 180 * math.pi
         tolerance_radian = heading_tolerance / 180 * math.pi
 
+        if heading > 180 and heading <360: #Map heading between 180 and 360 degrees to heading from 0 to -180 degrees
+            heading = heading - 360
+        elif heading < -180 and heading > -360: #Map heading between -180 and -360 degress to heading from 0 to 180 degrees
+            heading = heading + 360
+        
+        #Find lower and upper bounds for desired heading
         if heading >=3: 
             lower_bound = (heading_radian - tolerance_radian) % (2*math.pi)
             upper_bound = (heading_radian + tolerance_radian) % (2*math.pi)
