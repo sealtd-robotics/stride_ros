@@ -174,7 +174,7 @@ _PUBMSG = _descriptor.Descriptor(
     ),
     _descriptor.FieldDescriptor(
       name='vehicle_brake', full_name='PubMsg.vehcile_brake', index=13,
-      number=1, type=8, cpp_type=7, label=1,
+      number=14, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
