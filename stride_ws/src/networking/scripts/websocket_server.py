@@ -152,11 +152,6 @@ class RosInterface:
         rospy.Subscriber('/portenta_heartbeat', Bool, self.subscriber_callback_12, queue_size=1)
 
         # GPS Subcribers
-        rospy.Subscriber('/gps/fix', NavSatFix, self.gps_subscriber_callback_1, queue_size=1) # time.sleep() in callback for throttling, used with queue_size=1
-        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_subscriber_callback_3, queue_size=1)
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_subscriber_callback_11, queue_size=1)
-        rospy.Subscriber('/gps/pos_type', String, self.gps_oxford_pos_type_callback, queue_size=1)
-
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_pos_callback, queue_size=1)
         rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_gnss_pos_callback, queue_size=1)
         rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_callback, queue_size=1)
@@ -218,7 +213,6 @@ class RosInterface:
         self.idle_clicked_publisher = rospy.Publisher('/gui/idle_clicked', Empty, queue_size=1)
         self.heartbeat_publisher = rospy.Publisher('/gui/heartbeat', Empty, queue_size=1)
         self.toggle_brake_publisher = rospy.Publisher('/gui/brake_when_stopped_toggled', Empty, queue_size=1)
-        self.start_calibration_publisher = rospy.Publisher('/an_device/magnetic_calibration/calibrate', UInt8, queue_size=1)
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
@@ -341,22 +335,12 @@ class RosInterface:
         self.robotState['motorControllers']['rightBack']['windingTemperature'] = msg.data
 
     # GPS callbacks
-    def gps_subscriber_callback_1(self, msg):
-        # self.robotState['gps']['status'] = msg.status.status
-        self.robotState['gps']['status'] = self.gnss_pos_status # temp patch
-        self.robotState['gps']['latitude'] = msg.latitude
-        self.robotState['gps']['longitude'] = msg.longitude
-        time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_subscriber_callback_3(self, msg):
         self.robotState['gps']['northVelocity'] = round(msg.twist.twist.linear.y, 3)
         self.robotState['gps']['eastVelocity'] = round(msg.twist.twist.linear.x, 3)
         self.robotState['gps']['zAngularVelocity'] = round(msg.twist.twist.angular.z, 3)
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
-
-    def gps_subscriber_callback_11(self, msg):
-        self.robotState['gps']['heading'] = round(msg.z, 3)
-        time.sleep(self.gps_callback_sleep_time)
 
     def gps_oxford_pos_type_callback(self, msg):
         pos_type = msg.data
@@ -482,8 +466,6 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.heartbeat_publisher.publish()
         elif message['type'] == '/gui/brake_when_stopped_toggled':
             MyServerProtocol.ros_interface.toggle_brake_publisher.publish()
-        elif message['type'] == '/an_device/magnetic_calibration/calibrate':
-            MyServerProtocol.ros_interface.start_calibration_publisher.publish(message['method'])
         elif message['type'] == '/robot_velocity_command':
             pose2d = Pose2D()
             pose2d.x = message['x']

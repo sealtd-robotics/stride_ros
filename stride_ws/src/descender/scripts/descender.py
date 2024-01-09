@@ -30,8 +30,6 @@ class Decender:
 
         # Subscribers
         rospy.Subscriber('/overseer/state', Int32, self.callback_1)
-        rospy.Subscriber('/an_device/pitch', Float32, self.callback_2)
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.callback_3, queue_size=1)
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_euler_callback, queue_size=1)
 
     def callback_1(self, msg):

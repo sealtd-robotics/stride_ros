@@ -70,13 +70,7 @@ class PathFollower:
         rospy.Subscriber('/robot_commander/stop_index', Int32, self.callback_4)
         rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
 
-        # GPS Subscribers
-        rospy.Subscriber('/an_device/NavSatFix', NavSatFix, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
-        rospy.Subscriber('/gps/fix', NavSatFix, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
-
-        # topics for SBG
+        # Topics for SBG GPS
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_position_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_imu_callback, queue_size=1)
 

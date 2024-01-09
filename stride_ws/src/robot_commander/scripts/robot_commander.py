@@ -70,10 +70,6 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
         rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
-        rospy.Subscriber('/an_device/Twist', Twist, self.gps_callback_1, queue_size=1)
-        rospy.Subscriber('/an_device/heading', Float32, self.gps_callback_2, queue_size=1)
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_orientation_callback, queue_size=1)
-        rospy.Subscriber('/gps/vel', TwistWithCovarianceStamped, self.gps_velocity_callback, queue_size=1)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
 
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
@@ -659,19 +655,6 @@ class RobotCommander:
 
     def path_intervals_callback(self, msg):
         self.path_intervals = msg.data
-
-    def gps_callback_1(self, msg):
-        self.robot_speed = math.sqrt(msg.linear.x**2 + msg.linear.y**2)
-        self.robot_angular_speed = abs(msg.angular.z)
-
-    def gps_callback_2(self, msg):
-        self.robot_heading = msg.data # in radian
-
-    def gps_velocity_callback(self, msg):
-        self.robot_speed = math.sqrt(msg.twist.twist.linear.x**2 + msg.twist.twist.linear.y**2)
-
-    def gps_orientation_callback(self, msg):
-        self.robot_heading = msg.z
 
     def gps_sbg_euler_callback(self, msg):
         self.robot_heading = msg.angle.z
