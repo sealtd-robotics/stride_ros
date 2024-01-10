@@ -75,6 +75,8 @@ class VehicleDataOutput():
 		rospy.Subscriber('gps/velocity', VelocityGPS, self.can_velocity_cb)
 		rospy.Subscriber('gps/imu', OxfordIMU, self.can_imu_cb)
 		rospy.Subscriber('gps/status', StatusGPS, self.can_gps_status_cb)
+
+		# Jetson GPIO
 		rospy.Subscriber('/vehicle_brake', Bool, self.vehicle_brake_cb)
 
 		rate = rospy.Rate(100)
