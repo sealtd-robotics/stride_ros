@@ -230,8 +230,6 @@ class RobotCommander:
 class Gps:
     def __init__(self):
         self.pitch = 0
-        rospy.Subscriber('/an_device/pitch', Float32, self.gps_callback_1, queue_size=1) # radian
-        rospy.Subscriber('/gps/euler_orientation', Vector3, self.gps_callback_2, queue_size=1)
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_euler_callback, queue_size=1)
 
     def gps_callback_1(self, msg):
