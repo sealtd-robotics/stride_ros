@@ -47,6 +47,7 @@ class RobotCommander:
         self.limiter_initial_speed = 0
         self.brake_command = 0
         self.brake_status = 3
+        self.pressure_switch_status = 0
         self.target_latitude = 0
         self.target_longitude = 0
 
@@ -71,6 +72,7 @@ class RobotCommander:
         rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
         rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
         rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
+        rospy.Subscriber('/pressure_switch', Bool, self.pressure_switch_callback, queue_size=1)
 
         rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
@@ -556,6 +558,19 @@ class RobotCommander:
             self._display_message("Aborting Test: Target GPS is not ready.")
             let_script_runs = False
             return
+        
+    def pressure_switch(self):
+        global let_script_runs
+        if not let_script_runs:
+            return
+        self._display_message('Executing pressure_switch')
+
+        rate = rospy.Rate(50)
+
+        while self.target_gps_ready and let_script_runs:
+            if self.pressure_switch_status == 1:
+                return
+            rate.sleep()
 
     def wait_for_vehicle_velocity(self, velocity):
         global let_script_runs
@@ -684,6 +699,9 @@ class RobotCommander:
 
     def right_brake_callback(self, msg):
         self.fully_seated_R = msg.data
+
+    def pressure_switch_callback(self,msg):
+        self.pressure_switch_status = msg.data
 
 class Receptionist:
     def __init__(self):
