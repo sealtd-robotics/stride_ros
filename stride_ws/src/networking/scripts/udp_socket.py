@@ -117,7 +117,7 @@ if __name__ == "__main__":
     portenta_heartbeat_thread.setDaemon(True)
     portenta_heartbeat_thread.start()
 
-    socket_list = [sensors_socket, estop_socket1, estop_socket2, brake_socket, portenta_socket]
+    socket_list = [sensors_socket, estop_socket1, estop_socket2, pressure_switch_socket, brake_socket, portenta_socket]
     rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
@@ -179,7 +179,7 @@ if __name__ == "__main__":
             elif sock == pressure_switch_socket:
                 dat, addr = sock.recvfrom(1024)
                 (is_pressure_switch,) =struct.unpack('B',dat[0:1])
-                pressure_switch_publisher.publisj(is_pressure_switch)
+                pressure_switch_publisher.publish(is_pressure_switch)
 
             elif sock == brake_socket:
                 dat, addr = sock.recvfrom(1024) 
