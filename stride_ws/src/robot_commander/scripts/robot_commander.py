@@ -567,7 +567,7 @@ class RobotCommander:
 
         rate = rospy.Rate(50)
 
-        while self.target_gps_ready and let_script_runs:
+        while let_script_runs:
             if self.pressure_switch_status == 1:
                 return
             rate.sleep()

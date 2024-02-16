@@ -109,6 +109,7 @@ typedef struct
     float vehicle_accel_x;
     float vehicle_accel_y;
     float vehicle_accel_z;
+    bool pressure_switch;
     bool vehicle_brake;
     bool brake_command;
     int brake_status;
@@ -161,6 +162,7 @@ private:
     ros::Subscriber battery_voltage_sub_;
     ros::Subscriber battery_temperature_sub_;
     ros::Subscriber target_vehicle_sub_;
+    ros::Subscriber pressure_switch_sub;
 
     // Sbg
     ros::Subscriber sbg_gps_nav_sub_;
@@ -210,7 +212,7 @@ private:
                                 "battery_voltage(V)", "battery_temp(F)", "robot_temp(F)",
                                 "vehicle_speed(m/s)", "vehicle_lateral_speed(m/s)", "vehicle_num_of_satellites", "vehicle_latitude(deg)", "vehicle_longitude(deg)", 
                                 "vehicle_heading(deg)", "vehicle_roll(deg)", "vehicle_pitch(deg)", 
-                                "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)", "vehicle_brake",
+                                "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)", "pressure_switch", "vehicle_brake",
                                 "brake_command", "brake_status", "Left_Brake_fullyseated", "Right_Brake_fullyseated", "disable_motors" };
 
 public:    
@@ -240,6 +242,7 @@ public:
     void LeftBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
     void RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
     void DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg);
+    void PressureSwitchCallback(const std_msgs::Bool::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);

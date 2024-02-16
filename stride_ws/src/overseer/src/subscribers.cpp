@@ -40,6 +40,7 @@ void DataRecorderSub::InitializeSubscribers() {
     battery_temperature_sub_ = nh_.subscribe("/battery_temperature", 1, &DataRecorderSub::BatteryTemperatureCallback, this);
     cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
     target_vehicle_sub_ = nh_.subscribe("/target", 1, &DataRecorderSub::TargetVehicleCallback, this);
+    pressure_switch_sub = nh_.subscribe("/pressure_switch", 1, &DataRecorderSub::PressureSwitchCallback, this);
 
     //Mechanical Brake info
     brake_command_sub_ = nh_.subscribe("/brake_command", 1, &DataRecorderSub::BrakeCommandCallback, this);
@@ -162,6 +163,10 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_accel_y = msg -> acceleration_y;
     df_.vehicle_accel_z = msg -> acceleration_z;
     df_.vehicle_brake = msg -> vehicle_brake;
+}
+
+void DataRecorderSub::PressureSwitchCallback(const std_msgs::Bool::ConstPtr& msg) {
+    df_.pressure_switch = msg -> data;
 }
 
 void DataRecorderSub::BrakeCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -316,6 +321,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vehicle_accel_x << dem;
                 outFile << temp.vehicle_accel_y << dem;
                 outFile << temp.vehicle_accel_z << dem;
+                outFile << temp.pressure_switch << dem;
                 outFile << temp.vehicle_brake << dem;
                 outFile << temp.brake_command << dem;
                 outFile << temp.brake_status << dem;
