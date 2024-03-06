@@ -95,13 +95,13 @@ class VehicleDataOutput():
 				output_msg.velocity_mps = self.data.velocity
 				output_msg.gps_ready = self.data.gps_ready
 				output_msg.no_of_satellites = self.data.no_of_satellites
-				output_msg.lateral_velocity = self.data.lateral_velocity
-				output_msg.roll = self.data.roll
-				output_msg.pitch = self.data.pitch
-				output_msg.acceleration_x = self.data.acceleration_x
-				output_msg.acceleration_y = self.data.acceleration_y
-				output_msg.acceleration_z = self.data.acceleration_z
-				output_msg.vehicle_brake = self.data.vehicle_brake
+				# output_msg.lateral_velocity = self.data.lateral_velocity
+				# output_msg.roll = self.data.roll
+				# output_msg.pitch = self.data.pitch
+				# output_msg.acceleration_x = self.data.acceleration_x
+				# output_msg.acceleration_y = self.data.acceleration_y
+				# output_msg.acceleration_z = self.data.acceleration_z
+				# output_msg.vehicle_brake = self.data.vehicle_brake
 
 			s.send(output_msg.SerializeToString())
 			rate.sleep()
