@@ -13,6 +13,7 @@ import serial
 import rospy
 import struct
 
+# Multicast
 if __name__ == '__main__':
     multicast_group = ('234.5.6.7')
     
@@ -30,3 +31,15 @@ if __name__ == '__main__':
         data, address = s.recvfrom(1024)
         print(data)
         ser.write(data)
+
+# Unicast
+# if __name__ == '__main__':
+#     rospy.init_node('jetson_corrections')
+#     ser = serial.Serial("/dev/ttyS0")
+
+#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     s.bind(("", 54009))
+
+#     while not rospy.is_shutdown():
+#         data, _ = s.recvfrom(1024)
+#         ser.write(data)

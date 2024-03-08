@@ -356,12 +356,12 @@ class RosInterface:
 
     ### SBG GPS ###
     def gps_sbg_pos_callback(self, msg):
-        self.robotState['gps']['latitude'] = msg.latitude
-        self.robotState['gps']['longitude'] = msg.longitude
         time.sleep(self.gps_callback_sleep_time) # prevent frequenty update from high publishing rate
 
     def gps_sbg_gnss_pos_callback(self, msg):
         self.robotState['gps']['status'] = msg.status.type
+        self.robotState['gps']['latitude'] = msg.latitude
+        self.robotState['gps']['longitude'] = msg.longitude
         time.sleep(self.gps_callback_sleep_time)
 
     def gps_sbg_vel_callback(self, msg):
