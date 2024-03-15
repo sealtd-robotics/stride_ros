@@ -12,6 +12,7 @@ import socket
 import serial
 import rospy
 import struct
+import select
 
 # Multicast
 if __name__ == '__main__':
@@ -26,11 +27,26 @@ if __name__ == '__main__':
     group = socket.inet_aton(multicast_group)
     mreq = struct.pack('4sL', group, socket.INADDR_ANY)
     s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    s.setblocking(0)
 
     while not rospy.is_shutdown():
-        data, address = s.recvfrom(1024)
-        print(data)
-        ser.write(data)
+        try:
+            ready = select.select([s], [], [], 0.5)
+            if ready[0]:
+                data = s.recv(1024)
+                ser.write(data)
+            else:
+                print("no data, re init socket")
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.bind(("", 54008))
+
+                group = socket.inet_aton(multicast_group)
+                mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+                s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+                s.setblocking(0)
+        except Exception as e:
+            print("An exception occurred")
+            print(e)
 
 # Unicast
 # if __name__ == '__main__':
