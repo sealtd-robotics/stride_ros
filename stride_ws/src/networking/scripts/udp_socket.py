@@ -71,7 +71,8 @@ if __name__ == "__main__":
     fullyseated_R_publisher = rospy.Publisher('/fullyseated_R', Int32, queue_size = 1)
     has_brake_publisher = rospy.Publisher('/has_brake', Bool, queue_size = 1)
     portenta_heartbeat_publisher = rospy.Publisher('/portenta_heartbeat', Bool, queue_size = 1)
-    temp_error_word_publisher = rospy.Publisher('/temp_error_word', Int32, queue_size =1)
+    temp_error_word_publisher = rospy.Publisher('/temp_error_word', Int32, queue_size = 1)
+    pressure_switch_publisher = rospy.Publisher('/pressure_switch', Bool, queue_size = 1)
 
     # for finding moving average
     robot_temperature_history  = deque([70] * 20)
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     sensors_socket = socket(AF_INET, SOCK_DGRAM)
     sensors_socket.bind(('', 54003))
 
-    # Estop from the Arduinoo Due in the control box
+    # Estop from the Arduino Due in the control box
     estop_socket1 = socket(AF_INET, SOCK_DGRAM)
     estop_socket1.bind(('', 54002))
     estop_socket1_timestamp = get_time_now_in_ms()
@@ -89,6 +90,10 @@ if __name__ == "__main__":
     estop_socket2 = socket(AF_INET, SOCK_DGRAM)
     estop_socket2.bind(('', 54004))
     estop_socket2_timestamp = get_time_now_in_ms()
+
+    # Pressure Switch
+    pressure_switch_socket = socket(AF_INET, SOCK_DGRAM)
+    pressure_switch_socket.bind(('',54010))
 
     # Brake: Arduino to jetson
     brake_socket = socket(AF_INET, SOCK_DGRAM)
@@ -112,7 +117,7 @@ if __name__ == "__main__":
     portenta_heartbeat_thread.setDaemon(True)
     portenta_heartbeat_thread.start()
 
-    socket_list = [sensors_socket, estop_socket1, estop_socket2, brake_socket, portenta_socket]
+    socket_list = [sensors_socket, estop_socket1, estop_socket2, pressure_switch_socket, brake_socket, portenta_socket]
     rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         # select.select() blocks until data arrives
@@ -170,6 +175,11 @@ if __name__ == "__main__":
                 estop_publisher2.publish(is_estop_pressed_2)
 
                 estop_socket2_timestamp = get_time_now_in_ms()
+
+            elif sock == pressure_switch_socket:
+                dat, addr = sock.recvfrom(1024)
+                (is_pressure_switch,) =struct.unpack('B',dat[0:1])
+                pressure_switch_publisher.publish(is_pressure_switch)
 
             elif sock == brake_socket:
                 dat, addr = sock.recvfrom(1024) 
