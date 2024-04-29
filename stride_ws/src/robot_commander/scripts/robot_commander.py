@@ -202,7 +202,7 @@ class RobotCommander:
         col2 = Nfactor * (latitude - RefLat)    #Apply north scale factor and put into column variable
         return col1, col2   #Return values from each column as their own variable
 
-    def move_until_end_of_path(self, speed_goal, speed_rate):
+    def move_until_end_of_path(self, speed_goal, speed_rate): #Units are meters/second and g
         global let_script_runs
         if not let_script_runs:
             return
@@ -215,7 +215,7 @@ class RobotCommander:
 
         self._rate_limiter(speed_goal, speed_rate, self.max_path_index)
 
-    def brake_to_stop(self, speed_rate):
+    def brake_to_stop(self, speed_rate): #Unit is g
         global let_script_runs
         speed_rate = speed_rate * 9.81
         if not let_script_runs:
@@ -238,7 +238,7 @@ class RobotCommander:
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def move_until_index(self, speed_goal, speed_rate, index):
+    def move_until_index(self, speed_goal, speed_rate, index): #Units are meters/second, g, and unitless
         speed_rate = speed_rate * 9.81
         global let_script_runs
         if not let_script_runs:
@@ -265,7 +265,7 @@ class RobotCommander:
             self._send_velocity_command_using_radius(limited_speed)
             rate.sleep()
 
-    def accel_to_distance(self, speed_goal, distance_goal, P_gain = 1):
+    def accel_to_distance(self, speed_goal, distance_goal, P_gain = 1): #Units are kilometers/hour, meters, and unitless
         global let_script_runs
         if not let_script_runs:
             return
@@ -290,7 +290,7 @@ class RobotCommander:
             self._rate_limit_to_distance(speed_goal, acceleration_g, distance_goal, self.max_path_index)
 
     # maybe add a try-except statement to catch zero angular velocity and zero tolerance
-    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3):
+    def rotate_until_heading(self, angular_velocity, heading, heading_tolerance = 3): #Units are degrees/second, degrees, and degrees
         global let_script_runs
         if not let_script_runs:
             return
@@ -346,7 +346,7 @@ class RobotCommander:
         pose2d.theta = 0
         self.velocity_command_publisher.publish(pose2d)   
 
-    def decel_to_stop_at_index(self, stop_index):
+    def decel_to_stop_at_index(self, stop_index): #Unitless
         global let_script_runs
         if not let_script_runs:
             return
@@ -388,7 +388,7 @@ class RobotCommander:
             
         self.stop_index_publisher.publish(999999)
 
-    def move_until_beginning_of_path(self, speed_goal, speed_rate):
+    def move_until_beginning_of_path(self, speed_goal, speed_rate): #Units are meters/second and g
         global let_script_runs
         if not let_script_runs:
             return
@@ -401,7 +401,7 @@ class RobotCommander:
         self._display_message(dash_line)
         self._rate_limiter(speed_goal, speed_rate, self.current_path_index)
 
-    def sleep(self, seconds):
+    def sleep(self, seconds): #Unit is seconds
         if not let_script_runs:
             return
         self._display_message('Executing sleep')
@@ -413,7 +413,7 @@ class RobotCommander:
                 break
             rate.sleep()
 
-    def engage_brake_hill(self):
+    def engage_brake_hill(self): #No arguments needed
         global let_script_runs
         if not let_script_runs:
             return
@@ -476,7 +476,7 @@ class RobotCommander:
             let_script_runs = False #Abort test. State will be STOPPED
             self._display_message("Aborting Test: Engage brake failed") #Warning message to gui 
 
-    def disengage_brake_hill(self):
+    def disengage_brake_hill(self): #No arguements needed
         global let_script_runs
         if not let_script_runs:
             return
@@ -521,7 +521,7 @@ class RobotCommander:
             let_script_runs = False #Abort test
             self._display_message('Aborting Test: Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 
-    def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading):
+    def wait_for_vehicle_position(self, trigger_lat, trigger_long, trigger_heading): #Units are degrees, degrees, and degrees
         """
         Spin until the target passes the trigger location.
 
@@ -572,7 +572,7 @@ class RobotCommander:
                 return
             rate.sleep()
 
-    def wait_for_vehicle_velocity(self, velocity):
+    def wait_for_vehicle_velocity(self, velocity): #Unit is meters/second
         global let_script_runs
         if not let_script_runs:
             return
@@ -588,7 +588,7 @@ class RobotCommander:
             let_script_runs = False
             return
 
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, distance_goal, P_gain=1):
+    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, distance_goal, P_gain=1): #Units are meters/second, g, degrees, degrees, meters, and unitless
         global let_script_runs
         if not let_script_runs:
             return

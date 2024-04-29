@@ -156,13 +156,13 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_longitude = msg -> longitude;
     df_.vehicle_num_of_satellites = msg -> no_of_satellites;
     df_.vehicle_heading = msg -> heading;
-    df_.vehicle_lateral_speed = msg -> lateral_velocity;
-    df_.vehicle_roll = msg -> roll;
-    df_.vehicle_pitch = msg -> pitch;
-    df_.vehicle_accel_x = msg -> acceleration_x;
-    df_.vehicle_accel_y = msg -> acceleration_y;
-    df_.vehicle_accel_z = msg -> acceleration_z;
-    df_.vehicle_brake = msg -> vehicle_brake;
+//     df_.vehicle_lateral_speed = msg -> lateral_velocity;
+//     df_.vehicle_roll = msg -> roll;
+//     df_.vehicle_pitch = msg -> pitch;
+//     df_.vehicle_accel_x = msg -> acceleration_x;
+//     df_.vehicle_accel_y = msg -> acceleration_y;
+//     df_.vehicle_accel_z = msg -> acceleration_z;
+//     df_.vehicle_brake = msg -> vehicle_brake;
 }
 
 void DataRecorderSub::PressureSwitchCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -311,18 +311,18 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.batt_temp << dem;
                 outFile << unsigned(temp.robot_temp) << dem ;
                 outFile << temp.vehicle_speed << dem;
-                outFile << temp.vehicle_lateral_speed << dem;
+                // outFile << temp.vehicle_lateral_speed << dem;
                 outFile << temp.vehicle_num_of_satellites << dem;
                 outFile << temp.vehicle_latitude << dem;
                 outFile << temp.vehicle_longitude << dem;
                 outFile << temp.vehicle_heading << dem;
-                outFile << temp.vehicle_roll << dem;
-                outFile << temp.vehicle_pitch << dem;
-                outFile << temp.vehicle_accel_x << dem;
-                outFile << temp.vehicle_accel_y << dem;
-                outFile << temp.vehicle_accel_z << dem;
+                // outFile << temp.vehicle_roll << dem;
+                // outFile << temp.vehicle_pitch << dem;
+                // outFile << temp.vehicle_accel_x << dem;
+                // outFile << temp.vehicle_accel_y << dem;
+                // outFile << temp.vehicle_accel_z << dem;
                 outFile << temp.pressure_switch << dem;
-                outFile << temp.vehicle_brake << dem;
+                // outFile << temp.vehicle_brake << dem;
                 outFile << temp.brake_command << dem;
                 outFile << temp.brake_status << dem;
                 outFile << temp.fully_seated_L << dem;

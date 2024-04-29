@@ -18,8 +18,8 @@ import select
 if __name__ == '__main__':
     multicast_group = ('234.5.6.7')
     
-    rospy.init_node('rtk_forwarding')
-    ser = serial.Serial("/dev/ttyTHS2")
+    rospy.init_node('jetson_corrections')
+    ser = serial.Serial("/dev/ttyS0")
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("", 54008))
@@ -50,8 +50,8 @@ if __name__ == '__main__':
 
 # Unicast
 # if __name__ == '__main__':
-#     rospy.init_node('rtk_forwarding')
-#     ser = serial.Serial("/dev/ttyTHS2")
+#     rospy.init_node('jetson_corrections')
+#     ser = serial.Serial("/dev/ttyS0")
 
 #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #     s.bind(("", 54009))

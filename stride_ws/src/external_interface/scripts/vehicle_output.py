@@ -17,10 +17,12 @@ proto_dir = os.path.join(script_dir, '..')
 sys.path.append(proto_dir)
 
 from proto_src import PubMsg
-import rospy
+import rospy, math
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from oxford_gps_decoder.msg import OxfordIMU, StatusGPS, VelocityGPS
-# from geometry_msgs.msg import TwistWithCovarianceStamped # gps/vel topic msg type
+from sbg_driver.msg import SbgEkfNav, SbgGpsPos, SbgEkfEuler
+							   # gps/vel topic msg type
+from geometry_msgs.msg import TwistWithCovarianceStamped, TwistStamped 
 from std_msgs.msg import String, Bool
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
@@ -34,6 +36,8 @@ class VehicleDataSet():
 		self.longitude = 0
 		self.latitude = 0
 		self.heading = 0
+		self.velocity_north = 0
+		self.velocity_east = 0
 		self.velocity = 0
 		self.gps_correction = 0
 		self.gps_ready = False
@@ -76,6 +80,12 @@ class VehicleDataOutput():
 		rospy.Subscriber('gps/imu', OxfordIMU, self.can_imu_cb)
 		rospy.Subscriber('gps/status', StatusGPS, self.can_gps_status_cb)
 
+		# SBG
+		rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.global_pos_cb)
+		rospy.Subscriber('/imu/velocity', TwistStamped, self.gps_sbg_vel_NE_callback)
+		rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_vel_callback)
+		rospy.Subscriber('/sbg/gps_pos', SbgGpsPos, self.gps_sbg_status_callback)
+
 		# Jetson GPIO
 		rospy.Subscriber('/vehicle_brake', Bool, self.vehicle_brake_cb)
 
@@ -95,13 +105,13 @@ class VehicleDataOutput():
 				output_msg.velocity_mps = self.data.velocity
 				output_msg.gps_ready = self.data.gps_ready
 				output_msg.no_of_satellites = self.data.no_of_satellites
-				output_msg.lateral_velocity = self.data.lateral_velocity
-				output_msg.roll = self.data.roll
-				output_msg.pitch = self.data.pitch
-				output_msg.acceleration_x = self.data.acceleration_x
-				output_msg.acceleration_y = self.data.acceleration_y
-				output_msg.acceleration_z = self.data.acceleration_z
-				output_msg.vehicle_brake = self.data.vehicle_brake
+				# output_msg.lateral_velocity = self.data.lateral_velocity
+				# output_msg.roll = self.data.roll
+				# output_msg.pitch = self.data.pitch
+				# output_msg.acceleration_x = self.data.acceleration_x
+				# output_msg.acceleration_y = self.data.acceleration_y
+				# output_msg.acceleration_z = self.data.acceleration_z
+				# output_msg.vehicle_brake = self.data.vehicle_brake
 
 			s.send(output_msg.SerializeToString())
 			rate.sleep()
@@ -162,6 +172,23 @@ class VehicleDataOutput():
 
 	def vehicle_brake_cb(self, msg):
 		self.data.vehicle_brake = msg.data
+
+	# SBG
+	def gps_sbg_pos_callback(self, msg):
+		self.data.longitude = msg.longitude
+		self.data.latitude = msg.latitude
+	
+	def gps_sbg_vel_NE_callback(self, msg):
+		self.data.velocity_north = round(msg.twist.linear.x, 3)
+		self.data.velocity_east = round(msg.twist.linear.y, 3)
+
+	def gps_sbg_vel_callback(self, msg):
+		self.data.heading = math.degrees(round(msg.angle.z, 3)) 
+		self.data.velocity = self.data.velocity_north * cos(self.data.heading*(math.pi/180)) + self.data.velocity_east * sin(self.data.heading*(math.pi/180))
+
+	def gps_sbg_status_callback(self, msg):
+		self.no_of_satellites = msg.num_sv_used
+		self.data.gps_correction = msg.status.type
 
 # Transforms velocity from ENU to Vehicle Body Frame
 def transform_velocity(v_east, v_north, heading_rad):
