@@ -36,7 +36,7 @@ if __name__ == '__main__':
                 data = s.recv(1024)
                 ser.write(data)
             else:
-                print("no data, re init socket")
+                # print("no data, re init socket")
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind(("", 54008))
 
