@@ -361,7 +361,7 @@ class MyServerProtocol(WebSocketServerProtocol):
         self.thread4.setDaemon(True)
         self.thread4.start()
 
-    def onMessage(self, payload):
+    def onMessage(self, payload, isBinary):
 
         message = json.loads(payload.decode('utf8'))
 
@@ -425,7 +425,7 @@ class MyServerProtocol(WebSocketServerProtocol):
         elif message['type'] == '/gui/reset_micro_controller':
             os.system('sudo ' + os.getcwd() + '/reset_portenta.sh')
         
-    def onClose(self, reason):
+    def onClose(self, wasClean, code, reason):
         self.is_connected = False
         MyServerProtocol.websocket_client_count -= 1
         print("WebSocket connection closed: {}".format(reason))
