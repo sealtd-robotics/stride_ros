@@ -91,7 +91,7 @@ if __name__ ==  '__main__':
 
     df = DifferentialDrive()
 
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(100)
 
     while not rospy.is_shutdown():
         state = df.overseer_state
