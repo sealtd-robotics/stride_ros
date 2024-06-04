@@ -24,11 +24,10 @@ target_heading = 271.10 # Vehicle heading in degrees. Used in wait_for_vehicle_p
 target_velocity = 3 # Vehicle speed in m/s. Used in wait_for_vehicle_velocity().
 
 ### Function Calls
-# rc.move_until_index(2, 0.1, 45)#Move at 2 m/s with 0.1g acceleration to index 45
-# rc.decel_to_stop_at_index(50) #Decelerate and stop at index 50
+rc.move_until_index(2, 0.1, 45)#Move at 2 m/s with 0.1g acceleration to index 45
+rc.decel_to_stop_at_index(50) #Decelerate and stop at index 50
 rc.engage_brake_hill() #Engage the mechanical brakes
-# rc.wait_for_vehicle_position(target_lat, target_long, target_heading) #Wait for vehicle to trigger desired position/heading.
-rc.sleep(2)
+rc.wait_for_vehicle_position(target_lat, target_long, target_heading) #Wait for vehicle to trigger desired position/heading.
 rc.disengage_brake_hill() #Disenagge the mechanical brakes
-# rc.move_until_end_of_path(2, 0.1) #Move until end of path at 2m/s and 0.1g acceleration
+rc.move_until_end_of_path(2, 0.1) #Move until end of path at 2m/s and 0.1g acceleration
 ## End test

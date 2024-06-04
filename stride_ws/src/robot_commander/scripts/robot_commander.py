@@ -106,19 +106,6 @@ class RobotCommander:
 
         self.velocity_command_publisher.publish(pose2d)
 
-    def _send_velocity_command_brakes(self, speed):
-        self.limiter_initial_speed = speed
-        radius = 999
-
-        pose2d = Pose2D()
-        pose2d.x = speed
-        w = speed / radius
-        if (speed < 0):
-            w *= -1.0
-        pose2d.theta = w
-
-        self.velocity_command_publisher.publish(pose2d)
-
     def _rate_limiter(self, speed_goal, acceleration, total_distance_in_index):
         acceleration = acceleration * 9.81
         initial_time_in_s = time.time()
@@ -511,16 +498,16 @@ class RobotCommander:
         #While loop to block code until Ardino says brake is disengaged via UDP 
         while self.brake_status != 1 and let_script_runs:
             rate.sleep()
-            self._send_velocity_command_brakes(0.025)
+            self._send_velocity_command_using_radius(0.025)
             if (time.time() - t0) > timeout: #Timeout disengage brake when it fails
                 disengage_brake_timeout = True
                 break
 
         if self.brake_status == 1: #Exit function if brake fully disengaged
-            self._send_velocity_command_brakes(0)
+            self._send_velocity_command_using_radius(0)
             return
         elif disengage_brake_timeout == True: #If function times out, abort test and send message to the gui
-            self._send_velocity_command_brakes(0)
+            self._send_velocity_command_using_radius(0)
             let_script_runs = False #Abort test
             self._display_message('Aborting Test: Disengage brake failed. User action required.') #Send message to GUI to let user know they need to do something.
 

@@ -15,7 +15,7 @@
 from __future__ import division
 import rospy, time
 from can_interface.msg import WheelRPM
-from std_msgs.msg import Int32, Float32
+from std_msgs.msg import Int32, Float32, Bool
 from geometry_msgs.msg import Pose2D
 from shared_tools.overseer_states_constants import *
 
@@ -38,12 +38,21 @@ class DifferentialDrive:
         self.commanded_robot_v = 0
         self.commanded_robot_w = 0
         self.cross_track_error = 0
+        self.brake_status = 3
+        self.has_brake = rospy.get_param('has_brake', False)
 
         self.wheel_rpm_publisher = rospy.Publisher('/wheel_rpm_command', WheelRPM, queue_size=1)
 
         rospy.Subscriber('/robot_velocity_command', Pose2D, self.velocity_command_callback, queue_size=1)      
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_callback)
         rospy.Subscriber('/path_follower/cross_track_error', Float32, self.cross_track_error_callback, queue_size=1)
+        rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        rospy.Subscriber('/has_brake', Bool, self.has_brake_callback, queue_size=1)
+
+        if self.has_brake:
+            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+        else:
+            self.brake_status = 1 # wheels are not blocked status
 
     def publish_wheel_rpm(self, robot_v, robot_w):
         #Check what side of path robot is on and adjust wheel RPM
@@ -51,7 +60,7 @@ class DifferentialDrive:
         adj_R = 0
 
         # No adjdustments when robot is not moving. Otherwise robot moves when executing sleep command.
-        if not (robot_v == 0):
+        if not (robot_v == 0) and self.brake_status == 1:
             if self.cross_track_error >= 0: #If on left side of path, add correction term for left wheel
                 adj_L = self.P_corr * abs(self.cross_track_error)
                 adj_R = -1 * self.P_corr * abs(self.cross_track_error)
@@ -85,6 +94,12 @@ class DifferentialDrive:
 
     def cross_track_error_callback(self, msg):
         self.cross_track_error = msg.data
+
+    def brake_status_callback(self, msg):
+        self.brake_status = msg.data
+
+    def has_brake_callback(self,msg):
+        self.has_brake = msg.data
 
 if __name__ ==  '__main__':
     node = rospy.init_node('drive_mechanism')
