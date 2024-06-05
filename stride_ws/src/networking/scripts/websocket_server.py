@@ -12,13 +12,10 @@
 # mc: motor controller
 
 from __future__ import division
-import canopen
 import rospy
-from can_interface.msg import WheelRPM
-from std_msgs.msg import Float32, UInt16, UInt8, Int16, Int32, Bool, Empty, String
+from std_msgs.msg import Float32, Int32, Bool, Empty, String
 from external_interface.msg import TargetVehicle
-from geometry_msgs.msg import Pose2D, Vector3, Twist, TwistWithCovarianceStamped, TwistStamped
-from sensor_msgs.msg import NavSatFix, Imu
+from geometry_msgs.msg import Pose2D, TwistStamped
 from joystick.msg import Stick
 from path_follower.msg import Latlong
 from sbg_driver.msg import SbgEkfNav, SbgGpsPos, SbgEkfEuler
@@ -70,37 +67,21 @@ class RosInterface:
             "tempErrorWord": 0,
             "motorControllers": {
                 "leftFront": {
-                    # "state": 0,
-                    # "heartbeatNmt": 0,
-                    # "motorCurrentDraw": 0,
-                    # "wheelRpmActual": 0,
                     "errorWord": 0,
                     "isHeartbeatTimeout": False,
                     "windingTemperature": 0,
                 },
                 "leftBack": {
-                    # "state": 0,
-                    # "heartbeatNmt": 0,
-                    # "motorCurrentDraw": 0,
-                    # "wheelRpmActual": 0,
                     "errorWord": 0,
                     "isHeartbeatTimeout": False,
                     "windingTemperature": 0,
                 },
                 "rightFront": {
-                    # "state": 0,
-                    # "heartbeatNmt": 0,
-                    # "motorCurrentDraw": 0,
-                    # "wheelRpmActual": 0,
                     "errorWord": 0,
                     "isHeartbeatTimeout": False,
                     "windingTemperature": 0,
                 },
                 "rightBack": {
-                    # "state": 0,
-                    # "heartbeatNmt": 0,
-                    # "motorCurrentDraw": 0,
-                    # "wheelRpmActual": 0,
                     "errorWord": 0,
                     "isHeartbeatTimeout": False,
                     "windingTemperature": 0,
@@ -112,8 +93,9 @@ class RosInterface:
                 "longitude": 0,
                 "northVelocity": 0,
                 "eastVelocity": 0,
-                # "zAngularVelocity": 0,
                 "heading": 0,
+                "num_satellites": 0,
+                "diff_age": 0,
             },
             "pathFollower": {
                 "pathName": "",
@@ -130,8 +112,6 @@ class RosInterface:
             "mechanicalBrake": {
                 "hasBrake": False,
                 "brakeStatus": 0,
-                # "fullyseated_L": 0,
-                # "fullyseated_R": 0,
             },
 
         }
@@ -160,43 +140,24 @@ class RosInterface:
         #Brake subscribers
         rospy.Subscriber('/has_brake', Bool, self.has_brake_callback, queue_size=1)
         rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-        # rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
-        # rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
-        
 
         # Motor Controller Subscribers
         # Left Front
-        # rospy.Subscriber('/motor_controller/left_front/state', Int32, self.left_front_mc_callback_1, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_front/heartbeat_nmt', Int32, self.left_front_mc_callback_2, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_front/motor_current_draw', Float32, self.left_front_mc_callback_3, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_front/wheel_rpm_actual', Float32, self.left_front_mc_callback_4, queue_size=1)
         rospy.Subscriber('/motor_controller/left_front/error_word', Int32, self.left_front_mc_callback_5, queue_size=1)
         rospy.Subscriber('/motor_controller/left_front/is_heartbeat_timeout', Bool, self.left_front_mc_callback_6, queue_size=1)
         rospy.Subscriber('/motor_controller/left_front/winding_temperature', Int32, self.left_front_mc_callback_7, queue_size=1)
 
         # Left Back
-        # rospy.Subscriber('/motor_controller/left_back/state', Int32, self.left_back_mc_callback_1, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_back/heartbeat_nmt', Int32, self.left_back_mc_callback_2, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_back/motor_current_draw', Float32, self.left_back_mc_callback_3, queue_size=1)
-        # rospy.Subscriber('/motor_controller/left_back/wheel_rpm_actual', Float32, self.left_back_mc_callback_4, queue_size=1)
         rospy.Subscriber('/motor_controller/left_back/error_word', Int32, self.left_back_mc_callback_5, queue_size=1)
         rospy.Subscriber('/motor_controller/left_back/is_heartbeat_timeout', Bool, self.left_back_mc_callback_6, queue_size=1)
         rospy.Subscriber('/motor_controller/left_back/winding_temperature', Int32, self.left_back_mc_callback_7, queue_size=1)
 
         # Right Front
-        # rospy.Subscriber('/motor_controller/right_front/state', Int32, self.right_front_mc_callback_1, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_front/heartbeat_nmt', Int32, self.right_front_mc_callback_2, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_front/motor_current_draw', Float32, self.right_front_mc_callback_3, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_front/wheel_rpm_actual', Float32, self.right_front_mc_callback_4, queue_size=1)
         rospy.Subscriber('/motor_controller/right_front/error_word', Int32, self.right_front_mc_callback_5, queue_size=1)
         rospy.Subscriber('/motor_controller/right_front/is_heartbeat_timeout', Bool, self.right_front_mc_callback_6, queue_size=1)
         rospy.Subscriber('/motor_controller/right_front/winding_temperature', Int32, self.right_front_mc_callback_7, queue_size=1)
 
         # Right Back
-        # rospy.Subscriber('/motor_controller/right_back/state', Int32, self.right_back_mc_callback_1, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_back/heartbeat_nmt', Int32, self.right_back_mc_callback_2, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_back/motor_current_draw', Float32, self.right_back_mc_callback_3, queue_size=1)
-        # rospy.Subscriber('/motor_controller/right_back/wheel_rpm_actual', Float32, self.right_back_mc_callback_4, queue_size=1)
         rospy.Subscriber('/motor_controller/right_back/error_word', Int32, self.right_back_mc_callback_5, queue_size=1)
         rospy.Subscriber('/motor_controller/right_back/is_heartbeat_timeout', Bool, self.right_back_mc_callback_6, queue_size=1)
         rospy.Subscriber('/motor_controller/right_back/winding_temperature', Int32, self.right_back_mc_callback_7, queue_size=1)
@@ -271,14 +232,6 @@ class RosInterface:
 
     # Motor Controller Callbacks
     # Left Front
-    # def left_front_mc_callback_1(self, msg):
-    #     self.robotState['motorControllers']['leftFront']['state'] = msg.data
-    # def left_front_mc_callback_2(self, msg):
-    #     self.robotState['motorControllers']['leftFront']['heartbeatNmt'] = msg.data
-    # def left_front_mc_callback_3(self, msg):
-    #     self.robotState['motorControllers']['leftFront']['motorCurrentDraw'] = round(msg.data, 3)
-    # def left_front_mc_callback_4(self, msg):
-    #     self.robotState['motorControllers']['leftFront']['wheelRpmActual'] = round(msg.data, 2)
     def left_front_mc_callback_5(self, msg):
         self.robotState['motorControllers']['leftFront']['errorWord'] = msg.data
     def left_front_mc_callback_6(self, msg):
@@ -287,14 +240,6 @@ class RosInterface:
         self.robotState['motorControllers']['leftFront']['windingTemperature'] = msg.data
 
     # Left Back
-    # def left_back_mc_callback_1(self, msg):
-    #     self.robotState['motorControllers']['leftBack']['state'] = msg.data
-    # def left_back_mc_callback_2(self, msg):
-    #     self.robotState['motorControllers']['leftBack']['heartbeatNmt'] = msg.data
-    # def left_back_mc_callback_3(self, msg):
-    #     self.robotState['motorControllers']['leftBack']['motorCurrentDraw'] = round(msg.data ,3)
-    # def left_back_mc_callback_4(self, msg):
-    #     self.robotState['motorControllers']['leftBack']['wheelRpmActual'] = round(msg.data, 2)
     def left_back_mc_callback_5(self, msg):
         self.robotState['motorControllers']['leftBack']['errorWord'] = msg.data
     def left_back_mc_callback_6(self, msg):
@@ -303,14 +248,6 @@ class RosInterface:
         self.robotState['motorControllers']['leftBack']['windingTemperature'] = msg.data
 
     # Right Front
-    # def right_front_mc_callback_1(self, msg):
-    #     self.robotState['motorControllers']['rightFront']['state'] = msg.data
-    # def right_front_mc_callback_2(self, msg):
-    #     self.robotState['motorControllers']['rightFront']['heartbeatNmt'] = msg.data
-    # def right_front_mc_callback_3(self, msg):
-    #     self.robotState['motorControllers']['rightFront']['motorCurrentDraw'] = round(msg.data, 3)
-    # def right_front_mc_callback_4(self, msg):
-    #     self.robotState['motorControllers']['rightFront']['wheelRpmActual'] = round(msg.data, 2)
     def right_front_mc_callback_5(self, msg):
         self.robotState['motorControllers']['rightFront']['errorWord'] = msg.data
     def right_front_mc_callback_6(self, msg):
@@ -319,14 +256,6 @@ class RosInterface:
         self.robotState['motorControllers']['rightFront']['windingTemperature'] = msg.data
 
     # Right Back
-    # def right_back_mc_callback_1(self, msg):
-    #     self.robotState['motorControllers']['rightBack']['state'] = msg.data
-    # def right_back_mc_callback_2(self, msg):
-    #     self.robotState['motorControllers']['rightBack']['heartbeatNmt'] = msg.data
-    # def right_back_mc_callback_3(self, msg):
-    #     self.robotState['motorControllers']['rightBack']['motorCurrentDraw'] = round(msg.data, 3)
-    # def right_back_mc_callback_4(self, msg):
-    #     self.robotState['motorControllers']['rightBack']['wheelRpmActual'] = round(msg.data, 2)
     def right_back_mc_callback_5(self, msg):
         self.robotState['motorControllers']['rightBack']['errorWord'] = msg.data
     def right_back_mc_callback_6(self, msg):
@@ -362,6 +291,8 @@ class RosInterface:
         self.robotState['gps']['status'] = msg.status.type
         self.robotState['gps']['latitude'] = msg.latitude
         self.robotState['gps']['longitude'] = msg.longitude
+        self.robotState['gps']['num_satellites'] = msg.num_sv_used
+        self.robotState['gps']['diff_age'] = msg.diff_age
         time.sleep(self.gps_callback_sleep_time)
 
     def gps_sbg_vel_callback(self, msg):
@@ -389,12 +320,6 @@ class RosInterface:
     def brake_status_callback(self, msg):
         self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
 
-    # def left_brake_callback(self, msg):
-    #     self.robotState['mechanicalBrake']['fullyseated_L'] = msg.data
-
-    # def right_brake_callback(self, msg):
-    #     self.robotState['mechanicalBrake']['fullyseated_R'] = msg.data
-        
     def has_brake_callback(self, msg):
         self.robotState['mechanicalBrake']['hasBrake'] = msg.data
 
@@ -437,13 +362,6 @@ class MyServerProtocol(WebSocketServerProtocol):
         self.thread4.start()
 
     def onMessage(self, payload, isBinary):
-        # if isBinary:
-        #     print("Binary message received: {} bytes".format(len(payload)))
-        # else:
-        #     print("Text message received: {}".format(payload.decode('utf8')))
-
-        # # echo back message verbatim
-        # self.sendMessage(payload, isBinary)
 
         message = json.loads(payload.decode('utf8'))
 
