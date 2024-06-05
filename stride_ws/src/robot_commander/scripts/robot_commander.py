@@ -54,6 +54,7 @@ class RobotCommander:
         self.has_brake = rospy.get_param('has_brake', False)
         self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
         self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
+        self.debug = rospy.get_param('debug', False)
         
         self.target_gps_ready = False
         self.vehicle_comp = False
@@ -89,7 +90,8 @@ class RobotCommander:
             time.sleep(0.1)
 
     def _display_message(self, message):
-        print(message)
+        if self.debug:
+            print(message)
         command_message_publisher.publish(message)
 
     def _send_velocity_command_using_radius(self, speed):
@@ -109,7 +111,7 @@ class RobotCommander:
         initial_time_in_s = time.time()
         current_velocity = 0
         is_starting_decel = True
-        frequency = 50 #hz
+        frequency = 100 #hz
         period = 1/frequency
         r = rospy.Rate(frequency) 
         minimum_decel_vel = 0.3 #m/s
@@ -207,7 +209,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing move_until_end_of_path')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -221,7 +222,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing brake_to_stop')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -244,7 +244,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing move_until_index')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -274,7 +273,6 @@ class RobotCommander:
         acceleration_mps2 = np.square(speed_goal) / (2 * distance_goal* P_gain)
         acceleration_g = acceleration_mps2 / 9.81
         index_dist = distance_goal / 0.3
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -295,7 +293,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing rotate_until_heading')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -351,7 +348,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing decel_to_stop_at_index')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -393,7 +389,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing move_until_beginning_of_path')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -418,11 +413,9 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing engage_brake')
-        time.sleep(0.1)
 
         if not self.has_brake:
             self._display_message('Aborting Test: Is this a brake-supported platform? Check parameters.')
-            time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
             let_script_runs = False
             return
@@ -437,7 +430,6 @@ class RobotCommander:
 
         #Send speed to zero before braking
         while self.robot_speed > 0.1 and let_script_runs:
-            # self._send_velocity_command_using_radius(0)
             self._display_message("WARNING: Robot speed still active before brake")
             self.brake_to_stop(0.1)
             rate.sleep()
@@ -481,11 +473,9 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing disengage_brake')
-        time.sleep(0.1)  
 
         if not self.has_brake:
             self._display_message('Aborting Test: Is this a brake-supported platform? Check parameters.')
-            time.sleep(0.1)
             self.brake_to_stop(self.default_decel_rate)
             let_script_runs = False
             return
@@ -593,7 +583,6 @@ class RobotCommander:
         if not let_script_runs:
             return
         self._display_message('Executing vehicle_compensation')
-        time.sleep(0.1)
         if self.brake_status != 1: #Block function if brake isn't fully disengaged
             let_script_runs = False
             self._display_message("Aborting Test: Brake not disengaged.")
@@ -624,11 +613,6 @@ class RobotCommander:
             initial_time = time.time()
             initial_speed = self.limiter_initial_speed
             self.accel_to_distance(speed_goal_kph, distance_goal, P_gain)
-            # while self.robot_speed < speed_goal and let_script_runs: #Get up to speed before applying speed adjustments.
-            #     print('This was needed.')
-            #     limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal, initial_speed)
-            #     self._send_velocity_command_using_radius(limited_speed)
-            #     rate.sleep()
 
             while self.current_path_index < self.max_path_index and let_script_runs:
                 #Constantly convert Stride and vehicle lat/long values to east/north.
