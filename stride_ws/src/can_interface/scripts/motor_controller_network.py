@@ -26,6 +26,8 @@ import threading
 from datetime import datetime
 from shared_tools.overseer_states_constants import *
 
+TIME_INTERVAL = 0.01
+
 class MotorControllerNode:
     def __init__(self, node, topic_name):
         self.gear_ratio = rospy.get_param('gear_ratio')
@@ -80,7 +82,7 @@ class MotorControllerNode:
         degree_C = (degree_F - 32) * 5 / 9
         self.sdo_ambient_temperature.raw = degree_C
 
-        time.sleep(0.05) 
+        time.sleep(TIME_INTERVAL)
 
     def monitor_heartbeat(self):
         while True:
@@ -93,7 +95,7 @@ class MotorControllerNode:
     def change_nmt_state(self, nmt_state):
         # nmt_state is a string
         self.node.nmt.state = nmt_state
-        time.sleep(0.02)
+        time.sleep(TIME_INTERVAL)
 
     def disable_enable_power(self):
         # disable and then re-enable power
@@ -102,13 +104,13 @@ class MotorControllerNode:
         # Send a "shut down" command to go to "Ready to Switch On" state, from either "Operation Enabled" or "Switch on Disabled"
         self.node.rpdo[2][0].raw = int('0110',2)
         self.node.rpdo[2].transmit()
-        time.sleep(0.02)
+        time.sleep(TIME_INTERVAL)
 
         # Then send a "Enable Operation" command to go to the "Operation Enable" state
         # This state enables power to motor
         self.node.rpdo[2][0].raw = int('1111',2)
         self.node.rpdo[2].transmit()
-        time.sleep(0.02)
+        time.sleep(TIME_INTERVAL)
 
     def enable_power_if_disabled(self):
         # return when there is power already
@@ -121,7 +123,7 @@ class MotorControllerNode:
     def quick_stop_controlword(self):
         self.node.rpdo[2][0].raw = int('10',2)
         self.node.rpdo[2].transmit()
-        time.sleep(0.02)
+        time.sleep(TIME_INTERVAL)
 
     def spin(self, wheel_rpm):
         self.node.rpdo[1][0].raw = self.gear_ratio * wheel_rpm
@@ -134,7 +136,7 @@ class MotorControllerNode:
         # 2: actual velocity of motor input shaft
 
         # 0
-        # only the first 7 bits represent the state. "0111 1111" is 127
+        # only the first 7 bits represent the state. "0111 1111" isleft_front_rpm 127
         state = tpdo1[0].raw & 127
         self.state_publisher.publish(state)
         self.state = state
@@ -268,6 +270,7 @@ class MotorControllerNetwork:
 
     def relax_motors(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
+        # nodes = [self.mc_lf_node, self.mc_lb_node]
         interval = 3
 
         # relax the motor that draws the most current
@@ -287,6 +290,7 @@ class MotorControllerNetwork:
     
     def relax_motors_while_braking(self):
         nodes = [self.mc_lf_node, self.mc_lb_node, self.mc_rf_node, self.mc_rb_node]
+        # nodes = [self.mc_lf_node, self.mc_lb_node]
         interval = 0.25
 
         # relax the motor that draws the most current
@@ -379,7 +383,7 @@ class MotorControllerNetwork:
     def drive(self):
         while True:
             try:
-                time.sleep(0.02)
+                time.sleep(TIME_INTERVAL)
                 if self.overseer_state == STOPPED:
                     self.enable_power_for_all_motors()
                     self.send_zero_rpm_to_all_motors()
