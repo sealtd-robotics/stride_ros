@@ -86,7 +86,7 @@ if __name__ == "__main__":
     estop_socket1.bind(('', 54002))
     estop_socket1_timestamp = get_time_now_in_ms()
 
-    # Estop from xboard
+    # Estop from Portenta
     estop_socket2 = socket(AF_INET, SOCK_DGRAM)
     estop_socket2.bind(('', 54004))
     estop_socket2_timestamp = get_time_now_in_ms()
@@ -163,8 +163,9 @@ if __name__ == "__main__":
 
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
-                (estop_state,) = struct.unpack('B',dat[0:1])  # New estop
+                # (estop_state,) = struct.unpack('B',dat[0:1])  # New estop
                 # (estop_state,) = struct.unpack('B', dat[2]) # Old estop
+                (estop_state,) = struct.unpack('B',dat[0:1])  # Old and New estop
                 is_estop_pressed_1 = estop_state & 1
                 estop_publisher1.publish(is_estop_pressed_1)
                 estop_socket1_timestamp = get_time_now_in_ms()
