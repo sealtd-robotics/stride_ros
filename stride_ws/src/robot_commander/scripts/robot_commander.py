@@ -35,9 +35,22 @@ from math import cos, pi, sin
 let_script_runs = False
 dash_line = "----------------------"
 
-class RobotCommander:
+class RobotCommander(object):
+    def __new__(cls):
+        """
+        Singleton - keep only one object running for the entire node
+        if the object is already created. Return that object
+        """
+        if not hasattr(cls,'instance'):
+            cls.instance = super(RobotCommander, cls).__new__(cls)
+            cls.instance.__initialized = True
+            cls.instance.__testing = False
+        else:
+            cls.instance.__testing = True
+
+        return cls.instance
+    
     def __init__(self):
-        self.reverse_speed_goal = rospy.get_param('~reverse_speed_goal')
         self.current_path_index = 0
         self.max_path_index = -1
         self.path_intervals = []
@@ -51,43 +64,46 @@ class RobotCommander:
         self.target_latitude = 0
         self.target_longitude = 0
 
-        self.has_brake = rospy.get_param('has_brake', False)
-        self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
-        self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
-        self.debug = rospy.get_param('debug', False)
-        
-        self.target_gps_ready = False
-        self.vehicle_comp = False
+        if self.__initialized:
+            self.has_brake          = rospy.get_param('has_brake', False)
+            self.reverse_speed_goal = rospy.get_param('~reverse_speed_goal', -1.5)
+            self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
+            self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
+            self.debug              = rospy.get_param('debug', False)
+            
+            self.target_gps_ready = False
+            self.vehicle_comp = False
 
-        # Publishers
-        self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
-        self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
-        self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
-        self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
-        self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
-        self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
+            # Publishers
+            self.velocity_command_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
+            self.stop_index_publisher = rospy.Publisher('/robot_commander/stop_index', Int32, queue_size=1)
+            self.spin_velocity_publisher = rospy.Publisher('/robot_commander/spin_in_place_velocity', Float32, queue_size=1)
+            self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
+            self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
+            self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
-        # Subscribers
-        rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
-        rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
-        rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
-        rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
-        rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
-        rospy.Subscriber('/pressure_switch', Bool, self.pressure_switch_callback, queue_size=1)
+            # Subscribers
+            rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
+            rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
+            rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
+            rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
+            rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
+            rospy.Subscriber('/pressure_switch', Bool, self.pressure_switch_callback, queue_size=1)
 
-        rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
-        rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
+            rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
+            rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
-        if self.has_brake:
-            rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-            rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
-            rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
-        else:
-            self.brake_status = 1 # wheels are not blocked status
+            if self.has_brake:
+                rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+                rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+                rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+            else:
+                self.brake_status = 1 # wheels are not blocked status
 
         # blocking until these attributes have been updated by subscriber callbacks
-        while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
-            time.sleep(0.1)
+        if self.__testing:
+            while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
+                time.sleep(0.01)
 
     def _display_message(self, message):
         if self.debug:
@@ -769,6 +785,8 @@ if __name__ == '__main__':
     command_message_publisher = rospy.Publisher('/robot_commander/command_message', String, queue_size=20)
 
     recept = Receptionist()
+
+    rc = RobotCommander()
 
     rate = rospy.Rate(10)
 
