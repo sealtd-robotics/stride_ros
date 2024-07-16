@@ -163,8 +163,6 @@ if __name__ == "__main__":
 
             elif sock == estop_socket1:
                 dat, addr = sock.recvfrom(1024)
-                # (estop_state,) = struct.unpack('B',dat[0:1])  # New estop
-                # (estop_state,) = struct.unpack('B', dat[2]) # Old estop
                 (estop_state,) = struct.unpack('B',dat[0:1])  # Old and New estop
                 is_estop_pressed_1 = estop_state & 1
                 estop_publisher1.publish(is_estop_pressed_1)
