@@ -82,27 +82,31 @@ class RobotCommander(object):
             self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
             self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
 
+            self.sub = {}
             # Subscribers
-            rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
-            rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
-            rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
-            rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
-            rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
-            rospy.Subscriber('/pressure_switch', Bool, self.pressure_switch_callback, queue_size=1)
+            self.sub['target'] = rospy.Subscriber('/target', TargetVehicle, self.target_callback, queue_size=1)
+            self.sub['pressure_switch'] = rospy.Subscriber('/pressure_switch', Bool, self.pressure_switch_callback, queue_size=1)
 
-            rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
-            rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
+            self.sub['sbg_ekf_euler'] = rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
+            self.sub['sbg_ekf_nav'] = rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
             if self.has_brake:
-                rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
-                rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
-                rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
+                self.sub['brake_status'] = rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
+                self.sub['left_brake'] = rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
+                self.sub['right_brake'] = rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
             else:
                 self.brake_status = 1 # wheels are not blocked status
-            # self.__initialized = False
+            self.__initialized = False
+
+        # Latched subscribers, re-subscribe every test
+        if hasattr(self, 'sub'):
+            self.sub['current_path_index'] = rospy.Subscriber('/path_follower/current_path_index', Int32, self.current_path_index_callback)
+            self.sub['max_path_index'] = rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
+            self.sub['path_intervals'] = rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
+            self.sub['turning_radius'] = rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
 
         # blocking until these attributes have been updated by subscriber callbacks
-        if self.__testing:
+        if self.__testing:            
             while (self.max_path_index == -1 or self.path_intervals == [] or self.robot_speed == -1 or self.robot_heading == -1 or self.turning_radius == 999):
                 time.sleep(0.01)
 
@@ -759,7 +763,6 @@ class Receptionist:
         else:
             error_message = "ERROR: Invalid test script. Abort test."
             command_message_publisher.publish(error_message)
-
         self.is_script_running = False
         self.is_script_running_publisher.publish(False) # This will change the state in overseer.py to STOP
         
