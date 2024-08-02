@@ -99,6 +99,7 @@ class RobotCommander(object):
                 rospy.Subscriber('/fullyseated_R', Int32, self.right_brake_callback, queue_size=1)
             else:
                 self.brake_status = 1 # wheels are not blocked status
+            # self.__initialized = False
 
         # blocking until these attributes have been updated by subscriber callbacks
         if self.__testing:
@@ -547,6 +548,7 @@ class RobotCommander(object):
 
         rate = rospy.Rate(50)
 
+        # time.sleep(0.01)
         while self.target_gps_ready and let_script_runs:
             py, px = llne.LL2NE(self.target_latitude, self.target_longitude)
             if boundary_checker.in_boundaries(np.array([px,py])):
@@ -583,7 +585,8 @@ class RobotCommander(object):
         if not let_script_runs:
             return
         self._display_message('Executing wait_for_vehicle_velocity')
-        rate = rospy.Rate(20)
+        rate = rospy.Rate(50)
+        # time.sleep(0.01)
         while (self.target_velocity < velocity 
             and self.target_gps_ready) and let_script_runs:
             rate.sleep()
