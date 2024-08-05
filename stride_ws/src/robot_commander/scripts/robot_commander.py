@@ -59,7 +59,7 @@ class RobotCommander(object):
         self.turning_radius = 999
         self.limiter_initial_speed = 0
         self.brake_command = 0
-        self.brake_status = 3
+        self.brake_status = 1
         self.pressure_switch_status = 0
         self.target_latitude = 0
         self.target_longitude = 0
