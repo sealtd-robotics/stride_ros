@@ -59,7 +59,6 @@ class RobotCommander(object):
         self.turning_radius = 999
         self.limiter_initial_speed = 0
         self.brake_command = 0
-        self.brake_status = 1
         self.pressure_switch_status = 0
         self.target_latitude = 0
         self.target_longitude = 0
@@ -90,6 +89,7 @@ class RobotCommander(object):
             self.sub['sbg_ekf_euler'] = rospy.Subscriber('/sbg/ekf_euler', SbgEkfEuler, self.gps_sbg_euler_callback, queue_size=1)
             self.sub['sbg_ekf_nav'] = rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_sbg_nav_callback, queue_size=1)
 
+            self.brake_status = 3
             if self.has_brake:
                 self.sub['brake_status'] = rospy.Subscriber('/brake_status', Int32, self.brake_status_callback, queue_size=1)
                 self.sub['left_brake'] = rospy.Subscriber('/fullyseated_L', Int32, self.left_brake_callback, queue_size=1)
