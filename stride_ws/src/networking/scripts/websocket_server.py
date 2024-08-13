@@ -99,6 +99,7 @@ class RosInterface:
             },
             "pathFollower": {
                 "pathName": "",
+                "vehiclePathName": "",
                 "scriptName": "",
             },
             "targetVehicle": {
@@ -166,6 +167,7 @@ class RosInterface:
         rospy.Subscriber('/path_follower/path_name', String, self.path_follower_callback_1, queue_size=1)
         rospy.Subscriber('/path_follower/path_to_follow', Latlong, self.path_follower_callback_2, queue_size=1)
         rospy.Subscriber('/path_follower/script_name', String, self.path_follower_callback_3, queue_size=1)
+        rospy.Subscriber('/path_follower/vehicle_path_name', String, self.path_follower_callback_4, queue_size=1)
 
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
@@ -177,6 +179,7 @@ class RosInterface:
         self.robot_velocity_publisher = rospy.Publisher('/robot_velocity_command', Pose2D, queue_size=1)
         self.start_following_publisher = rospy.Publisher('/gui/start_path_following_clicked', Empty, queue_size=1)
         self.upload_path_publisher = rospy.Publisher('/gui/upload_path_clicked', Empty, queue_size=1)
+        self.upload_vehicle_path_publisher = rospy.Publisher('/gui/upload_vehicle_path_clicked', Empty, queue_size=1)
         self.upload_script_publisher = rospy.Publisher('/gui/upload_script_clicked', Empty, queue_size=1)
         self.return_to_start_publisher = rospy.Publisher('/gui/return_to_start_clicked', Empty, queue_size=1)
         self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
@@ -316,6 +319,9 @@ class RosInterface:
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
 
+    def path_follower_callback_4(self,msg):
+        self.robotState['pathFollower']['vehiclePathName'] = msg.data
+
     # # Brake Callbacks
     def brake_status_callback(self, msg):
         self.robotState['mechanicalBrake']['brakeStatus'] = msg.data
@@ -408,6 +414,20 @@ class MyServerProtocol(WebSocketServerProtocol):
             with open(folder + message['filename'], 'w+') as f:
                 f.write(message['fileContent'])
             MyServerProtocol.ros_interface.upload_path_publisher.publish()
+
+        elif message['type'] == '/gui/upload_vehicle_path_clicked':
+            folder = '../../../path/'
+            
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+
+            # remove all txt files (there should only be one txt file allowed in the folder)
+            for path in glob (folder + '*.txt'):
+                os.remove(path)
+            
+            with open(folder + message['filename'], 'w+') as f:
+                f.write(message['fileContent'])
+            MyServerProtocol.ros_interface.upload_vehicle_path_publisher.publish()
 
         elif message['type'] == '/gui/upload_script_clicked':
             folder = '../../../custom_script/'
