@@ -57,7 +57,7 @@ class PathFollower:
         # Publishers
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
-        self.vehicle_path_name_publisher = rospy.Publisher('/path_follower/vehicle_path_name', String, queue_size=1, latch=True)
+        self.vehicle_path_to_follow_publisher = rospy.Publisher('/path_follower/vehicle_path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1, latch=True)
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
@@ -162,7 +162,7 @@ class PathFollower:
         self.path_intervals_publisher.publish(msg)
 
     def load_vehicle_path(self):
-        folder = '../../../path/'
+        folder = '../../../path_vehicle/'
             
         if not os.path.exists(folder):
             return
@@ -174,8 +174,28 @@ class PathFollower:
         
         filepath = txt_files[0]
 
-        filename = os.path.basename(filepath)
-        self.vehicle_path_name_publisher.publish(filename)
+        line_number = 1
+        with open(filepath, 'r') as f:
+            latitudes = []
+            longitudes = []
+
+            for line in f.readlines():
+                # omit the first line in file
+                if line_number == 1:
+                    line_number += 1
+                    continue
+                
+                lat_long = line.split()
+                latitude = float(lat_long[0])
+                longitude = float(lat_long[1])
+
+                latitudes.append(latitude)
+                longitudes.append(longitude)
+
+        latlong = Latlong()
+        latlong.latitudes = latitudes
+        latlong.longitudes = longitudes
+        self.vehicle_path_to_follow_publisher.publish(latlong)
 
     def update_current_path_index(self):
         if self.last_path_index == self.max_index:

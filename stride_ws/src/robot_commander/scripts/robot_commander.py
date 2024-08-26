@@ -17,15 +17,18 @@ import os
 import math
 import numpy as np
 from glob import glob
-from libcal import LL_NE, CheckBoundariesEnter
+from shared_tools.libcal import LL_NE, CheckBoundariesEnter, Compensation, kph2mps, mps2kph
 
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
 from nav_msgs.msg import Odometry
+from geographic_msgs.msg import GeoPoint
 from sbg_driver.msg import SbgEkfEuler, SbgEkfNav
 from external_interface.msg import TargetVehicle
+from path_follower.msg import Latlong
 from datetime import datetime
 from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_speed
+from shared_tools.utils import WriteCSV
 from shared_tools.overseer_states_constants import *
 from check_script import *
 from math import cos, pi, sin
@@ -59,6 +62,7 @@ class RobotCommander(object):
         self.turning_radius = 999
         self.limiter_initial_speed = 0
         self.brake_command = 0
+        
         self.pressure_switch_status = 0
         self.target_latitude = 0
         self.target_longitude = 0
@@ -80,6 +84,7 @@ class RobotCommander(object):
             self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
             self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
             self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
+            self.collision_point_publisher = rospy.Publisher('/robot_commander/collision_point', GeoPoint, queue_size=1)
 
             self.sub = {}
             # Subscribers
@@ -97,6 +102,9 @@ class RobotCommander(object):
             else:
                 self.brake_status = 1 # wheels are not blocked status
             self.__initialized = False
+        else:
+            if not self.has_brake:
+                self.brake_status = 1
 
         # Latched subscribers, re-subscribe every test
         if hasattr(self, 'sub'):
@@ -104,6 +112,7 @@ class RobotCommander(object):
             self.sub['max_path_index'] = rospy.Subscriber('/path_follower/max_path_index', Int32, self.max_path_index_callback)
             self.sub['path_intervals'] = rospy.Subscriber('/path_follower/path_intervals', Float32MultiArray, self.path_intervals_callback)
             self.sub['turning_radius'] = rospy.Subscriber('/path_follower/turning_radius', Float32, self.turning_radius_callback)
+            self.sub['path_to_follow'] = rospy.Subscriber('/path_follower/path_to_follow', Latlong, self.path_to_follow_callback)
 
         # blocking until these attributes have been updated by subscriber callbacks
         if self.__testing:            
@@ -601,72 +610,184 @@ class RobotCommander(object):
             let_script_runs = False
             return
 
-    def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, distance_goal, P_gain=1): #Units are meters/second, g, degrees, degrees, meters, and unitless
-        global let_script_runs
-        if not let_script_runs:
-            return
-        self._display_message('Executing vehicle_compensation')
-        if self.brake_status != 1: #Block function if brake isn't fully disengaged
-            let_script_runs = False
-            self._display_message("Aborting Test: Brake not disengaged.")
-            return
-        rospy.Rate(50)
+    # def vehicle_compensation(self, speed_goal, speed_rate, intersection_lat, intersection_long, distance_goal, P_gain=1): #Units are meters/second, g, degrees, degrees, meters, and unitless
+    #     global let_script_runs
+    #     if not let_script_runs:
+    #         return
+    #     self._display_message('Executing vehicle_compensation')
+    #     if self.brake_status != 1: #Block function if brake isn't fully disengaged
+    #         let_script_runs = False
+    #         self._display_message("Aborting Test: Brake not disengaged.")
+    #         return
+    #     rospy.Rate(50)
         
-        #Initialize variables
-        self.vehicle_comp = True
-        speed_rate = speed_rate * 9.81 #Convert g to m/s^2
-        stride_vel_adj = 0 #m/s
-        new_stride_vel = 0 #m/s
-        minimum_velocity = 0.1 #m/s
-        euro_ncap_speed_tol = 0.2 * (1000/3600) #0.2 kph speed tolerance to m/s 
-        lower_vel_threshold = speed_goal - euro_ncap_speed_tol + 0.033
-        upper_vel_threshold = speed_goal
-        speed_goal_kph = speed_goal *(3600/1000)
+    #     #Initialize variables
+    #     self.vehicle_comp = True
+    #     speed_rate = speed_rate * 9.81 #Convert g to m/s^2
+    #     stride_vel_adj = 0 #m/s
+    #     new_stride_vel = 0 #m/s
+    #     minimum_velocity = 0.1 #m/s
+    #     euro_ncap_speed_tol = 0.2 * (1000/3600) #0.2 kph speed tolerance to m/s 
+    #     lower_vel_threshold = speed_goal - euro_ncap_speed_tol + 0.033
+    #     upper_vel_threshold = speed_goal
+    #     speed_goal_kph = speed_goal *(3600/1000)
         
-        #reference lat/long
-        Ref_lat = intersection_lat
-        Ref_long = intersection_long
+    #     #reference lat/long
+    #     Ref_lat = intersection_lat
+    #     Ref_long = intersection_long
         
-        if not self.target_gps_ready:
-            self._display_message("Aborting Test: Target GPS is not ready.")
-            let_script_runs = False
-            return
-        else:
+    #     if not self.target_gps_ready:
+    #         self._display_message("Aborting Test: Target GPS is not ready.")
+    #         let_script_runs = False
+    #         return
+    #     else:
             
-            initial_time = time.time()
-            initial_speed = self.limiter_initial_speed
-            self.accel_to_distance(speed_goal_kph, distance_goal, P_gain)
+    #         initial_time = time.time()
+    #         initial_speed = self.limiter_initial_speed
+    #         self.accel_to_distance(speed_goal_kph, distance_goal, P_gain)
 
-            while self.current_path_index < self.max_path_index and let_script_runs:
-                #Constantly convert Stride and vehicle lat/long values to east/north.
-                stride_east, stride_north = self._LL2NE(Ref_lat, Ref_long, self.stride_latitude, self.stride_longitude)
-                vehicle_east, vehicle_north = self._LL2NE(Ref_lat, Ref_long, self.target_latitude, self.target_longitude)
+    #         while self.current_path_index < self.max_path_index and let_script_runs:
+    #             #Constantly convert Stride and vehicle lat/long values to east/north.
+    #             stride_east, stride_north = self._LL2NE(Ref_lat, Ref_long, self.stride_latitude, self.stride_longitude)
+    #             vehicle_east, vehicle_north = self._LL2NE(Ref_lat, Ref_long, self.target_latitude, self.target_longitude)
                 
-                #Calculate distance to collision point.
-                stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
-                sv_dist_to_index = np.sqrt(np.square(vehicle_east) + np.square(vehicle_north)) #North/East (m)
+    #             #Calculate distance to collision point.
+    #             stride_dist_to_index = np.sqrt(np.square(stride_east) + np.square(stride_north)) #North/East (m)
+    #             sv_dist_to_index = np.sqrt(np.square(vehicle_east) + np.square(vehicle_north)) #North/East (m)
                 
-                #Calculate time to collision point.
-                stride_ttc = stride_dist_to_index / self.robot_speed
-                sv_ttc = sv_dist_to_index / self.target_velocity
+    #             #Calculate time to collision point.
+    #             stride_ttc = stride_dist_to_index / self.robot_speed
+    #             sv_ttc = sv_dist_to_index / self.target_velocity
 
-                #Delay for loop
-                time.sleep(0.5)
+    #             #Delay for loop
+    #             time.sleep(0.5)
 
-                if stride_ttc < sv_ttc: #Lower Stride's speed
-                    stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = max(self.robot_speed - stride_vel_adj, lower_vel_threshold)
-                    limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
-                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
-                elif stride_ttc > sv_ttc: #Raise Stride's speed
-                    stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
-                    new_stride_vel = min(self.robot_speed + stride_vel_adj, upper_vel_threshold)
-                    limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
-                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
-                else: #Keep Stride's speed constant
-                    limited_speed = _find_rate_limited_speed(speed_rate, initial_time, self.robot_speed, initial_speed)
-                    self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
-                rate.sleep()
+    #             if stride_ttc < sv_ttc: #Lower Stride's speed
+    #                 stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+    #                 new_stride_vel = max(self.robot_speed - stride_vel_adj, lower_vel_threshold)
+    #                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
+    #                 self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+    #             elif stride_ttc > sv_ttc: #Raise Stride's speed
+    #                 stride_vel_adj = stride_dist_to_index/abs(stride_ttc - sv_ttc)
+    #                 new_stride_vel = min(self.robot_speed + stride_vel_adj, upper_vel_threshold)
+    #                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, new_stride_vel, initial_speed)
+    #                 self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+    #             else: #Keep Stride's speed constant
+    #                 limited_speed = _find_rate_limited_speed(speed_rate, initial_time, self.robot_speed, initial_speed)
+    #                 self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+    #             rate.sleep()
+
+    def vehicle_compensation(self, speed_goal_kph, speed_rate_g, intersection_lat, intersection_long, accel_dist, adjust_speed=0.0): 
+            """
+            Units are kph, g, degrees, degrees, meters, and mps
+            """
+            global let_script_runs
+            if not let_script_runs:
+                return
+            self._display_message('Executing vehicle_compensation')
+            if self.brake_status != 1: #Block function if brake isn't fully disengaged
+                let_script_runs = False
+                self._display_message("Aborting Test: Brake not disengaged.")
+                return
+            
+            # Compensation setup
+            msg = GeoPoint()
+            msg.latitude = intersection_lat
+            msg.longitude = intersection_long
+            self.compensation_state_publisher.publish(msg)
+            stride_comp = Compensation(self.path_to_follow)
+
+            print(stride_comp)
+
+            if not stride_comp.pre_collision_calc(intersection_lat, intersection_long):
+                let_script_runs = False
+                self._display_message("Aborting Test: comp pre-reqs do not meet")
+                return
+
+            #Initialize variables
+            speed_rate = speed_rate_g * 9.81 #Convert g to m/s^2
+            minimum_velocity = 0.1 #m/s
+            euro_ncap_speed_tol = kph2mps(0.2) #0.2 kph speed tolerance to m/s 
+            speed_goal_mps = kph2mps(speed_goal_kph) + adjust_speed
+            lower_vel_threshold = max(speed_goal_mps - euro_ncap_speed_tol, minimum_velocity) + adjust_speed
+            upper_vel_threshold = speed_goal_mps + euro_ncap_speed_tol + adjust_speed
+            exceed_speed_goal = False
+
+            if not self.target_gps_ready:
+                self._display_message("Aborting Test: Target GPS is not ready.")
+                let_script_runs = False
+                return
+            else:
+                speed_rate_for_dist = (speed_goal_mps**2 - self.limiter_initial_speed**2) / (2*accel_dist)
+                initial_time = time.time()
+                initial_speed = self.limiter_initial_speed
+                limited_speed = initial_speed
+
+                rate = rospy.Rate(50)
+                # Accel until exceed speed goal
+                while self.current_path_index < self.max_path_index and let_script_runs and not exceed_speed_goal:
+                    if limited_speed < speed_goal_mps:
+                        limited_speed = _find_rate_limited_speed(speed_rate_for_dist, initial_time, speed_goal_mps, initial_speed)
+                        self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+                    else:
+                        exceed_speed_goal = True
+                    rate.sleep()
+
+                # w = WriteCSV('/home/nvidia2/stride_ros/stride_ws/test_log/veh_comp_dist.csv')
+                # w.open()
+                # w.write(["Time", "dtc", "ttc", "c_speed", "a_speed"])
+                initial_time = time.time()
+                limited_speed = self.limiter_initial_speed
+                # Compensate
+                while self.current_path_index < self.max_path_index and let_script_runs:                    
+                    #Calculate time to collision point.
+                    # stride_ttc = stride_comp.time_to_collision(self.stride_latitude, self.stride_longitude,\
+                    #                                      self.robot_speed, self.current_path_index)
+                    stride_dtc = stride_comp.dist_to_collision(self.stride_latitude, self.stride_longitude,\
+                                                        self.current_path_index)
+                    
+                    stride_ttc = stride_dtc / self.robot_speed
+                    sv_ttc = self.target_dtc / self.target_velocity
+
+                    if stride_ttc < 0:
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal_mps, limited_speed)
+                        self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+
+                    elif stride_ttc < sv_ttc: #Lower Stride's speed
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, upper_vel_threshold, limited_speed)
+                        self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+                    elif stride_ttc > sv_ttc: #Raise Stride's speed
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, lower_vel_threshold, limited_speed)
+                        self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+                    else: #Keep Stride's speed constant
+                        limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal_mps, limited_speed)
+                        self._send_velocity_command_using_radius(max(limited_speed, minimum_velocity))
+                    initial_time = time.time()
+                    # w.write([initial_time, stride_dtc, stride_ttc, limited_speed, self.robot_speed])
+                    rate.sleep()
+                # w.close()
+
+    def euroncap_cpfa(self, intersection_lat, intersection_long):
+        """
+        Euro NCAP Test for Car-to-Pedestrian Farside Adult
+        impact position 50%
+        """
+        speed_goal = 8.0 # km/h
+        accel_dist = 1.5 # meters
+        self._display_message("Start Euroncap test")
+        self.vehicle_compensation(speed_goal, 0.1, \
+                                  intersection_lat, intersection_long, accel_dist)
+
+    def euroncap_cpna(self, intersection_lat, intersection_long):
+        """
+        Euro NCAP Test for Car-to-Pedestrian Farside Adult
+        impact position 50%
+        """
+        speed_goal = 5.0 # km/h
+        accel_dist = 1.0 # meters
+
+        self.vehicle_compensation(speed_goal, 0.1, \
+                                  intersection_lat, intersection_long, accel_dist)
 
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):
@@ -683,7 +804,10 @@ class RobotCommander(object):
         self.pitch = msg.angle.y
 
     def gps_sbg_nav_callback(self, msg):
-        self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
+        # self.robot_speed = math.sqrt(msg.velocity.x**2 + msg.velocity.y**2)
+        self.robot_speed = msg.velocity.x * math.cos(self.robot_heading) + msg.velocity.y * math.sin(self.robot_heading)
+        self.robot_speed_lat = msg.velocity.y * math.sin(self.robot_heading) + msg.velocity.y * math.cos(self.robot_heading)
+        
         self.stride_latitude = msg.latitude
         self.stride_longitude = msg.longitude
 
@@ -694,9 +818,15 @@ class RobotCommander(object):
         self.target_longitude = msg.longitude
         self.target_latitude = msg.latitude
         self.target_gps_correction_type = msg.gps_correction_type
+        self.target_dtc = msg.distance_to_collision
 
     def turning_radius_callback(self, msg):
         self.turning_radius = msg.data
+
+    def path_to_follow_callback(self, msg):
+        self.path_to_follow = {}
+        self.path_to_follow['latitudes'] = msg.latitudes
+        self.path_to_follow['longitudes'] = msg.longitudes
 
     def brake_status_callback(self, msg):
         self.brake_status = msg.data

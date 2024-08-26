@@ -416,7 +416,7 @@ class MyServerProtocol(WebSocketServerProtocol):
             MyServerProtocol.ros_interface.upload_path_publisher.publish()
 
         elif message['type'] == '/gui/upload_vehicle_path_clicked':
-            folder = '../../../path/'
+            folder = '../../../path_vehicle/'
             
             if not os.path.exists(folder):
                 os.makedirs(folder)
