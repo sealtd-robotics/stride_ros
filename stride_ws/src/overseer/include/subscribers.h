@@ -170,6 +170,7 @@ private:
     ros::Subscriber sbg_gps_euler_sub_;
     ros::Subscriber sbg_gps_gnss_sub_;
     ros::Subscriber sbg_gps_imu_sub_;
+    ros::Subscriber utc_time_sub_;
 
     ros::Subscriber dual_antenna_info_sub_;
     ros::Subscriber desired_velocity_sub_;
@@ -255,6 +256,7 @@ public:
     void SbgGpsEulerCallback(const sbg_driver::SbgEkfEuler::ConstPtr& msg);
     void SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& msg);
     void SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg);
+    void ImuUtcCallback(const sensor_msgs::TimeReference::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();

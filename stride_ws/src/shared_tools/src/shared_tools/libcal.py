@@ -92,7 +92,14 @@ class CheckBoundariesEnter(object):
         if np.dot(cp1, cp2) >= 0:
             return True
         return False
-    
+
+class Compensation_Errors(object):
+    PAST_TRIGGER_POINT = -1
+    PRE_CAL_PROBLEM = -2
+    INVALID = -3
+    def __init__(self):
+        pass
+
 class Compensation(object):
     def __init__(self, path_to_follow):
         self.latlong_path = path_to_follow
@@ -193,7 +200,7 @@ class Compensation(object):
         # check if pre_collision_calc did its work and valid
         # abort if default value doesn't change
         if self.collision_east_proj == -1:
-            return -2
+            return Compensation_Errors().PRE_CAL_PROBLEM
         
         veh_north, veh_east = self.llne.LL2NE(veh_lat, veh_long)
 
@@ -210,10 +217,10 @@ class Compensation(object):
 
             # Check if vehicle passed target, return -1 if true
             if k_next*k_veh > 0:
-                return -1
+                return Compensation_Errors().PAST_TRIGGER_POINT
         elif current_index > self.pre_collision_index:
             # already passed the collision segment
-            return -1
+            return Compensation_Errors().PAST_TRIGGER_POINT
         
         b = self.dist_intervals[current_index]
         ay = self.north[current_index + 1] - veh_north

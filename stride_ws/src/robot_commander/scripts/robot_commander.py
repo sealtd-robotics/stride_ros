@@ -17,12 +17,12 @@ import os
 import math
 import numpy as np
 from glob import glob
-from shared_tools.libcal import LL_NE, CheckBoundariesEnter, Compensation, kph2mps, mps2kph
-
+from shared_tools.libcal import LL_NE, CheckBoundariesEnter, \
+    Compensation, Compensation_Errors,\
+    kph2mps, mps2kph
 from std_msgs.msg import Int32, Empty, Bool, String, Float32, Float32MultiArray
 from geometry_msgs.msg import Pose2D, Twist, TwistWithCovarianceStamped, Vector3
 from nav_msgs.msg import Odometry
-from geographic_msgs.msg import GeoPoint
 from sbg_driver.msg import SbgEkfEuler, SbgEkfNav
 from external_interface.msg import TargetVehicle
 from path_follower.msg import Latlong
@@ -84,7 +84,7 @@ class RobotCommander(object):
             self.set_index_publisher = rospy.Publisher('/robot_commander/index_to_be_set', Int32, queue_size=1)
             self.disable_motor_publisher = rospy.Publisher('/robot_commander/disable_motor', Bool, queue_size=1)
             self.brake_command_publisher = rospy.Publisher('/brake_command', Bool, queue_size = 1)
-            self.collision_point_publisher = rospy.Publisher('/robot_commander/collision_point', GeoPoint, queue_size=1)
+            self.collision_point_publisher = rospy.Publisher('/robot_commander/collision_point', Latlong, queue_size=1)
 
             self.sub = {}
             # Subscribers
@@ -691,13 +691,11 @@ class RobotCommander(object):
                 return
             
             # Compensation setup
-            msg = GeoPoint()
-            msg.latitude = intersection_lat
-            msg.longitude = intersection_long
-            self.compensation_state_publisher.publish(msg)
+            msg = Latlong()
+            msg.latitudes = [intersection_lat]
+            msg.longitudes = [intersection_long]
+            self.collision_point_publisher.publish(msg)
             stride_comp = Compensation(self.path_to_follow)
-
-            print(stride_comp)
 
             if not stride_comp.pre_collision_calc(intersection_lat, intersection_long):
                 let_script_runs = False
@@ -745,6 +743,11 @@ class RobotCommander(object):
                     #                                      self.robot_speed, self.current_path_index)
                     stride_dtc = stride_comp.dist_to_collision(self.stride_latitude, self.stride_longitude,\
                                                         self.current_path_index)
+                    if stride_dtc < Compensation_Errors().PAST_TRIGGER_POINT or \
+                            self.target_dtc < Compensation_Errors().PAST_TRIGGER_POINT:
+                        let_script_runs = False
+                        self._display_message("Aborting Test: collision calc stride dtc {}, target dtc {}".format(stride_dtc, self.target_dtc))
+                        return
                     
                     stride_ttc = stride_dtc / self.robot_speed
                     sv_ttc = self.target_dtc / self.target_velocity

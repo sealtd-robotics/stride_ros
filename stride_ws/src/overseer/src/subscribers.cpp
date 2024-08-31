@@ -29,6 +29,7 @@ void DataRecorderSub::InitializeSubscribers() {
     sbg_gps_euler_sub_ = nh_.subscribe("/sbg/ekf_euler", 1, &DataRecorderSub::SbgGpsEulerCallback, this);
     sbg_gps_gnss_sub_  = nh_.subscribe("/sbg/gps_pos", 1, &DataRecorderSub::SbgGpsGnnsCallback, this);
     sbg_gps_imu_sub_   = nh_.subscribe("/sbg/imu_data", 1, &DataRecorderSub::SbgGpsImuCallback, this);
+    utc_time_sub_      = nh_.subscribe("/imu/utc_ref", 1, &DataRecorderSub::ImuUtcCallback, this);
     
     // Robot Info
     overseer_states_sub_ = nh_.subscribe("/overseer/state", 1, &DataRecorderSub::OverseerCallback, this);
@@ -88,6 +89,10 @@ void DataRecorderSub::SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& 
     df_.roll_rate_deg = radToDeg(msg->gyro.x);
     df_.pitch_rate_deg = radToDeg(msg->gyro.y);
 
+}
+
+void DataRecorderSub::ImuUtcCallback(const sensor_msgs::TimeReference::ConstPtr& msg) {
+    df_.utc_time_millisec = msg->time_ref.toNSec() * 0.000001;
 }
 
 void DataRecorderSub::RobotTemperatureCallback(const std_msgs::Int32::ConstPtr& msg) {
@@ -216,7 +221,7 @@ void DataRecorderSub::UpdateConvertToCsvStatus(bool status) {
 
 void DataRecorderSub::WriteBinary() {
     if (wf.is_open())
-        df_.utc_time_millisec = ros::Time::now().toNSec() * 0.000001;
+        // df_.utc_time_millisec = ros::Time::now().toNSec() * 0.000001;
         df_.motor_velocity_RL_rpm = motor_RL->GetRpm();
         df_.motor_velocity_RR_rpm = motor_RR->GetRpm();
         df_.motor_velocity_FL_rpm = motor_FL->GetRpm();

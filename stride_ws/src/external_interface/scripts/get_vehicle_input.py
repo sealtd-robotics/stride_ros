@@ -21,9 +21,8 @@ import rospy
 from sensor_msgs.msg import NavSatFix, TimeReference, Imu
 from geometry_msgs.msg import TwistWithCovarianceStamped
 from std_msgs.msg import Bool, Int32
-from geographic_msgs.msg import GeoPoint
 from shared_tools.overseer_states_constants import *
-from shared_tools.libcal import Compensation
+from shared_tools.libcal import Compensation, Compensation_Errors
 from external_interface.msg import TargetVehicle 
 from path_follower.msg import Latlong
 from math import pi, degrees, sin, cos
@@ -46,6 +45,7 @@ class TargetVehicleInput(object):
         self.current_index = 0
         self.path_to_follow = {}
         self.overseer_state = IDLE
+        self.dtc = Compensation_Errors().INVALID
 
         try:
             target_ip = rospy.get_param("target_ip")
@@ -53,7 +53,7 @@ class TargetVehicleInput(object):
             rospy.logerr("Target ip param is not defined. Check parameters.")
 
         pub = rospy.Publisher('/target', TargetVehicle, queue_size=1)
-        rospy.Subscriber('/robot_commander/collision_point', GeoPoint, self.compensation_state_cb, queue_size=1)
+        rospy.Subscriber('/robot_commander/collision_point', Latlong, self.compensation_state_cb, queue_size=1)
         rospy.Subscriber('/overseer/state', Int32, self.overseer_state_cb, queue_size=1)
         rospy.Subscriber('/path_follower/vehicle_path_to_follow', Latlong, self.path_cb, queue_size=1)
         output_msg = PubMsg()
@@ -93,8 +93,8 @@ class TargetVehicleInput(object):
 
     def compensation_state_cb(self,msg):
         self.is_compensation_on = False
-        collision_lat = msg.latitude
-        collision_long = msg.longitude
+        collision_lat = msg.latitudes[0]
+        collision_long = msg.longitudes[0]
         self.comp = Compensation(self.path_to_follow)
         self.dtc = -1
         if self.comp.pre_collision_calc(collision_lat, collision_long):
@@ -103,7 +103,7 @@ class TargetVehicleInput(object):
     def overseer_state_cb(self,msg):
         if msg.data != self.overseer_state:
             self.is_compensation_on = False
-            self.dtc = -1
+            self.dtc = Compensation_Errors().INVALID
             self.overseer_state = msg.data
 
     def path_cb(self, msg):
