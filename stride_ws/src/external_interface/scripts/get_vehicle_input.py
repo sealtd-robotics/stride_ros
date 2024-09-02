@@ -60,10 +60,11 @@ class TargetVehicleInput(object):
 
         ctx = zmq.Context()
         s = ctx.socket(zmq.SUB)
+        s.setsockopt(zmq.CONFLATE, 1)
         s.connect("tcp://%s:50008" % target_ip)
         s.setsockopt(zmq.SUBSCRIBE, b'')
 
-        rate = rospy.Rate(100)
+        # rate = rospy.Rate(100)
 
         while not rospy.is_shutdown():
             dat = s.recv()
@@ -89,7 +90,7 @@ class TargetVehicleInput(object):
                 self.dtc = self.comp.dist_to_collision(msg.latitude, msg.longitude, self.current_index)
             msg.distance_to_collision = self.dtc
             pub.publish(msg)
-            rate.sleep()
+            # rate.sleep()
 
     def compensation_state_cb(self,msg):
         self.is_compensation_on = False
