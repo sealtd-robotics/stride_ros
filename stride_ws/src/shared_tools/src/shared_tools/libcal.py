@@ -16,11 +16,13 @@ _e = 0.0818191908426
 _R = 6378137
 
 def kph2mps(kph):
-    return kph*1000/3600
+    return kph*10.0/36.0
+
 
 def mps2kph(mps):
     return mps*3.6
- 
+
+
 class LL_NE(object):
     def __init__(self, refLat=0, refLong=0):
         self.update(refLat, refLong)
@@ -93,12 +95,14 @@ class CheckBoundariesEnter(object):
             return True
         return False
 
+
 class Compensation_Errors(object):
     PAST_TRIGGER_POINT = -1
     PRE_CAL_PROBLEM = -2
     INVALID = -3
     def __init__(self):
         pass
+
 
 class Compensation(object):
     def __init__(self, path_to_follow):
@@ -122,7 +126,7 @@ class Compensation(object):
         self.pre_collision_index = len(self.north) - 1
         self.dist_intervals = []
 
-        for i in range(len(self.north)):
+        for i in range(len(self.north) - 1):
             y = self.north[i+1] - self.north[i]
             x = self.east[i+1] - self.east[i]
             d = np.sqrt(y*y + x*x)
@@ -130,6 +134,8 @@ class Compensation(object):
             self.dist_intervals.append(d)
 
             # slope of current index to collision point
+            if x == 0.0:
+                x = 0.0001
             m = y/x
             m_perp = -1/m
             k_cur = y - m_perp*x
@@ -180,12 +186,17 @@ class Compensation(object):
         """
         _north, _east = self.llne.LL2NE(lat, long)
 
-        for i in range(cur_index, len(self.north)):
+        if cur_index >= len(self.north) - 1:
+            return cur_index
+
+        for i in range(cur_index, len(self.north) - 1):
             y = self.north[i+1] - self.north[i]
             x = self.east[i+1] - self.east[i]
             d = np.sqrt(y*y + x*x)
 
             # slope of current index to collision point
+            if x == 0.0:
+                x = 0.0001
             m = y/x
             m_perp = -1/m
             k_cur = y - m_perp*x
@@ -194,6 +205,7 @@ class Compensation(object):
             # Check if col point and current index not in the same side 
             if k_cur*k_col > 0:
                 return i
+        return len(self.north) - 1
             
 
     def dist_to_collision(self, veh_lat, veh_long, current_index):
@@ -210,6 +222,9 @@ class Compensation(object):
             # when the veh enters the same segnment path as collision point
             y = (self.collision_north_proj - self.north[current_index + 1])
             x = (self.collision_east_proj - self.east[current_index + 1])
+
+            if x == 0.0:
+                x = 0.0001
             m = y/x
             m_perp = -1/m
             k_next = y - m_perp*x

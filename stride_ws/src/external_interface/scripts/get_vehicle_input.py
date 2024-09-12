@@ -97,7 +97,8 @@ class TargetVehicleInput(object):
         collision_lat = msg.latitudes[0]
         collision_long = msg.longitudes[0]
         self.comp = Compensation(self.path_to_follow)
-        self.dtc = -1
+        self.dtc = Compensation_Errors().INVALID
+        self.current_index = 0
         if self.comp.pre_collision_calc(collision_lat, collision_long):
             self.is_compensation_on = True
         

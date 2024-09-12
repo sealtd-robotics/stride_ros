@@ -42,6 +42,7 @@ void DataRecorderSub::InitializeSubscribers() {
     cross_track_error_sub_ = nh_.subscribe("/path_follower/cross_track_error", 1, &DataRecorderSub::CrossTrackErrorCallback, this);
     target_vehicle_sub_ = nh_.subscribe("/target", 1, &DataRecorderSub::TargetVehicleCallback, this);
     pressure_switch_sub = nh_.subscribe("/pressure_switch", 1, &DataRecorderSub::PressureSwitchCallback, this);
+    distance_to_collision_sub_ = nh_.subscribe("/robot_commander/distance_to_collision", 1, &DataRecorderSub::DtcCallback, this);
 
     //Mechanical Brake info
     brake_command_sub_ = nh_.subscribe("/brake_command", 1, &DataRecorderSub::BrakeCommandCallback, this);
@@ -123,6 +124,10 @@ void DataRecorderSub::CrossTrackErrorCallback(const std_msgs::Float32::ConstPtr&
     df_.cross_track_error_m = msg->data;
 }
 
+void DataRecorderSub::DtcCallback(const std_msgs::Float32::ConstPtr& msg) {
+    df_.distance_to_collision = msg->data;
+}
+
 void DataRecorderSub::RecordCommandCallback(const std_msgs::Bool::ConstPtr& msg) {
     record_command_on = msg->data;
     int ret = 0;
@@ -162,6 +167,7 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_num_of_satellites = msg -> no_of_satellites;
     df_.vehicle_heading = msg -> heading;
     df_.vehicle_gps_ready = msg -> gps_ready;
+    df_.vehicle_dist_to_collision = msg->distance_to_collision;
 //     df_.vehicle_lateral_speed = msg -> lateral_velocity;
 //     df_.vehicle_roll = msg -> roll;
 //     df_.vehicle_pitch = msg -> pitch;
@@ -289,6 +295,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.roll_rate_deg << dem;
                 outFile << temp.pitch_rate_deg << dem;
                 outFile << temp.cross_track_error_m << dem;
+                outFile << temp.distance_to_collision << dem;
                 outFile << temp.desired_omega_rads << dem;
                 outFile << temp.desired_velocity_ms << dem;
                 outFile << int(temp.motor_velocity_RL_rpm) << dem;
@@ -323,6 +330,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << temp.vehicle_longitude << dem;
                 outFile << temp.vehicle_heading << dem;
                 outFile << temp.vehicle_gps_ready << dem;
+                outFile << temp.vehicle_dist_to_collision << dem;
                 // outFile << temp.vehicle_roll << dem;
                 // outFile << temp.vehicle_pitch << dem;
                 // outFile << temp.vehicle_accel_x << dem;
