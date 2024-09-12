@@ -728,13 +728,15 @@ class RobotCommander(object):
         self.vehicle_compensation(speed_goal, 0.1, \
                                   intersection_lat, intersection_long, accel_dist)
 
-    def custom_compensation(self, inter_lat, inter_long, veh_inter_lat, veh_inter_long, speed_kph, speed_rate_g, accel_dist):
+    def custom_compensation(self, inter_lat, inter_long, veh_inter_lat, veh_inter_long, speed_kph, speed_rate_g, accel_dist, speed_tol=0.2):
+        """
+        A custom function for robot compensation to vehicle. Can adjust all params
+        """
         self._display_message("Start compensation")
         self.vehicle_compensation(speed_kph, speed_rate_g, \
-                                  inter_lat, inter_long, accel_dist, 0.0, \
+                                  inter_lat, inter_long, accel_dist, speed_tol, \
                                     veh_inter_lat, veh_inter_long)
         
-
     # Subscriber Callbacks
     def current_path_index_callback(self, msg):
         self.current_path_index = msg.data
