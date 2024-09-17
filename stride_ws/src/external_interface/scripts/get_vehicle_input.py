@@ -44,10 +44,11 @@ def main():
 
     ctx = zmq.Context()
     s = ctx.socket(zmq.SUB)
+    s.setsockopt(zmq.CONFLATE, 1)
     s.connect("tcp://%s:50008" % target_ip)
     s.setsockopt(zmq.SUBSCRIBE, b'')
 
-    rate = rospy.Rate(100)
+    # rate = rospy.Rate(100)
 
     while not rospy.is_shutdown():
         dat = s.recv()
@@ -69,7 +70,7 @@ def main():
         # msg.acceleration_z = output_msg.acceleration_z
         # msg.vehicle_brake = output_msg.vehicle_brake
         pub.publish(msg)
-        rate.sleep()
+        # rate.sleep()
 
 
 if __name__ == '__main__':
