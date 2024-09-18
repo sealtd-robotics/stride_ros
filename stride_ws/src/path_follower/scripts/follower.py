@@ -56,6 +56,7 @@ class PathFollower:
 
         # Publishers
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
+        self.vehicle_path_name_publisher = rospy.Publisher('/path_follower/vehicle_path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
         self.vehicle_path_to_follow_publisher = rospy.Publisher('/path_follower/vehicle_path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1, latch=True)
@@ -191,6 +192,9 @@ class PathFollower:
 
                 latitudes.append(latitude)
                 longitudes.append(longitude)
+
+        filename = os.path.basename(filepath)
+        self.vehicle_path_name_publisher.publish(filename)
 
         latlong = Latlong()
         latlong.latitudes = latitudes
