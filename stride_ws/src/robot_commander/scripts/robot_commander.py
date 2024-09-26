@@ -661,6 +661,15 @@ class RobotCommander(object):
                 initial_speed = self.limiter_initial_speed
                 limited_speed = initial_speed
 
+                # accel_time = (speed_goal_mps - initial_speed)/speed_rate_for_dist
+                # accel_to_max_speed_time = (upper_vel_thershold - speed_goal_mps) / speed_rate
+                # leftover_dist = accel_dist + (upper_vel_threshold**2 - speed_goal_mps**2)/(2*speed_rate)
+                # stride_dtc = stride_comp.dist_to_collision(self.stride_latitude, self.stride_longitude,self.current_path_index)
+                # max_speed_comp_time = (stride_dtc - leftover_dist) / upper_vel_threshold
+                # stride_ttc = accel_time + max_speed_comp_time
+                # if stride_ttc > sv_ttc:
+                #   abort operation, can't catch up, there is no point
+
                 rate = rospy.Rate(100)
                 # Accel until exceed speed goal
                 while self.current_path_index < self.max_path_index and let_script_runs and not exceed_speed_goal:
@@ -673,6 +682,7 @@ class RobotCommander(object):
 
                 initial_time = time.time()
                 limited_speed = self.limiter_initial_speed
+
                 # Compensate
                 while self.current_path_index < self.max_path_index and let_script_runs:                    
                     #Calculate time to collision point.
@@ -684,8 +694,11 @@ class RobotCommander(object):
                         self._display_message("Aborting Test: collision calc stride dtc {}, target dtc {}".format(self.stride_dtc, self.target_dtc))
                         return
                     
-                    stride_ttc = float(np.round(self.stride_dtc / self.robot_speed, 3))
-                    sv_ttc = float(np.round(self.target_dtc / self.target_velocity, 3))
+                    delta = 0.0
+                    stride_ttc = float(np.round(self.stride_dtc / self.robot_speed, 2))
+                    sv_ttc = float(np.round((self.target_dtc + delta)/ self.target_velocity, 2))
+
+                    # TO-DO: Add check
 
                     if stride_ttc < 0:
                         limited_speed = _find_rate_limited_speed(speed_rate, initial_time, speed_goal_mps, limited_speed)
