@@ -46,6 +46,11 @@ class RosInterface:
             "longitudes": []
         }
 
+        self.vehicle_path_to_follow = {
+            "latitudes": [],
+            "longitudes": []
+        }
+
         # robotState:
         #   -javascript naming convention used
         #   -additional keys will be added before sending out
@@ -167,7 +172,8 @@ class RosInterface:
         rospy.Subscriber('/path_follower/path_name', String, self.path_follower_callback_1, queue_size=1)
         rospy.Subscriber('/path_follower/path_to_follow', Latlong, self.path_follower_callback_2, queue_size=1)
         rospy.Subscriber('/path_follower/script_name', String, self.path_follower_callback_3, queue_size=1)
-        rospy.Subscriber('/path_follower/vehicle_path_name', String, self.path_follower_callback_4, queue_size=1)
+        rospy.Subscriber('/path_follower/vehicle_path_name', String, self.vehicle_path_follower_callback_1, queue_size=1)
+        rospy.Subscriber('/path_follower/vehicle_path_to_follow', Latlong, self.vehicle_path_follower_callback_2, queue_size=1)
 
         # Publishers
         self.joystick_publisher = rospy.Publisher('/joystick', Stick, queue_size=1)
@@ -314,13 +320,17 @@ class RosInterface:
 
     def path_follower_callback_2(self, msg):
         self.path_to_follow['latitudes'] = msg.latitudes
-        self.path_to_follow['longitudes'] = msg.longitudes
+        self.path_to_follow['longitudes'] = msg.longitudes   
 
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
 
-    def path_follower_callback_4(self,msg):
+    def vehicle_path_follower_callback_1(self,msg):
         self.robotState['pathFollower']['vehiclePathName'] = msg.data
+
+    def vehicle_path_follower_callback_2(self,msg):
+        self.vehicle_path_to_follow['latitudes'] = msg.latitudes
+        self.vehicle_path_to_follow['longitudes'] = msg.longitudes
 
     # # Brake Callbacks
     def brake_status_callback(self, msg):
@@ -366,6 +376,10 @@ class MyServerProtocol(WebSocketServerProtocol):
         self.thread4 = threading.Thread(target=self.transmit_path_to_follow)
         self.thread4.setDaemon(True)
         self.thread4.start()
+
+        self.thread5 = threading.Thread(target=self.transmit_vehicle_path_to_follow)
+        self.thread5.setDaemon(True)
+        self.thread5.start()
 
     def onMessage(self, payload, isBinary):
 
@@ -510,6 +524,27 @@ class MyServerProtocol(WebSocketServerProtocol):
                 previous_longitudes = MyServerProtocol.ros_interface.path_to_follow['longitudes']
             
             rate.sleep()
+            
+    def transmit_vehicle_path_to_follow(self):
+            rate = rospy.Rate(2)
+            previous_latitudes = []
+            previous_longitudes = []
+            while self.is_connected:
+                is_new_latitudes = id(previous_latitudes) != id(MyServerProtocol.ros_interface.vehicle_path_to_follow['latitudes'])
+                is_new_longitudes = id(previous_longitudes) != id(MyServerProtocol.ros_interface.vehicle_path_to_follow['longitudes'])
+                
+                if is_new_latitudes and is_new_longitudes:
+                    vehicle_path_to_follow = {'type': '/path_follower/vehicle_path_to_follow',
+                                        'latitudes':MyServerProtocol.ros_interface.vehicle_path_to_follow['latitudes'],
+                                        'longitudes':MyServerProtocol.ros_interface.vehicle_path_to_follow['longitudes']}
+
+                    pathMessage = json.dumps(vehicle_path_to_follow, ensure_ascii = False).encode('utf8')
+                    reactor.callFromThread(self.sendMessage, pathMessage, False)
+
+                    previous_latitudes = MyServerProtocol.ros_interface.vehicle_path_to_follow['latitudes'] # shallow copy
+                    previous_longitudes = MyServerProtocol.ros_interface.vehicle_path_to_follow['longitudes']
+                
+                rate.sleep()
 
 def shutdown():
     if rospy.is_shutdown():
