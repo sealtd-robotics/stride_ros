@@ -167,7 +167,8 @@ void DataRecorderSub::TargetVehicleCallback(const external_interface::TargetVehi
     df_.vehicle_num_of_satellites = msg -> no_of_satellites;
     df_.vehicle_heading = msg -> heading;
     df_.vehicle_gps_ready = msg -> gps_ready;
-    df_.vehicle_dist_to_collision = msg->distance_to_collision;
+    df_.vehicle_dist_to_collision = msg-> distance_to_collision;
+    df_.vehicle_utc_time = msg -> vehicle_utc_time;
 //     df_.vehicle_lateral_speed = msg -> lateral_velocity;
 //     df_.vehicle_roll = msg -> roll;
 //     df_.vehicle_pitch = msg -> pitch;
@@ -325,6 +326,7 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << unsigned(temp.robot_temp) << dem ;
                 outFile << temp.vehicle_speed << dem;
                 // outFile << temp.vehicle_lateral_speed << dem;
+                outfile << temp.vehicle_utc_time << dem;
                 outFile << temp.vehicle_num_of_satellites << dem;
                 outFile << temp.vehicle_latitude << dem;
                 outFile << temp.vehicle_longitude << dem;

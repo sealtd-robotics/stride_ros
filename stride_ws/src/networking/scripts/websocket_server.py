@@ -320,7 +320,9 @@ class RosInterface:
 
     def path_follower_callback_2(self, msg):
         self.path_to_follow['latitudes'] = msg.latitudes
-        self.path_to_follow['longitudes'] = msg.longitudes   
+        self.path_to_follow['longitudes'] = msg.longitudes 
+        print("Robot path lat and long values")
+        print(self.path_to_follow['latitudes'])  
 
     def path_follower_callback_3(self, msg):
         self.robotState['pathFollower']['scriptName'] = msg.data
@@ -331,6 +333,8 @@ class RosInterface:
     def vehicle_path_follower_callback_2(self,msg):
         self.vehicle_path_to_follow['latitudes'] = msg.latitudes
         self.vehicle_path_to_follow['longitudes'] = msg.longitudes
+        # print("Vehicle path lat and long values")
+        # print(self.vehicle_path_to_follow['latitudes'])
 
     # # Brake Callbacks
     def brake_status_callback(self, msg):

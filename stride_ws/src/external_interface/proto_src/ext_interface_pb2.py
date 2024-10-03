@@ -124,6 +124,13 @@ _PUBMSG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='vehicle_utc_time', full_name='PubMsg.vehicle_utc_time', index=7,
+      number=8, type=13, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
     # _descriptor.FieldDescriptor(
     #   name='lateral_velocity', full_name='PubMsg.lateral_velocity', index=7,
     #   number=8, type=1, cpp_type=5, label=1,

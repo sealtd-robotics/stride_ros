@@ -50,6 +50,7 @@ class VehicleDataSet():
 		self.acceleration_y = 0
 		self.acceleration_z = 0
 		self.vehicle_brake = False
+		self.vehicle_utc_time = 0
 
 class VehicleDataOutput():
 	def __init__(self):
@@ -112,6 +113,7 @@ class VehicleDataOutput():
 				output_msg.velocity_mps = self.data.velocity
 				output_msg.gps_ready = self.data.gps_ready
 				output_msg.no_of_satellites = self.data.no_of_satellites
+				output_msg.vehicle_utc_time = self.gps_time_msecs
 				# output_msg.lateral_velocity = self.data.lateral_velocity
 				# output_msg.roll = self.data.roll
 				# output_msg.pitch = self.data.pitch
