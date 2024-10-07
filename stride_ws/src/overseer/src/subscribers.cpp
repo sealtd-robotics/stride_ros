@@ -326,13 +326,13 @@ void DataRecorderSub::ConvertBin2Csv() {
                 outFile << unsigned(temp.robot_temp) << dem ;
                 outFile << temp.vehicle_speed << dem;
                 // outFile << temp.vehicle_lateral_speed << dem;
-                outfile << temp.vehicle_utc_time << dem;
                 outFile << temp.vehicle_num_of_satellites << dem;
                 outFile << temp.vehicle_latitude << dem;
                 outFile << temp.vehicle_longitude << dem;
                 outFile << temp.vehicle_heading << dem;
                 outFile << temp.vehicle_gps_ready << dem;
                 outFile << temp.vehicle_dist_to_collision << dem;
+                outFile << temp.vehicle_utc_time << dem;
                 // outFile << temp.vehicle_roll << dem;
                 // outFile << temp.vehicle_pitch << dem;
                 // outFile << temp.vehicle_accel_x << dem;
