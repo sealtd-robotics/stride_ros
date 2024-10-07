@@ -107,6 +107,7 @@ typedef struct
     float vehicle_heading;
     bool vehicle_gps_ready;
     float vehicle_dist_to_collision;
+    int64_t vehicle_utc_time;
     // float vehicle_pitch;
     // float vehicle_accel_x;
     // float vehicle_accel_y;
@@ -217,7 +218,7 @@ private:
                                 "vehicle_speed(m/s)", 
                                 // "vehicle_lateral_speed(m/s)", 
                                 "vehicle_num_of_satellites", "vehicle_latitude(deg)", "vehicle_longitude(deg)", 
-                                "vehicle_heading(deg)", "vehicle_gps_ready", "vehicle_dtc(m)",
+                                "vehicle_heading(deg)", "vehicle_gps_ready", "vehicle_dtc(m)", "vehicle_utc_time(ms)",
                                 // "vehicle_roll(deg)", "vehicle_pitch(deg)",
                                 // "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)",
                                 "pressure_switch", 

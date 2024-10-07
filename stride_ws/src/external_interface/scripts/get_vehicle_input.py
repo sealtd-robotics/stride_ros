@@ -107,6 +107,7 @@ class TargetVehicleInput(object):
                     self.current_index = self.comp.find_current_index(msg.latitude, msg.longitude, self.current_index)
                     self.dtc = self.comp.dist_to_collision(msg.latitude, msg.longitude, self.current_index)
                 msg.distance_to_collision = self.dtc
+                msg.vehicle_utc_time = output_msg.vehicle_utc_time
                 pub.publish(msg)
             except:
                 print("**Failed to parse data from vehicle")
