@@ -31,6 +31,7 @@ from shared_tools.utils import find_rate_limited_speed as _find_rate_limited_spe
 from shared_tools.utils import WriteCSV
 from shared_tools.overseer_states_constants import *
 from check_script import *
+from update_params import *
 from math import cos, pi, sin
 
 # Global control robot commander across threads
@@ -71,6 +72,7 @@ class RobotCommander(object):
         if self.__initialized:
             self.has_brake          = rospy.get_param('has_brake', False)
             self.reverse_speed_goal = rospy.get_param('~reverse_speed_goal', -1.5)
+            self.reverse_speed_rate = rospy.get_param('reverse_speed_rate', 0.1)
             self.default_decel_rate = rospy.get_param('decel_rate', 0.1)
             self.default_accel_rate = rospy.get_param('accel_rate', 0.1)
             self.debug              = rospy.get_param('debug', False)
@@ -235,6 +237,62 @@ class RobotCommander(object):
         col1 = Efactor * (longitude - RefLong)  #Apply east scale factor and put into column variable
         col2 = Nfactor * (latitude - RefLat)    #Apply north scale factor and put into column variable
         return col1, col2   #Return values from each column as their own variable
+    
+    def update_reverse_speed(self, speed):
+        """ Temporary update reverse speed. Go back to default when the robot restart
+        speed: negative float value in m/s
+        """
+        if (speed > 0):
+            self._display_message("ERROR: Please provide negative reverse speed. Abort update.")
+            return
+        self.reverse_speed_goal = speed
+        rospy.set_param('reverse_speed_goal', speed)
+        self._display_message("Reverse speed is overwritten to {} for this test sesssion".format(speed))
+
+    def update_reverse_speed_rate(self, rate):
+        """ Temporary update reverse speed rate. Go back to default when the robot restart
+        rate: positive float value in g
+        """
+        if (rate < 0):
+            self._display_message("ERROR: Please provide positive reverse speed rate. Abort update.")
+            return
+        self.reverse_speed_rate = rate
+        rospy.set_param('reverse_speed_rate', rate)
+        self._display_message("Reverse speed rate is overwritten to {} for this test sesssion".format(rate))
+
+    def update_reverse_speed_rate_perm(self, rate):
+        """ Permanent update reverse speed rate
+        rate: positive float value in g
+        """
+        if (rate < 0):
+            self._display_message("ERROR: Please provide positive reverse speed rate. Abort update.")
+            return
+        self.reverse_speed_rate = rate
+        if update_param_reverse_rate(rate) == False:
+            self._display_message("WARN: Reverse speed rate is not overwritten in params file. Something's wrong!")
+        else:
+            self._display_message("Reverse speed rate is overwritten to {} in params file".format(rate))
+
+    def update_reverse_speed_perm(self, speed):
+        """ Permanent update reverse speed
+        rate: positive float value in g
+        """
+        if (speed > 0):
+            self._display_message("ERROR: Please provide negative reverse speed. Abort update.")
+            return
+        self.reverse_speed_goal = speed
+        rospy.set_param('reverse_speed_goal', speed)
+        if update_param_reverse_speed(speed) == False:
+            self._display_message("WARN: Reverse speed is not overwritten in params file. Something's wrong!")
+        else:
+            self._display_message("Reverse speed is overwritten to {} in parameters file".format(speed))
+
+    def restore_default_params(self):
+        """ Restore content of the parameters to original"""
+        if restore_original_parameters() == False:
+            self._display_message("WARN: Original parameters could not be restored. Something's wrong!")
+        else:
+            self._display_message("Restored to original parameters! Won't take affect until robot is restarted.")
 
     def move_until_end_of_path(self, speed_goal, speed_rate): #Units are meters/second and g
         global let_script_runs
