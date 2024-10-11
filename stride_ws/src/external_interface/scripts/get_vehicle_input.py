@@ -71,7 +71,6 @@ class TargetVehicleInput(object):
             s.setsockopt(zmq.CONFLATE, 1)
             s.connect("tcp://%s:50008" % target_ip)
             s.setsockopt(zmq.SUBSCRIBE, b'')
-        # rate = rospy.Rate(100)
 
         while not rospy.is_shutdown():
             if udp_com:
@@ -104,7 +103,6 @@ class TargetVehicleInput(object):
                 pub.publish(msg)
             except:
                 print("**Failed to parse data from vehicle")
-            # rate.sleep()
 
     def compensation_state_cb(self,msg):
         self.is_compensation_on = False
