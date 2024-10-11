@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import yaml
 import os
+import io
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 param_file = os.path.abspath( os.path.join(cur_dir, '..', '..','..','params', 'params.yaml'))
@@ -24,7 +25,7 @@ def update_param_reverse_speed(speed):
         return False
     
     try:
-        with open(param_file, 'w', encoding='utf8') as outfile:
+        with io.open(param_file, 'w', encoding='utf8') as outfile:
             p['reverse_speed_goal'] = speed
             yaml.dump(p, outfile, default_flow_style=False, allow_unicode=True)
     except Exception as e:
@@ -38,7 +39,7 @@ def update_param_reverse_rate(rate):
         return False
     
     try:
-        with open(param_file, 'w', encoding='utf8') as outfile:
+        with io.open(param_file, 'w', encoding='utf8') as outfile:
             p['reverse_speed_rate'] = rate
             yaml.dump(p, outfile, default_flow_style=False, allow_unicode=True)
     except Exception as e:
