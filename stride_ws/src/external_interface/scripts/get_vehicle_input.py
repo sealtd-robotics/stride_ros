@@ -96,13 +96,6 @@ class TargetVehicleInput(object):
                 msg.gps_correction_type = output_msg.gps_correction + 1
                 msg.gps_ready = output_msg.gps_ready
                 msg.no_of_satellites = output_msg.no_of_satellites
-                # msg.lateral_velocity = output_msg.lateral_velocity
-                # msg.roll = output_msg.roll
-                # msg.pitch = output_msg.pitch
-                # msg.acceleration_x = output_msg.acceleration_x
-                # msg.acceleration_y = output_msg.acceleration_y
-                # msg.acceleration_z = output_msg.acceleration_z
-                # msg.vehicle_brake = output_msg.vehicle_brake
                 if self.is_compensation_on:
                     self.current_index = self.comp.find_current_index(msg.latitude, msg.longitude, self.current_index)
                     self.dtc = self.comp.dist_to_collision(msg.latitude, msg.longitude, self.current_index)
