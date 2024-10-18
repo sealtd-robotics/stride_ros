@@ -675,6 +675,7 @@ class RobotCommander(object):
                              vehicle_intersection_lat=None, vehicle_intersection_long=None): 
             """
             Units are kph, g, degrees, degrees, meters, kph, deg, deg
+            Warning: will not work without authorization.
             """
             global let_script_runs
             if not let_script_runs:
@@ -694,6 +695,9 @@ class RobotCommander(object):
             msg.longitudes = [vehicle_intersection_long]
             self.collision_point_publisher.publish(msg)
             stride_comp = Compensation(self.path_to_follow)
+            if stride_comp.authentication_check() == Compensation_Errors().NO_AUTHORIZATION:
+                self._display_message('Aborting Test: Device has no permission to use compensation feature.')
+                return
 
             if not stride_comp.pre_collision_calc(intersection_lat, intersection_long):
                 let_script_runs = False

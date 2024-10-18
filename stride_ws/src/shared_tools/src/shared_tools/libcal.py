@@ -100,162 +100,31 @@ class Compensation_Errors(object):
     PAST_TRIGGER_POINT = -1
     PRE_CAL_PROBLEM = -2
     INVALID = -3
+    NO_AUTHORIZATION = -4
     def __init__(self):
         pass
 
 
 class Compensation(object):
+    """
+    This object is not functional on purpose. DO NOT USE!!!
+    Contact author for more information
+    """
     def __init__(self, path_to_follow):
-        self.latlong_path = path_to_follow
-        self.collision_east_proj = -1
-        self.collision_north_proj = -1
-
-        _lat = path_to_follow['latitudes']
-        _long = path_to_follow['longitudes']
-        self.llne = LL_NE(_lat[0], _long[0])
         self.north, self.east = [], []
-        for i in range(len(_lat)):
-            north, east = self.llne.LL2NE(_lat[i], _long[i])
-            self.north.append(north)
-            self.east.append(east)
+        self.valid = Compensation_Errors().NO_AUTHORIZATION
 
-        # self.collision_north, self.collision_east = self.llne.LL2NE(collision_lat, collision_long)
+    def authentication_check(self):
+        return self.valid
 
     def pre_collision_calc(self, collision_lat, collision_long):
-        col_north, col_east = self.llne.LL2NE(collision_lat, collision_long)
-        self.pre_collision_index = len(self.north) - 1
-        self.dist_intervals = []
-
-        for i in range(len(self.north) - 1):
-            y = self.north[i+1] - self.north[i]
-            x = self.east[i+1] - self.east[i]
-            d = np.sqrt(y*y + x*x)
-
-            self.dist_intervals.append(d)
-
-            # slope of current index to collision point
-            if x == 0.0:
-                x = 0.0001
-            m = y/x
-            m_perp = -1/m
-            k_cur = y - m_perp*x
-            k_col = (self.north[i+1] - col_north) - m_perp*(self.east[i+1] - col_east)
-
-            # Check if col point and current index not in the same side 
-            if k_cur*k_col > 0:
-                self.pre_collision_index = i
-                break
-
-        # print("Pre collision index: ", self.pre_collision_index)
-        # print("Intervals: ", self.dist_intervals)
-        # find the col dist from closest index
-        if self.pre_collision_index < (len(self.north) - 1):
-            b = self.dist_intervals[self.pre_collision_index]
-            ay = col_north - self.north[self.pre_collision_index]
-            ax = col_east - self.east[self.pre_collision_index]
-            by = self.north[self.pre_collision_index+1] - self.north[self.pre_collision_index]
-            bx = self.east[self.pre_collision_index+1] - self.east[self.pre_collision_index]
-            col_dist_from_closet_index = (ax*bx + ay*by)/b
-
-            cx = col_dist_from_closet_index * bx / b
-            cy = col_dist_from_closet_index * by / b
-            self.collision_east_proj = cx + self.east[self.pre_collision_index]
-            self.collision_north_proj = cy + self.north[self.pre_collision_index]
-        else: # the col point should always be within path
-            return False
-
-        # print("Col dist from closet index: ", col_dist_from_closet_index)
-
-        # assign collision distance
-        # w = WriteCSV('/home/nvidia2/stride_ros/stride_ws/test_log/comp_dist.csv')
-        # w.open()
-
-        self.dtc_array = [0]*len(self.north)
-        self.dtc_array[0] = sum(self.dist_intervals[0:self.pre_collision_index]) \
-                                                    + col_dist_from_closet_index 
-        # w.write([0,self.dtc_array[0]])
-        for i in range(1,self.pre_collision_index+1):
-            self.dtc_array[i] = self.dtc_array[i-1] - self.dist_intervals[i-1]
-            # w.write([i, self.dtc_array[i]])
-        # w.close()
-        return True
+        return False
     
     def find_current_index(self, lat, long, cur_index):
-        """
-        Find the starting index of the segment that the vehicle is in
-        """
-        _north, _east = self.llne.LL2NE(lat, long)
-
-        if cur_index >= len(self.north) - 1:
-            return cur_index
-
-        for i in range(cur_index, len(self.north) - 1):
-            y = self.north[i+1] - self.north[i]
-            x = self.east[i+1] - self.east[i]
-            d = np.sqrt(y*y + x*x)
-
-            # slope of current index to collision point
-            if x == 0.0:
-                x = 0.0001
-            m = y/x
-            m_perp = -1/m
-            k_cur = y - m_perp*x
-            k_col = (self.north[i+1] - _north) - m_perp*(self.east[i+1] - _east)
-
-            # Check if col point and current index not in the same side 
-            if k_cur*k_col > 0:
-                return i
         return len(self.north) - 1
             
 
     def dist_to_collision(self, veh_lat, veh_long, current_index):
-        # check if pre_collision_calc did its work and valid
-        # abort if default value doesn't change
-        if self.collision_east_proj == -1:
-            return Compensation_Errors().PRE_CAL_PROBLEM
-        
-        veh_north, veh_east = self.llne.LL2NE(veh_lat, veh_long)
-
-        if current_index == self.pre_collision_index:
-            # print("At pre-collision index check")
-            # check if the vehicle pass the collision point
-            # when the veh enters the same segnment path as collision point
-            y = (self.collision_north_proj - self.north[current_index + 1])
-            x = (self.collision_east_proj - self.east[current_index + 1])
-
-            if x == 0.0:
-                x = 0.0001
-            m = y/x
-            m_perp = -1/m
-            k_next = y - m_perp*x
-            k_veh = (self.collision_north_proj - veh_north) - m_perp*(self.collision_east_proj - veh_east)
-
-            # Check if vehicle passed target, return -1 if true
-            if k_next*k_veh > 0:
-                return Compensation_Errors().PAST_TRIGGER_POINT
-        elif current_index > self.pre_collision_index:
-            # already passed the collision segment
-            return Compensation_Errors().PAST_TRIGGER_POINT
-        
-        b = self.dist_intervals[current_index]
-        ay = self.north[current_index + 1] - veh_north
-        ax = self.east[current_index + 1] - veh_east
-        by = self.north[current_index+1] - self.north[current_index]
-        bx = self.east[current_index+1] - self.east[current_index]
-        veh_dist_to_next_index = (ax*bx + ay*by)/b
-
-        if current_index == self.pre_collision_index:
-            dtc = self.dtc_array[current_index] - self.dist_intervals[current_index] + veh_dist_to_next_index
-            # print("return pre-col index value")
-            return dtc
-        
-        return self.dtc_array[current_index + 1] + veh_dist_to_next_index
-    
-    def time_to_collision(self, veh_lat, veh_long, veh_speed, current_index):
-        dtc = self.dist_to_collision(veh_lat, veh_long, current_index)
-        if dtc > 0:
-            return dtc / veh_speed
-        else:
-            return dtc # this will return error code
+        return Compensation_Errors().PRE_CAL_PROBLEM
     
     
