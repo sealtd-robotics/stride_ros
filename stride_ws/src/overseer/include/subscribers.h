@@ -69,6 +69,7 @@ typedef struct
     float roll_rate_deg;
     float pitch_rate_deg;
     float cross_track_error_m;
+    float distance_to_collision;
     float desired_omega_rads;
     float desired_velocity_ms;
     float motor_velocity_RL_rpm;
@@ -105,7 +106,8 @@ typedef struct
     double vehicle_longitude;
     float vehicle_heading;
     bool vehicle_gps_ready;
-    // float vehicle_roll;
+    float vehicle_dist_to_collision;
+    int64_t vehicle_utc_time;
     // float vehicle_pitch;
     // float vehicle_accel_x;
     // float vehicle_accel_y;
@@ -164,12 +166,14 @@ private:
     ros::Subscriber battery_temperature_sub_;
     ros::Subscriber target_vehicle_sub_;
     ros::Subscriber pressure_switch_sub;
+    ros::Subscriber distance_to_collision_sub_;
 
     // Sbg
     ros::Subscriber sbg_gps_nav_sub_;
     ros::Subscriber sbg_gps_euler_sub_;
     ros::Subscriber sbg_gps_gnss_sub_;
     ros::Subscriber sbg_gps_imu_sub_;
+    ros::Subscriber utc_time_sub_;
 
     ros::Subscriber dual_antenna_info_sub_;
     ros::Subscriber desired_velocity_sub_;
@@ -200,7 +204,7 @@ private:
                                 "vel_forward(m/s)", "vel_lateral(m/s)",
                                 "vel_east(m/s)", "vel_north(m/s)", "vel_z(m/s)", "heading(deg)", "roll(deg)", "pitch(deg)",
                                 "Ax(g)", "Ay(g)","Az(g)", "yaw_rate(rad/s)", "yaw_rate(deg/s)", "roll_rate(deg/s)", "pitch_rate(deg/s)", 
-                                "cte(m)", 
+                                "cte(m)", "dtc(m)",
                                 "desired_omega(rad/s)", "desired_velocity(m/s)", 
                                 "actual_rpm_RL", "desired_rpm_RL", 
                                 "actual_rpm_RR", "desired_rpm_RR",
@@ -214,8 +218,8 @@ private:
                                 "vehicle_speed(m/s)", 
                                 // "vehicle_lateral_speed(m/s)", 
                                 "vehicle_num_of_satellites", "vehicle_latitude(deg)", "vehicle_longitude(deg)", 
-                                "vehicle_heading(deg)", "vehicle_gps_ready",
-                                // "vehicle_roll(deg)", "vehicle_pitch(deg)", 
+                                "vehicle_heading(deg)", "vehicle_gps_ready", "vehicle_dtc(m)", "vehicle_utc_time(ms)",
+                                // "vehicle_roll(deg)", "vehicle_pitch(deg)",
                                 // "vehicle_accel_x(m/s^2)", "vehicle_accel_y(m/s^2)", "vehicle_accel_z(m/s^2)",
                                 "pressure_switch", 
                                 // "vehicle_brake",
@@ -249,12 +253,14 @@ public:
     void RightBrakeCallback(const std_msgs::Int32::ConstPtr& msg);
     void DisableMotorsCallback(const std_msgs::Bool::ConstPtr& msg);
     void PressureSwitchCallback(const std_msgs::Bool::ConstPtr& msg);
+    void DtcCallback(const std_msgs::Float32::ConstPtr& msg);
 
     // Sbg
     void SbgGpsNavCallback(const sbg_driver::SbgEkfNav::ConstPtr& msg);
     void SbgGpsEulerCallback(const sbg_driver::SbgEkfEuler::ConstPtr& msg);
     void SbgGpsGnnsCallback(const sbg_driver::SbgGpsPos::ConstPtr& msg);
     void SbgGpsImuCallback(const sbg_driver::SbgImuData::ConstPtr& msg);
+    void ImuUtcCallback(const sensor_msgs::TimeReference::ConstPtr& msg);
 
     // Write csv data
     void WriteBinary();

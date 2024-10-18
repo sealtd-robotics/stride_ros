@@ -18,11 +18,5 @@ message PubMsg {
 		DGPS_RTK_INTERGER = 6;
 	}
 	GpsCorrection gps_correction = 7;
-	# double lateral_velocity = 8;
-	# double roll = 9;
-	# double pitch = 10;
-	# double acceleration_x = 11;
-	# double acceleration_y = 12;
-	# double acceleration_z = 13;
-	# bool vehicle_brake = 14;
+	int64 vehicle_utc_time = 8;
 }

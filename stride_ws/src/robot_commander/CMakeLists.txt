@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   sbg_driver
+  path_follower
   message_generation
 )
 

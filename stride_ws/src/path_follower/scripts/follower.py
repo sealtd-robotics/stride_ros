@@ -56,7 +56,9 @@ class PathFollower:
 
         # Publishers
         self.path_name_publisher = rospy.Publisher('/path_follower/path_name', String, queue_size=1, latch=True)
+        self.vehicle_path_name_publisher = rospy.Publisher('/path_follower/vehicle_path_name', String, queue_size=1, latch=True)
         self.path_to_follow_publisher = rospy.Publisher('/path_follower/path_to_follow', Latlong, queue_size=1, latch=True)
+        self.vehicle_path_to_follow_publisher = rospy.Publisher('/path_follower/vehicle_path_to_follow', Latlong, queue_size=1, latch=True)
         self.current_path_index_publisher = rospy.Publisher('/path_follower/current_path_index', Int32, queue_size=1, latch=True)
         self.max_index_publisher = rospy.Publisher('/path_follower/max_path_index', Int32, queue_size=1, latch=True)
         self.path_intervals_publisher = rospy.Publisher('/path_follower/path_intervals', Float32MultiArray, queue_size=1, latch=True)
@@ -69,6 +71,7 @@ class PathFollower:
         rospy.Subscriber('/robot_velocity_command', Pose2D, self.callback_3)
         rospy.Subscriber('/robot_commander/stop_index', Int32, self.callback_4)
         rospy.Subscriber('/robot_commander/index_to_be_set', Int32, self.callback_6, queue_size=1)
+        rospy.Subscriber('/gui/upload_vehicle_path_clicked', Empty, self.callback_7)
 
         # Topics for SBG GPS
         rospy.Subscriber('/sbg/ekf_nav', SbgEkfNav, self.gps_position_callback, queue_size=1)
@@ -76,6 +79,7 @@ class PathFollower:
 
         # Load path at startup
         self.load_path()
+        self.load_vehicle_path()
     
     def assign_reference_point(self, latitude, longitude):
         self.lat_ref = latitude
@@ -157,6 +161,45 @@ class PathFollower:
         msg = Float32MultiArray()
         msg.data = self.path_intervals
         self.path_intervals_publisher.publish(msg)
+
+    def load_vehicle_path(self):
+        folder = '../../../path_vehicle/'
+            
+        if not os.path.exists(folder):
+            return
+
+        txt_files = glob(folder + '*.txt')
+        
+        if len(txt_files) == 0:
+            return
+        
+        filepath = txt_files[0]
+
+        line_number = 1
+        with open(filepath, 'r') as f:
+            latitudes = []
+            longitudes = []
+
+            for line in f.readlines():
+                # omit the first line in file
+                if line_number == 1:
+                    line_number += 1
+                    continue
+                
+                lat_long = line.split()
+                latitude = float(lat_long[0])
+                longitude = float(lat_long[1])
+
+                latitudes.append(latitude)
+                longitudes.append(longitude)
+
+        filename = os.path.basename(filepath)
+        self.vehicle_path_name_publisher.publish(filename)
+
+        latlong = Latlong()
+        latlong.latitudes = latitudes
+        latlong.longitudes = longitudes
+        self.vehicle_path_to_follow_publisher.publish(latlong)
 
     def update_current_path_index(self):
         if self.last_path_index == self.max_index:
@@ -308,6 +351,9 @@ class PathFollower:
 
     def callback_6(self, msg):
         self.current_path_index = msg.data
+
+    def callback_7(self, msg):
+        self.load_vehicle_path()
 
     # GPS subscriber callbacks
     def gps_callback_1(self, msg):

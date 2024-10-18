@@ -29,7 +29,8 @@ from tf.transformations import euler_from_quaternion
 from math import pi, degrees, sin, cos
 import threading
 import zmq
-
+import socket
+from struct import pack, unpack
 
 class VehicleDataSet():
 	def __init__(self):
@@ -49,20 +50,27 @@ class VehicleDataSet():
 		self.acceleration_y = 0
 		self.acceleration_z = 0
 		self.vehicle_brake = False
+		self.vehicle_utc_time = 0
 
 class VehicleDataOutput():
 	def __init__(self):
 		rospy.init_node('vehicle_output')
 		self._ip = rospy.get_param("self_ip")
+		robot_ip = rospy.get_param("robot_ip")
+		udp_com = rospy.get_param("udp", True)
+		udp_port = rospy.get_param("udp_port", 50008)
 		output_msg = PubMsg()
 		self.data = VehicleDataSet()
-		self.mutex = threading.Lock()
+		# self.mutex = threading.Lock()
 		self.gps_time_msecs = rospy.Time.now().to_nsec() * 1e-6
 		self.last_get_time = rospy.Time.now()
 
-		ctx = zmq.Context()
-		s = ctx.socket(zmq.PUB)
-		s.bind("tcp://%s:50008" % self._ip)
+		if udp_com:
+			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		else:
+			ctx = zmq.Context()
+			s = ctx.socket(zmq.PUB)
+			s.bind("tcp://%s:50008" % self._ip)
 
 		# OxTS ROS1 driver for ethernet
 		# https://bitbucket.org/DataspeedInc/oxford_gps_eth/src/master/
@@ -105,15 +113,14 @@ class VehicleDataOutput():
 				output_msg.velocity_mps = self.data.velocity
 				output_msg.gps_ready = self.data.gps_ready
 				output_msg.no_of_satellites = self.data.no_of_satellites
-				# output_msg.lateral_velocity = self.data.lateral_velocity
-				# output_msg.roll = self.data.roll
-				# output_msg.pitch = self.data.pitch
-				# output_msg.acceleration_x = self.data.acceleration_x
-				# output_msg.acceleration_y = self.data.acceleration_y
-				# output_msg.acceleration_z = self.data.acceleration_z
-				# output_msg.vehicle_brake = self.data.vehicle_brake
-
-			s.send(output_msg.SerializeToString())
+				output_msg.vehicle_utc_time = int(self.gps_time_msecs)
+			dat = output_msg.SerializeToString()
+			if udp_com:
+				crc = sum(unpack(str(len(dat)) + 'B', dat)) & 0xFF
+				dat += pack('B', crc)
+				s.sendto(dat, (robot_ip, udp_port))				
+			else:
+				s.send(dat)
 			rate.sleep()
 
 	def time_reference_cb(self, msg):

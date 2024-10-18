@@ -10,10 +10,19 @@
 
 from math import cos, sin, sqrt, pi, radians
 import numpy as np
+from utils import WriteCSV
 
 _e = 0.0818191908426
 _R = 6378137
- 
+
+def kph2mps(kph):
+    return kph*10.0/36.0
+
+
+def mps2kph(mps):
+    return mps*3.6
+
+
 class LL_NE(object):
     def __init__(self, refLat=0, refLong=0):
         self.update(refLat, refLong)
@@ -85,3 +94,37 @@ class CheckBoundariesEnter(object):
         if np.dot(cp1, cp2) >= 0:
             return True
         return False
+
+
+class Compensation_Errors(object):
+    PAST_TRIGGER_POINT = -1
+    PRE_CAL_PROBLEM = -2
+    INVALID = -3
+    NO_AUTHORIZATION = -4
+    def __init__(self):
+        pass
+
+
+class Compensation(object):
+    """
+    This object is not functional on purpose. DO NOT USE!!!
+    Contact author for more information
+    """
+    def __init__(self, path_to_follow):
+        self.north, self.east = [], []
+        self.valid = Compensation_Errors().NO_AUTHORIZATION
+
+    def authentication_check(self):
+        return self.valid
+
+    def pre_collision_calc(self, collision_lat, collision_long):
+        return False
+    
+    def find_current_index(self, lat, long, cur_index):
+        return len(self.north) - 1
+            
+
+    def dist_to_collision(self, veh_lat, veh_long, current_index):
+        return Compensation_Errors().PRE_CAL_PROBLEM
+    
+    
